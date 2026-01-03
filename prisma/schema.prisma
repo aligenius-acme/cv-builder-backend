@@ -1,0 +1,379 @@
+// AI Resume & CV Customizer - Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Roles Enum
+enum UserRole {
+  USER       // B2C individual job seekers
+  ORG_ADMIN  // B2B organization admin
+  ORG_USER   // B2B organization member
+  ADMIN      // Super admin
+}
+
+// Subscription Plan Types
+enum PlanType {
+  FREE
+  PRO
+  BUSINESS
+}
+
+// Subscription Status
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+  PAUSED
+}
+
+// User Model
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  passwordHash      String
+  firstName         String?
+  lastName          String?
+  role              UserRole          @default(USER)
+  organizationId    String?
+  organization      Organization?     @relation(fields: [organizationId], references: [id])
+
+  // Subscription
+  subscription      Subscription?
+
+  // Resume related
+  resumes           Resume[]
+  resumeVersions    ResumeVersion[]
+  coverLetters      CoverLetter[]
+
+  // Usage tracking
+  aiUsageLogs       AIUsageLog[]
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  lastLoginAt       DateTime?
+
+  // Email verification
+  emailVerified     Boolean           @default(false)
+  emailVerifyToken  String?
+
+  // Password reset
+  passwordResetToken    String?
+  passwordResetExpires  DateTime?
+
+  @@index([email])
+  @@index([organizationId])
+}
+
+// Organization Model (B2B)
+model Organization {
+  id                String            @id @default(uuid())
+  name              String
+  domain            String?           @unique
+
+  // Branding
+  logoUrl           String?
+  primaryColor      String?
+  secondaryColor    String?
+
+  // Subscription
+  subscription      OrgSubscription?
+
+  // Members
+  users             User[]
+
+  // Settings
+  anonymizationEnabled  Boolean       @default(false)
+
+  // Quotas
+  monthlyResumeLimit    Int           @default(100)
+  monthlyCoverLetterLimit Int         @default(100)
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([domain])
+}
+
+// Individual Subscription (B2C)
+model Subscription {
+  id                String            @id @default(uuid())
+  userId            String            @unique
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId      String?       @unique
+  stripeSubscriptionId  String?       @unique
+  stripePriceId         String?
+
+  planType          PlanType          @default(FREE)
+  status            SubscriptionStatus @default(ACTIVE)
+
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean       @default(false)
+
+  // Usage limits for free tier
+  resumesCreated    Int               @default(0)
+  resumeLimit       Int               @default(1)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}
+
+// Organization Subscription (B2B)
+model OrgSubscription {
+  id                String            @id @default(uuid())
+  organizationId    String            @unique
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId      String?       @unique
+  stripeSubscriptionId  String?       @unique
+  stripePriceId         String?
+
+  status            SubscriptionStatus @default(ACTIVE)
+  seatsTotal        Int               @default(5)
+  seatsUsed         Int               @default(0)
+
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean       @default(false)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([stripeCustomerId])
+}
+
+// Resume Model (Base Resume)
+model Resume {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // File storage
+  originalFileName  String
+  originalFileUrl   String            // S3 URL
+  originalFileKey   String            // S3 Key for deletion
+
+  // Parsed content
+  rawText           String            @db.Text
+  parsedData        Json              // Structured JSON: summary, experience, skills, education
+
+  // Metadata
+  title             String            @default("My Resume")
+  isBase            Boolean           @default(true)
+
+  // Processing status
+  parseStatus       String            @default("pending") // pending, processing, completed, failed
+  parseError        String?
+
+  // Versions
+  versions          ResumeVersion[]
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([userId])
+}
+
+// Resume Version (Job-specific tailored versions)
+model ResumeVersion {
+  id                String            @id @default(uuid())
+  resumeId          String
+  resume            Resume            @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Version info
+  versionNumber     Int
+
+  // Job context
+  jobTitle          String
+  companyName       String
+  jobDescription    String            @db.Text
+
+  // Extracted JD data
+  jobData           Json              // required skills, preferred skills, responsibilities, keywords
+
+  // Tailored content
+  tailoredData      Json              // Modified resume JSON
+  tailoredText      String            @db.Text
+
+  // AI customization details
+  changesExplanation String           @db.Text
+  matchedKeywords   String[]
+  missingKeywords   String[]
+
+  // ATS Score
+  atsScore          Int               @default(0)
+  atsDetails        Json?             // Detailed ATS analysis
+
+  // Truth Guard warnings
+  truthGuardWarnings Json?
+
+  // Template
+  templateId        String?
+
+  // Generated files
+  pdfFileUrl        String?
+  pdfFileKey        String?
+  docxFileUrl       String?
+  docxFileKey       String?
+
+  // Anonymization (for B2B)
+  isAnonymized      Boolean           @default(false)
+  anonymizedData    Json?
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([resumeId, versionNumber])
+  @@index([userId])
+  @@index([resumeId])
+}
+
+// Cover Letter Model
+model CoverLetter {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Context
+  resumeVersionId   String?
+  jobTitle          String
+  companyName       String
+  jobDescription    String            @db.Text
+
+  // Generated content
+  content           String            @db.Text
+  tone              String            @default("professional")
+
+  // Generated files
+  pdfFileUrl        String?
+  pdfFileKey        String?
+  docxFileUrl       String?
+  docxFileKey       String?
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([userId])
+}
+
+// Resume Template Model
+model ResumeTemplate {
+  id                String            @id @default(uuid())
+  name              String
+  description       String?
+
+  // Template configuration
+  templateConfig    Json              // Layout, styling, sections config
+  previewImageUrl   String?
+
+  // Access control
+  isDefault         Boolean           @default(false)
+  isPremium         Boolean           @default(false)
+  organizationId    String?           // For B2B custom templates
+
+  // ATS safety
+  isAtsSafe         Boolean           @default(true)
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([organizationId])
+}
+
+// AI Usage Log (for cost tracking)
+model AIUsageLog {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId    String?
+
+  // Request details
+  operation         String            // resume_tailor, cover_letter, ats_analysis, etc.
+  provider          String            // openai, anthropic, grok
+  model             String
+
+  // Token usage
+  promptTokens      Int
+  completionTokens  Int
+  totalTokens       Int
+
+  // Cost tracking
+  estimatedCost     Decimal           @db.Decimal(10, 6)
+
+  // Performance
+  durationMs        Int
+
+  // Status
+  success           Boolean           @default(true)
+  errorMessage      String?
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+// Parsing Error Log
+model ParsingErrorLog {
+  id                String            @id @default(uuid())
+  resumeId          String?
+  userId            String?
+
+  fileName          String
+  fileType          String
+  errorMessage      String            @db.Text
+  errorStack        String?           @db.Text
+
+  createdAt         DateTime          @default(now())
+
+  @@index([createdAt])
+}
+
+// Prompt Version (for AI prompt management)
+model PromptVersion {
+  id                String            @id @default(uuid())
+  name              String            @unique
+  version           Int               @default(1)
+  promptText        String            @db.Text
+  isActive          Boolean           @default(true)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([name, version])
+}
+
+// Admin Audit Log
+model AuditLog {
+  id                String            @id @default(uuid())
+  adminId           String
+  action            String
+  targetType        String            // user, organization, subscription, etc.
+  targetId          String?
+  details           Json?
+
+  createdAt         DateTime          @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+}
