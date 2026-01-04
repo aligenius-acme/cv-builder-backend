@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
+import { prisma } from '../utils/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 // Get all A/B tests for user
-export const getTests = async (req: Request, res: Response) => {
+export const getTests = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { status } = req.query;
@@ -47,7 +48,7 @@ export const getTests = async (req: Request, res: Response) => {
 };
 
 // Get single A/B test with details
-export const getTest = async (req: Request, res: Response) => {
+export const getTest = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id } = req.params;
@@ -97,7 +98,7 @@ export const getTest = async (req: Request, res: Response) => {
 };
 
 // Create new A/B test
-export const createTest = async (req: Request, res: Response) => {
+export const createTest = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { name, description, targetJobTitle, targetCompany, goal, variants } = req.body;
@@ -145,7 +146,7 @@ export const createTest = async (req: Request, res: Response) => {
 };
 
 // Update A/B test
-export const updateTest = async (req: Request, res: Response) => {
+export const updateTest = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id } = req.params;
@@ -190,7 +191,7 @@ export const updateTest = async (req: Request, res: Response) => {
 };
 
 // Start/pause/complete A/B test
-export const updateTestStatus = async (req: Request, res: Response) => {
+export const updateTestStatus = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id } = req.params;
@@ -242,7 +243,7 @@ export const updateTestStatus = async (req: Request, res: Response) => {
 };
 
 // Delete A/B test
-export const deleteTest = async (req: Request, res: Response) => {
+export const deleteTest = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id } = req.params;
@@ -276,7 +277,7 @@ export const deleteTest = async (req: Request, res: Response) => {
 };
 
 // Record event for variant (public endpoint)
-export const recordEvent = async (req: Request, res: Response) => {
+export const recordEvent = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { shareToken } = req.params;
     const { eventType, metadata } = req.body;
@@ -359,7 +360,7 @@ export const recordEvent = async (req: Request, res: Response) => {
 };
 
 // Add variant to existing test
-export const addVariant = async (req: Request, res: Response) => {
+export const addVariant = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id } = req.params;
@@ -408,7 +409,7 @@ export const addVariant = async (req: Request, res: Response) => {
 };
 
 // Remove variant from test
-export const removeVariant = async (req: Request, res: Response) => {
+export const removeVariant = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id, variantId } = req.params;
@@ -457,7 +458,7 @@ export const removeVariant = async (req: Request, res: Response) => {
 };
 
 // Get analytics for a test
-export const getTestAnalytics = async (req: Request, res: Response) => {
+export const getTestAnalytics = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id } = req.params;
@@ -567,7 +568,7 @@ export const getTestAnalytics = async (req: Request, res: Response) => {
 };
 
 // Update variant metrics manually (for user to record outcomes)
-export const updateVariantMetrics = async (req: Request, res: Response) => {
+export const updateVariantMetrics = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const { id, variantId } = req.params;

@@ -116,7 +116,11 @@ ${JSON.stringify(resumeData, null, 2)}`;
     const content = completion.choices[0]?.message?.content || '';
 
     // Log AI usage
-    await logAIUsage(userId, 'resume_performance_score', 'groq', config.ai.groqModel, {
+    await logAIUsage({
+      userId,
+      operation: 'resume_performance_score',
+      provider: 'groq',
+      model: config.ai.groqModel,
       promptTokens: completion.usage?.prompt_tokens || 0,
       completionTokens: completion.usage?.completion_tokens || 0,
       totalTokens: completion.usage?.total_tokens || 0,
@@ -148,17 +152,28 @@ export const analyzeSkillGap = async (
 ): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const { resumeId, targetJobTitle, targetJobDescription, industry } = req.body;
+    const { currentSkills, targetRole, experienceLevel, industry, resumeId, targetJobTitle, targetJobDescription } = req.body;
 
-    // Get resume data
-    const resume = await prisma.resume.findFirst({
-      where: { id: resumeId, userId },
-    });
+    let skillsToAnalyze = currentSkills || [];
 
-    if (!resume) {
-      res.status(404).json({ success: false, error: 'Resume not found' });
+    // If resumeId provided, extract skills from resume
+    if (resumeId) {
+      const resume = await prisma.resume.findFirst({
+        where: { id: resumeId, userId },
+      });
+
+      if (resume && resume.parsedData) {
+        const parsed = resume.parsedData as any;
+        skillsToAnalyze = parsed.skills || [];
+      }
+    }
+
+    if (!skillsToAnalyze.length && !resumeId) {
+      res.status(400).json({ success: false, error: 'Please provide currentSkills or resumeId' });
       return;
     }
+
+    const roleToAnalyze = targetRole || targetJobTitle || 'Software Engineer';
 
     const startTime = Date.now();
 
@@ -212,10 +227,10 @@ export const analyzeSkillGap = async (
   "careerPathInsights": "<paragraph about career progression and opportunities>"
 }
 
-Candidate Resume:
-${resume.rawText}
+Candidate Skills: ${Array.isArray(skillsToAnalyze) ? skillsToAnalyze.join(', ') : skillsToAnalyze}
+${experienceLevel ? `Experience Level: ${experienceLevel}` : ''}
 
-Target Role: ${targetJobTitle}
+Target Role: ${roleToAnalyze}
 ${targetJobDescription ? `Job Description: ${targetJobDescription}` : ''}
 ${industry ? `Industry: ${industry}` : ''}`;
 
@@ -235,7 +250,11 @@ ${industry ? `Industry: ${industry}` : ''}`;
     const duration = Date.now() - startTime;
     const content = completion.choices[0]?.message?.content || '';
 
-    await logAIUsage(userId, 'skill_gap_analysis', 'groq', config.ai.groqModel, {
+    await logAIUsage({
+      userId,
+      operation: 'skill_gap_analysis',
+      provider: 'groq',
+      model: config.ai.groqModel,
       promptTokens: completion.usage?.prompt_tokens || 0,
       completionTokens: completion.usage?.completion_tokens || 0,
       totalTokens: completion.usage?.total_tokens || 0,
