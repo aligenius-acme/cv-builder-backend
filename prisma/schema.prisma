@@ -51,6 +51,9 @@ model User {
   resumeVersions    ResumeVersion[]
   coverLetters      CoverLetter[]
 
+  // Job applications
+  jobApplications   JobApplication[]
+
   // Usage tracking
   aiUsageLogs       AIUsageLog[]
 
@@ -406,5 +409,200 @@ model AuditLog {
   createdAt         DateTime          @default(now())
 
   @@index([adminId])
+  @@index([createdAt])
+}
+
+// Job Application Status Enum
+enum ApplicationStatus {
+  WISHLIST
+  APPLIED
+  SCREENING
+  INTERVIEWING
+  OFFER
+  REJECTED
+  ACCEPTED
+  WITHDRAWN
+}
+
+// Job Application Model (for Job Tracker)
+model JobApplication {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Job details
+  jobTitle          String
+  companyName       String
+  location          String?
+  salary            String?
+  jobUrl            String?
+  jobDescription    String?           @db.Text
+
+  // Application status
+  status            ApplicationStatus @default(WISHLIST)
+  statusOrder       Int               @default(0)  // For ordering within a column
+
+  // Key dates
+  appliedAt         DateTime?
+  deadline          DateTime?
+
+  // Interview tracking
+  interviewDate     DateTime?
+  interviewType     String?           // phone, video, onsite, technical
+  interviewNotes    String?           @db.Text
+
+  // Related documents
+  resumeVersionId   String?
+  coverLetterId     String?
+
+  // Notes and follow-up
+  notes             String?           @db.Text
+  contactName       String?
+  contactEmail      String?
+  nextFollowUp      DateTime?
+
+  // Offer details (if applicable)
+  offerAmount       String?
+  offerDeadline     DateTime?
+
+  // Metadata
+  source            String?           // linkedin, indeed, company_website, referral, etc.
+  priority          Int               @default(0)  // 0=normal, 1=high, 2=urgent
+  color             String?           // For visual organization
+
+  // Activity log
+  activities        JobActivity[]
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Job Activity Log (for tracking changes)
+model JobActivity {
+  id                String            @id @default(uuid())
+  jobApplicationId  String
+  jobApplication    JobApplication    @relation(fields: [jobApplicationId], references: [id], onDelete: Cascade)
+
+  // Activity details
+  type              String            // status_change, note_added, interview_scheduled, follow_up, etc.
+  description       String
+  oldValue          String?
+  newValue          String?
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+
+  @@index([jobApplicationId])
+  @@index([createdAt])
+}
+
+// A/B Test Status Enum
+enum ABTestStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+// Resume A/B Test Model
+model ResumeABTest {
+  id                String            @id @default(uuid())
+  userId            String
+
+  // Test details
+  name              String
+  description       String?
+  targetJobTitle    String?
+  targetCompany     String?
+
+  // Status
+  status            ABTestStatus      @default(DRAFT)
+
+  // Variants
+  variants          ABTestVariant[]
+
+  // Goal tracking
+  goal              String            @default("response_rate")  // response_rate, interview_rate, view_time
+
+  // Test period
+  startedAt         DateTime?
+  endedAt           DateTime?
+
+  // Results
+  winningVariantId  String?
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// A/B Test Variant
+model ABTestVariant {
+  id                String            @id @default(uuid())
+  testId            String
+  test              ResumeABTest      @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  // Variant details
+  name              String            // e.g., "Version A", "Version B"
+  resumeVersionId   String?           // Link to ResumeVersion if using existing
+
+  // Custom content (if not using resumeVersionId)
+  customContent     Json?
+
+  // Tracking
+  shareToken        String?           @unique
+
+  // Metrics
+  views             Int               @default(0)
+  downloads         Int               @default(0)
+  applications      Int               @default(0)
+  responses         Int               @default(0)
+  interviews        Int               @default(0)
+
+  // Calculated metrics
+  responseRate      Float             @default(0)
+
+  // Events
+  events            ABTestEvent[]
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([testId])
+  @@index([shareToken])
+}
+
+// A/B Test Event (for detailed analytics)
+model ABTestEvent {
+  id                String            @id @default(uuid())
+  variantId         String
+  variant           ABTestVariant     @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  // Event type
+  eventType         String            // view, download, application_sent, response_received, interview_scheduled
+
+  // Metadata
+  metadata          Json?
+
+  // Visitor info
+  visitorId         String?
+  visitorIp         String?
+  userAgent         String?
+  country           String?
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+
+  @@index([variantId])
+  @@index([eventType])
   @@index([createdAt])
 }

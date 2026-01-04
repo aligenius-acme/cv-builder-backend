@@ -11,6 +11,9 @@ import aiWritingRoutes from './aiWriting';
 import interviewPrepRoutes from './interviewPrep';
 import salaryAnalyzerRoutes from './salaryAnalyzer';
 import jobBoardRoutes from './jobBoard';
+import jobTrackerRoutes from './jobTracker';
+import careerToolsRoutes from './careerTools';
+import abTestingRoutes from './abTesting';
 
 const router = Router();
 
@@ -27,6 +30,9 @@ router.use('/ai-writing', aiWritingRoutes);
 router.use('/interview-prep', interviewPrepRoutes);
 router.use('/salary', salaryAnalyzerRoutes);
 router.use('/jobs', jobBoardRoutes);
+router.use('/job-tracker', jobTrackerRoutes);
+router.use('/career', careerToolsRoutes);
+router.use('/ab-tests', abTestingRoutes);
 
 // Health check
 router.get('/health', (req, res) => {
