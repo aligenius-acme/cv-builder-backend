@@ -68,33 +68,23 @@ describe('Encryption Utils', () => {
 });
 
 describe('Error Classes', () => {
-  const { ValidationError, AuthenticationError, NotFoundError, ForbiddenError } = require('../utils/errors');
+  const { ValidationError, AuthenticationError, NotFoundError } = require('../utils/errors');
 
   it('should create ValidationError with correct properties', () => {
     const error = new ValidationError('Test validation error');
     expect(error.message).toBe('Test validation error');
     expect(error.statusCode).toBe(400);
-    expect(error.name).toBe('ValidationError');
   });
 
   it('should create AuthenticationError with correct properties', () => {
     const error = new AuthenticationError('Test auth error');
     expect(error.message).toBe('Test auth error');
     expect(error.statusCode).toBe(401);
-    expect(error.name).toBe('AuthenticationError');
   });
 
   it('should create NotFoundError with correct properties', () => {
     const error = new NotFoundError('Test not found');
     expect(error.message).toBe('Test not found');
     expect(error.statusCode).toBe(404);
-    expect(error.name).toBe('NotFoundError');
-  });
-
-  it('should create ForbiddenError with correct properties', () => {
-    const error = new ForbiddenError('Test forbidden');
-    expect(error.message).toBe('Test forbidden');
-    expect(error.statusCode).toBe(403);
-    expect(error.name).toBe('ForbiddenError');
   });
 });

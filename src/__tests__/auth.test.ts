@@ -2,7 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import { prisma } from '../utils/prisma';
 import authRoutes from '../routes/auth';
-import { errorHandler } from '../middleware/error';
+import { errorHandler } from '../middleware/errorHandler';
 
 // Create test app
 const app = express();
