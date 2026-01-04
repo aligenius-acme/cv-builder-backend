@@ -6,6 +6,7 @@ import { AuthenticatedRequest } from '../types';
 import { ValidationError, AuthenticationError, ConflictError, NotFoundError } from '../utils/errors';
 import { generateToken as generateSecureToken } from '../utils/encryption';
 import { PlanType, UserRole } from '@prisma/client';
+import { emailService } from '../services/email';
 
 // Register new user
 export const register = async (
@@ -57,6 +58,13 @@ export const register = async (
       },
     });
 
+    // Send verification email (non-blocking)
+    if (user.emailVerifyToken) {
+      emailService.sendVerificationEmail(user.email, user.emailVerifyToken, firstName).catch((err) => {
+        console.error('Failed to send verification email:', err);
+      });
+    }
+
     // Generate JWT
     const token = generateToken({
       id: user.id,
@@ -73,6 +81,7 @@ export const register = async (
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
+          emailVerified: user.emailVerified,
           planType: user.subscription?.planType || PlanType.FREE,
         },
         token,
@@ -352,15 +361,14 @@ export const forgotPassword = async (
       },
     });
 
-    // TODO: Send email with reset link
-    // For now, just return success
-    // In production, integrate with email service
+    // Send password reset email (non-blocking)
+    emailService.sendPasswordResetEmail(user.email, resetToken, user.firstName || undefined).catch((err) => {
+      console.error('Failed to send password reset email:', err);
+    });
 
     res.json({
       success: true,
       message: 'If an account exists with this email, a reset link will be sent',
-      // For development only:
-      ...(process.env.NODE_ENV === 'development' && { resetToken }),
     });
   } catch (error) {
     next(error);
@@ -411,6 +419,100 @@ export const resetPassword = async (
     res.json({
       success: true,
       message: 'Password reset successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Verify email
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      throw new ValidationError('Verification token is required');
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerifyToken: token,
+      },
+    });
+
+    if (!user) {
+      throw new ValidationError('Invalid verification token');
+    }
+
+    if (user.emailVerified) {
+      res.json({
+        success: true,
+        message: 'Email already verified',
+      });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifyToken: null,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Resend verification email
+export const resendVerification = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    if (user.emailVerified) {
+      res.json({
+        success: true,
+        message: 'Email already verified',
+      });
+      return;
+    }
+
+    // Generate new verification token
+    const verifyToken = generateSecureToken();
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailVerifyToken: verifyToken,
+      },
+    });
+
+    // Send verification email
+    await emailService.sendVerificationEmail(user.email, verifyToken, user.firstName || undefined);
+
+    res.json({
+      success: true,
+      message: 'Verification email sent',
     });
   } catch (error) {
     next(error);

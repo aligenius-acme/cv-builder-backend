@@ -5,6 +5,7 @@ import coverLetterRoutes from './coverLetter';
 import subscriptionRoutes from './subscription';
 import adminRoutes from './admin';
 import templateRoutes from './templates';
+import organizationRoutes from './organization';
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.use('/cover-letters', coverLetterRoutes);
 router.use('/subscription', subscriptionRoutes);
 router.use('/admin', adminRoutes);
 router.use('/templates', templateRoutes);
+router.use('/organization', organizationRoutes);
 
 // Health check
 router.get('/health', (req, res) => {
