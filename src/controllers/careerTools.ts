@@ -484,21 +484,47 @@ export const getResumeExamples = async (
       },
     };
 
-    // Filter by occupation if specified
-    let filteredExamples = Object.entries(examples).map(([key, value]) => ({
-      id: key,
-      ...value,
-    }));
+    // Flatten examples into the expected format
+    let flattenedExamples: any[] = [];
+    Object.entries(examples).forEach(([key, category]) => {
+      category.examples.forEach((ex: any, idx: number) => {
+        flattenedExamples.push({
+          id: `${key}-${idx}`,
+          occupation: category.title,
+          industry: category.industry,
+          experienceLevel: ex.level === 'entry' ? 'Entry Level' : ex.level === 'mid' ? 'Mid Level' : 'Senior Level',
+          title: ex.title,
+          summary: ex.summary,
+          highlights: ex.experience[0]?.highlights?.slice(0, 3) || [],
+          skills: ex.skills || [],
+          previewContent: {
+            summary: ex.summary,
+            experience: ex.experience.map((e: any) => ({
+              title: e.position,
+              company: e.company,
+              bullets: e.highlights || [],
+            })),
+          },
+        });
+      });
+    });
 
+    // Filter by occupation if specified
     if (occupation) {
-      filteredExamples = filteredExamples.filter(
-        (ex) => ex.id === occupation || ex.title.toLowerCase().includes((occupation as string).toLowerCase())
+      flattenedExamples = flattenedExamples.filter(
+        (ex) => ex.id.startsWith(occupation as string) || ex.occupation.toLowerCase().includes((occupation as string).toLowerCase())
       );
     }
 
     if (industry) {
-      filteredExamples = filteredExamples.filter((ex) =>
+      flattenedExamples = flattenedExamples.filter((ex) =>
         ex.industry.toLowerCase().includes((industry as string).toLowerCase())
+      );
+    }
+
+    if (experienceLevel) {
+      flattenedExamples = flattenedExamples.filter((ex) =>
+        ex.experienceLevel.toLowerCase().includes((experienceLevel as string).toLowerCase())
       );
     }
 
@@ -509,12 +535,16 @@ export const getResumeExamples = async (
       industry: value.industry,
     }));
 
+    // Get unique industries
+    const industries = [...new Set(Object.values(examples).map((v) => v.industry))];
+
     res.json({
       success: true,
       data: {
-        examples: filteredExamples,
+        examples: flattenedExamples,
         occupations,
-        total: filteredExamples.length,
+        industries,
+        total: flattenedExamples.length,
       },
     });
   } catch (error) {
