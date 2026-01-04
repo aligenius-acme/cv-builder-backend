@@ -13,6 +13,11 @@ import {
   compareVersions,
   downloadVersion,
   simulateATS,
+  scrapeJobUrl,
+  createBlankResume,
+  updateResumeContent,
+  downloadResume,
+  previewResume,
 } from '../controllers/resume';
 
 const router = Router();
@@ -47,8 +52,17 @@ router.get('/:id', getResume);
 router.put('/:id', updateResume);
 router.delete('/:id', deleteResume);
 
+// Resume Builder
+router.post('/create', checkResumeQuota, createBlankResume);
+router.put('/:id/content', updateResumeContent);
+router.get('/:id/download', downloadResume);
+router.get('/:id/preview', previewResume);
+
 // Resume customization
 router.post('/:id/customize', customizeResume);
+
+// Job URL scraping
+router.post('/scrape-job', scrapeJobUrl);
 
 // Version operations
 router.get('/:id/versions/:versionId', getVersion);

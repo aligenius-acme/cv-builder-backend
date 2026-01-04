@@ -6,6 +6,11 @@ import subscriptionRoutes from './subscription';
 import adminRoutes from './admin';
 import templateRoutes from './templates';
 import organizationRoutes from './organization';
+import shareRoutes from './share';
+import aiWritingRoutes from './aiWriting';
+import interviewPrepRoutes from './interviewPrep';
+import salaryAnalyzerRoutes from './salaryAnalyzer';
+import jobBoardRoutes from './jobBoard';
 
 const router = Router();
 
@@ -17,6 +22,11 @@ router.use('/subscription', subscriptionRoutes);
 router.use('/admin', adminRoutes);
 router.use('/templates', templateRoutes);
 router.use('/organization', organizationRoutes);
+router.use('/shared', shareRoutes);
+router.use('/ai-writing', aiWritingRoutes);
+router.use('/interview-prep', interviewPrepRoutes);
+router.use('/salary', salaryAnalyzerRoutes);
+router.use('/jobs', jobBoardRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

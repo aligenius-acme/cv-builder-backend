@@ -235,6 +235,13 @@ model ResumeVersion {
   isAnonymized      Boolean           @default(false)
   anonymizedData    Json?
 
+  // Public sharing
+  isPublic          Boolean           @default(false)
+  shareToken        String?           @unique
+  shareViews        Int               @default(0)
+  shareDownloads    Int               @default(0)
+  shareAnalytics    ShareAnalytics[]
+
   // Timestamps
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -242,6 +249,30 @@ model ResumeVersion {
   @@unique([resumeId, versionNumber])
   @@index([userId])
   @@index([resumeId])
+  @@index([shareToken])
+}
+
+// Share Analytics for tracking resume views
+model ShareAnalytics {
+  id              String          @id @default(uuid())
+  resumeVersionId String
+  resumeVersion   ResumeVersion   @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+
+  // Event type
+  eventType       String          // 'view' | 'download'
+
+  // Visitor info
+  visitorIp       String?
+  userAgent       String?
+  referer         String?
+  country         String?
+  city            String?
+
+  // Timestamps
+  createdAt       DateTime        @default(now())
+
+  @@index([resumeVersionId])
+  @@index([createdAt])
 }
 
 // Cover Letter Model

@@ -8,6 +8,7 @@ import { fullCustomizationPipeline, analyzeATS } from '../services/ai';
 import { generatePDF, generateDOCX, anonymizeResumeData } from '../services/documents';
 import { getTemplate, isValidTemplate } from '../services/templates';
 import { getSubscriptionLimits } from '../middleware/subscription';
+import { scrapeJobPosting, formatJobDescription, ScrapedJobData } from '../services/jobScraper';
 
 // Upload and parse resume
 export const uploadResume = async (
@@ -614,6 +615,353 @@ export const simulateATS = async (
         riskyElements: atsResult.riskyElements,
       },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Scrape job posting from URL
+export const scrapeJobUrl = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      throw new ValidationError('Job posting URL is required');
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      throw new ValidationError('Invalid URL format');
+    }
+
+    // Scrape the job posting
+    const scrapedData = await scrapeJobPosting(url);
+
+    // Format the job description
+    const formattedDescription = formatJobDescription(scrapedData);
+
+    res.json({
+      success: true,
+      data: {
+        url: scrapedData.url,
+        title: scrapedData.title,
+        company: scrapedData.company,
+        location: scrapedData.location,
+        salary: scrapedData.salary,
+        description: formattedDescription,
+        requirements: scrapedData.requirements,
+        benefits: scrapedData.benefits,
+        employmentType: scrapedData.employmentType,
+        experienceLevel: scrapedData.experienceLevel,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create a blank resume (for resume builder)
+export const createBlankResume = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { title, template } = req.body;
+
+    // Check quota
+    const limits = getSubscriptionLimits(req.user!.planType);
+    if (limits.maxResumes !== -1) {
+      const resumeCount = await prisma.resume.count({
+        where: { userId },
+      });
+
+      if (resumeCount >= limits.maxResumes) {
+        throw new QuotaExceededError(
+          `Resume limit reached (${limits.maxResumes}). Upgrade to Pro for more resumes.`
+        );
+      }
+    }
+
+    // Default blank resume structure
+    const blankResumeData: ParsedResumeData = {
+      contact: {
+        name: '',
+        email: '',
+        phone: '',
+        location: '',
+        linkedin: '',
+        github: '',
+        website: '',
+      },
+      summary: '',
+      experience: [],
+      education: [],
+      skills: [],
+      certifications: [],
+      projects: [],
+      languages: [],
+      awards: [],
+    };
+
+    // Create resume record
+    const resume = await prisma.resume.create({
+      data: {
+        userId,
+        title: title || 'Untitled Resume',
+        originalFileName: 'Created with Resume Builder',
+        originalFileUrl: '',
+        originalFileKey: '',
+        rawText: '',
+        parsedData: blankResumeData as any,
+        parseStatus: 'completed',
+        isBase: true,
+      },
+    });
+
+    // Update subscription usage
+    await prisma.subscription.update({
+      where: { userId },
+      data: {
+        resumesCreated: { increment: 1 },
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: resume.id,
+        title: resume.title,
+        parsedData: blankResumeData,
+        createdAt: resume.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update resume content (for resume builder)
+export const updateResumeContent = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const { parsedData, title } = req.body;
+
+    const resume = await prisma.resume.findFirst({
+      where: { id, userId },
+    });
+
+    if (!resume) {
+      throw new NotFoundError('Resume not found');
+    }
+
+    // Validate parsedData structure
+    if (parsedData) {
+      const validSections = [
+        'contact', 'summary', 'experience', 'education',
+        'skills', 'certifications', 'projects', 'languages', 'awards'
+      ];
+
+      for (const key of Object.keys(parsedData)) {
+        if (!validSections.includes(key)) {
+          throw new ValidationError(`Invalid section: ${key}`);
+        }
+      }
+    }
+
+    // Merge with existing data
+    const currentData = resume.parsedData as any;
+    const updatedData = parsedData ? { ...currentData, ...parsedData } : currentData;
+
+    // Generate raw text from parsed data for search/ATS purposes
+    const rawText = generateRawTextFromParsedData(updatedData);
+
+    const updated = await prisma.resume.update({
+      where: { id },
+      data: {
+        parsedData: updatedData,
+        rawText,
+        ...(title && { title }),
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        title: updated.title,
+        parsedData: updatedData,
+        updatedAt: updated.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Helper function to generate raw text from parsed data
+function generateRawTextFromParsedData(data: ParsedResumeData): string {
+  const lines: string[] = [];
+
+  // Contact
+  if (data.contact) {
+    if (data.contact.name) lines.push(data.contact.name);
+    if (data.contact.email) lines.push(data.contact.email);
+    if (data.contact.phone) lines.push(data.contact.phone);
+    if (data.contact.location) lines.push(data.contact.location);
+  }
+
+  // Summary
+  if (data.summary) {
+    lines.push('SUMMARY', data.summary);
+  }
+
+  // Experience
+  if (data.experience && data.experience.length > 0) {
+    lines.push('EXPERIENCE');
+    for (const exp of data.experience) {
+      lines.push(`${exp.title} at ${exp.company}`);
+      if (exp.location) lines.push(exp.location);
+      if (exp.startDate) lines.push(`${exp.startDate} - ${exp.endDate || 'Present'}`);
+      if (exp.description) {
+        for (const desc of exp.description) {
+          lines.push(`• ${desc}`);
+        }
+      }
+    }
+  }
+
+  // Education
+  if (data.education && data.education.length > 0) {
+    lines.push('EDUCATION');
+    for (const edu of data.education) {
+      lines.push(edu.degree);
+      lines.push(edu.institution);
+      if (edu.graduationDate) lines.push(edu.graduationDate);
+    }
+  }
+
+  // Skills
+  if (data.skills && data.skills.length > 0) {
+    lines.push('SKILLS');
+    lines.push(data.skills.join(', '));
+  }
+
+  // Certifications
+  if (data.certifications && data.certifications.length > 0) {
+    lines.push('CERTIFICATIONS');
+    lines.push(data.certifications.join(', '));
+  }
+
+  // Projects
+  if (data.projects && data.projects.length > 0) {
+    lines.push('PROJECTS');
+    for (const proj of data.projects) {
+      lines.push(proj.name);
+      if (proj.description) lines.push(proj.description);
+      if (proj.technologies) lines.push(proj.technologies.join(', '));
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// Download resume directly (for resume builder - no version needed)
+export const downloadResume = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const { format = 'pdf', template = 'london-navy' } = req.query;
+
+    const resume = await prisma.resume.findFirst({
+      where: { id, userId },
+    });
+
+    if (!resume) {
+      throw new NotFoundError('Resume not found');
+    }
+
+    // Validate and get template
+    const templateId = template as string;
+    if (!isValidTemplate(templateId)) {
+      throw new ValidationError(`Invalid template: ${templateId}`);
+    }
+    const templateConfig = getTemplate(templateId);
+
+    const resumeData = resume.parsedData as unknown as ParsedResumeData;
+
+    let buffer: Buffer;
+    let contentType: string;
+    let fileName: string;
+
+    if (format === 'docx') {
+      buffer = await generateDOCX(resumeData, templateConfig);
+      contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      fileName = `${resume.title || 'resume'}.docx`;
+    } else {
+      buffer = await generatePDF(resumeData, templateConfig);
+      contentType = 'application/pdf';
+      fileName = `${resume.title || 'resume'}.pdf`;
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Preview resume as HTML (for live preview)
+export const previewResume = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const { template = 'london-navy' } = req.query;
+
+    const resume = await prisma.resume.findFirst({
+      where: { id, userId },
+    });
+
+    if (!resume) {
+      throw new NotFoundError('Resume not found');
+    }
+
+    // Validate and get template
+    const templateId = template as string;
+    if (!isValidTemplate(templateId)) {
+      throw new ValidationError(`Invalid template: ${templateId}`);
+    }
+    const templateConfig = getTemplate(templateId);
+
+    const resumeData = resume.parsedData as unknown as ParsedResumeData;
+
+    // Generate preview HTML/image
+    const buffer = await generatePDF(resumeData, templateConfig);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.send(buffer);
   } catch (error) {
     next(error);
   }
