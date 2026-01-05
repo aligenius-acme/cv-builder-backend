@@ -46,6 +46,33 @@ export const config = {
     baseUrl: 'https://api.adzuna.com/v1/api',
   },
 
+  // OAuth Providers (FREE)
+  oauth: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/google/callback',
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID || '',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+      redirectUri: process.env.GITHUB_REDIRECT_URI || 'http://localhost:3000/auth/github/callback',
+    },
+  },
+
+  // Email (SendGrid - FREE 100/day)
+  email: {
+    sendgridApiKey: process.env.SENDGRID_API_KEY || '',
+    fromEmail: process.env.EMAIL_FROM_ADDRESS || 'noreply@resumeai.com',
+    fromName: process.env.EMAIL_FROM_NAME || 'ResumeAI',
+  },
+
+  // Sentry Error Monitoring (FREE 5K errors/month)
+  sentry: {
+    dsn: process.env.SENTRY_DSN || '',
+    release: process.env.SENTRY_RELEASE || '1.0.0',
+  },
+
   // Encryption
   encryptionKey: process.env.ENCRYPTION_KEY || 'default-32-char-encryption-key!',
 };

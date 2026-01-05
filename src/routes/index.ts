@@ -14,6 +14,9 @@ import jobBoardRoutes from './jobBoard';
 import jobTrackerRoutes from './jobTracker';
 import careerToolsRoutes from './careerTools';
 import abTestingRoutes from './abTesting';
+import oauthRoutes from './oauth';
+import grammarRoutes from './grammar';
+import companyLogoRoutes from './companyLogo';
 
 const router = Router();
 
@@ -33,6 +36,9 @@ router.use('/jobs', jobBoardRoutes);
 router.use('/job-tracker', jobTrackerRoutes);
 router.use('/career', careerToolsRoutes);
 router.use('/ab-tests', abTestingRoutes);
+router.use('/oauth', oauthRoutes);
+router.use('/grammar', grammarRoutes);
+router.use('/company-logos', companyLogoRoutes);
 
 // Health check
 router.get('/health', (req, res) => {
