@@ -17,6 +17,7 @@ import abTestingRoutes from './abTesting';
 import oauthRoutes from './oauth';
 import grammarRoutes from './grammar';
 import companyLogoRoutes from './companyLogo';
+import aiFeaturesRoutes from './aiFeatures';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.use('/ab-tests', abTestingRoutes);
 router.use('/oauth', oauthRoutes);
 router.use('/grammar', grammarRoutes);
 router.use('/company-logos', companyLogoRoutes);
+router.use('/ai-features', aiFeaturesRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

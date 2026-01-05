@@ -543,3 +543,355 @@ export async function fullCustomizationPipeline(
     truthGuardWarnings,
   };
 }
+
+// ============================================================================
+// NEW AI FEATURES - Differentiation Features
+// ============================================================================
+
+// Job Match Score - Calculate compatibility % before applying
+export interface JobMatchResult {
+  overallScore: number;
+  breakdown: {
+    skillsMatch: number;
+    experienceMatch: number;
+    educationMatch: number;
+    keywordsMatch: number;
+  };
+  strengths: string[];
+  gaps: string[];
+  verdict: 'Strong Match' | 'Good Match' | 'Moderate Match' | 'Weak Match';
+  recommendation: string;
+  timeToApply: string;
+}
+
+export async function calculateJobMatchScore(
+  resumeData: ParsedResumeData,
+  jobDescription: string,
+  jobTitle: string,
+  userId: string,
+  organizationId?: string | null
+): Promise<JobMatchResult> {
+  const prompt = `You are an expert job matching analyst. Calculate how well this candidate matches the job.
+
+CANDIDATE RESUME:
+${JSON.stringify(resumeData, null, 2)}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+JOB TITLE: ${jobTitle}
+
+Analyze the match and return a JSON object:
+{
+  "overallScore": 0-100 (realistic score based on actual match),
+  "breakdown": {
+    "skillsMatch": 0-100 (technical & soft skills alignment),
+    "experienceMatch": 0-100 (years and relevance of experience),
+    "educationMatch": 0-100 (degree and field alignment),
+    "keywordsMatch": 0-100 (job keywords found in resume)
+  },
+  "strengths": ["3-5 specific strengths for this role"],
+  "gaps": ["2-4 areas where candidate falls short"],
+  "verdict": "Strong Match" (85+) | "Good Match" (70-84) | "Moderate Match" (50-69) | "Weak Match" (<50),
+  "recommendation": "Specific advice on whether to apply and how to position themselves",
+  "timeToApply": "Estimated time investment worthiness: 'Worth applying immediately' | 'Consider applying with improvements' | 'Focus on building missing skills first'"
+}
+
+Be honest and realistic - don't inflate scores. Consider:
+- Direct skill matches vs transferable skills
+- Years of experience vs job requirements
+- Industry relevance
+- Seniority level alignment
+
+Return only valid JSON.`;
+
+  const { content } = await callAI(prompt, userId, organizationId, 'job_match_score');
+  return parseAIJSON<JobMatchResult>(content);
+}
+
+// Achievement Quantifier - Convert vague achievements to metrics
+export interface QuantifiedAchievement {
+  original: string;
+  quantified: string;
+  addedMetrics: string[];
+  impactLevel: 'High' | 'Medium' | 'Low';
+  suggestions: string[];
+}
+
+export interface AchievementQuantifierResult {
+  achievements: QuantifiedAchievement[];
+  overallImprovement: string;
+  tips: string[];
+}
+
+export async function quantifyAchievements(
+  bullets: string[],
+  jobContext?: string,
+  userId?: string,
+  organizationId?: string | null
+): Promise<AchievementQuantifierResult> {
+  const prompt = `You are an expert resume writer specializing in quantifying achievements. Transform vague bullet points into impactful, metrics-driven statements.
+
+BULLET POINTS TO ENHANCE:
+${bullets.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+
+${jobContext ? `JOB CONTEXT (tailor enhancements for): ${jobContext}` : ''}
+
+RULES:
+1. NEVER fabricate specific numbers - use realistic ranges or estimates
+2. Add context with percentages, team sizes, timeframes, or dollar amounts
+3. Use action verbs and quantifiable outcomes
+4. Keep the core truth of each achievement
+
+Return JSON:
+{
+  "achievements": [
+    {
+      "original": "the original bullet point",
+      "quantified": "the enhanced version with metrics",
+      "addedMetrics": ["list of metrics/numbers added"],
+      "impactLevel": "High/Medium/Low based on achievement significance",
+      "suggestions": ["alternative phrasings or additional metrics to consider"]
+    }
+  ],
+  "overallImprovement": "Summary of how these changes strengthen the resume",
+  "tips": ["3-4 general tips for writing quantified achievements"]
+}
+
+Example transformation:
+- Original: "Improved customer satisfaction"
+- Quantified: "Increased customer satisfaction scores by 25% (from 3.2 to 4.0 stars) through implementation of new feedback system, serving 500+ monthly customers"
+
+Return only valid JSON.`;
+
+  const { content } = await callAI(prompt, userId || '', organizationId, 'quantify_achievements');
+  return parseAIJSON<AchievementQuantifierResult>(content);
+}
+
+// Weakness Detector - Find red flags in resume
+export interface ResumeWeakness {
+  issue: string;
+  location: string;
+  severity: 'Critical' | 'Major' | 'Minor';
+  impact: string;
+  fix: string;
+  example?: string;
+}
+
+export interface WeaknessDetectorResult {
+  weaknesses: ResumeWeakness[];
+  overallHealth: 'Excellent' | 'Good' | 'Needs Work' | 'Critical Issues';
+  healthScore: number;
+  prioritizedActions: string[];
+  positives: string[];
+}
+
+export async function detectWeaknesses(
+  resumeData: ParsedResumeData,
+  resumeText: string,
+  targetRole?: string,
+  userId?: string,
+  organizationId?: string | null
+): Promise<WeaknessDetectorResult> {
+  const prompt = `You are a harsh but fair resume critic and career coach. Identify ALL weaknesses and red flags in this resume.
+
+RESUME DATA:
+${JSON.stringify(resumeData, null, 2)}
+
+RESUME TEXT:
+${resumeText}
+
+${targetRole ? `TARGET ROLE: ${targetRole}` : ''}
+
+Check for these issues:
+1. Employment gaps (unexplained periods)
+2. Job hopping (short tenures without explanation)
+3. Vague descriptions lacking metrics
+4. Missing contact information
+5. Weak or missing summary
+6. Skills mismatch with experience
+7. Formatting/structure issues
+8. Outdated or irrelevant content
+9. Overused buzzwords without substance
+10. Missing key sections
+11. Inconsistent dates or formatting
+12. Too short or too long content
+13. Lack of career progression
+14. Missing achievements (only duties listed)
+
+Return JSON:
+{
+  "weaknesses": [
+    {
+      "issue": "Clear description of the problem",
+      "location": "Where in the resume (e.g., 'Experience section - Company X')",
+      "severity": "Critical/Major/Minor",
+      "impact": "How this hurts their chances",
+      "fix": "Specific actionable fix",
+      "example": "Example of improved version (if applicable)"
+    }
+  ],
+  "overallHealth": "Excellent (0-1 issues) | Good (2-3 minor) | Needs Work (multiple issues) | Critical Issues (major red flags)",
+  "healthScore": 0-100,
+  "prioritizedActions": ["Top 3-5 fixes in order of importance"],
+  "positives": ["2-3 things the resume does well to balance feedback"]
+}
+
+Be thorough but constructive. Every weakness should have an actionable fix.
+
+Return only valid JSON.`;
+
+  const { content } = await callAI(prompt, userId || '', organizationId, 'weakness_detector');
+  return parseAIJSON<WeaknessDetectorResult>(content);
+}
+
+// Follow-up Email Generator
+export interface FollowUpEmailResult {
+  subject: string;
+  body: string;
+  timing: string;
+  tips: string[];
+  alternativeSubjects: string[];
+}
+
+export type FollowUpType = 'thank_you' | 'post_interview' | 'no_response' | 'after_rejection' | 'networking';
+
+export async function generateFollowUpEmail(
+  type: FollowUpType,
+  context: {
+    recipientName?: string;
+    recipientTitle?: string;
+    companyName: string;
+    jobTitle: string;
+    interviewDate?: string;
+    interviewDetails?: string;
+    candidateName: string;
+    keyPoints?: string[];
+  },
+  userId: string,
+  organizationId?: string | null
+): Promise<FollowUpEmailResult> {
+  const typeInstructions: Record<FollowUpType, string> = {
+    thank_you: 'Write a thank you email to send within 24 hours after an interview. Express gratitude, reinforce interest, and reference specific conversation points.',
+    post_interview: 'Write a follow-up email for 5-7 days after interview with no response. Politely inquire about status while reinforcing qualifications.',
+    no_response: 'Write a gentle follow-up after 2+ weeks of silence. Keep it short and professional, offer to provide additional information.',
+    after_rejection: 'Write a gracious response to rejection. Thank them, express continued interest in future opportunities, ask for feedback.',
+    networking: 'Write an email to maintain connection after a networking meeting or informational interview.',
+  };
+
+  const prompt = `You are an expert at professional communication. ${typeInstructions[type]}
+
+CONTEXT:
+- Candidate Name: ${context.candidateName}
+- Company: ${context.companyName}
+- Position: ${context.jobTitle}
+${context.recipientName ? `- Recipient: ${context.recipientName}${context.recipientTitle ? ` (${context.recipientTitle})` : ''}` : ''}
+${context.interviewDate ? `- Interview Date: ${context.interviewDate}` : ''}
+${context.interviewDetails ? `- Interview Details: ${context.interviewDetails}` : ''}
+${context.keyPoints?.length ? `- Key Points to Reference: ${context.keyPoints.join(', ')}` : ''}
+
+Guidelines:
+1. Professional but warm tone
+2. Concise - 3-4 short paragraphs max
+3. Specific to the context (not generic)
+4. Clear call to action or next step
+5. No desperation or over-apologizing
+
+Return JSON:
+{
+  "subject": "Email subject line",
+  "body": "Full email body with proper greeting and signature placeholder [Your Name]",
+  "timing": "When to send this email",
+  "tips": ["2-3 tips for sending this email"],
+  "alternativeSubjects": ["2 alternative subject line options"]
+}
+
+Return only valid JSON.`;
+
+  const { content } = await callAI(prompt, userId, organizationId, 'follow_up_email');
+  return parseAIJSON<FollowUpEmailResult>(content);
+}
+
+// Networking Message Generator
+export interface NetworkingMessageResult {
+  message: string;
+  platform: string;
+  approach: string;
+  followUpMessage?: string;
+  tips: string[];
+  personalizationPoints: string[];
+}
+
+export type NetworkingPlatform = 'linkedin' | 'email' | 'twitter';
+export type NetworkingPurpose = 'job_inquiry' | 'informational_interview' | 'referral_request' | 'reconnection' | 'cold_outreach';
+
+export async function generateNetworkingMessage(
+  platform: NetworkingPlatform,
+  purpose: NetworkingPurpose,
+  context: {
+    senderName: string;
+    senderBackground: string;
+    recipientName: string;
+    recipientTitle: string;
+    recipientCompany: string;
+    commonGround?: string[];
+    targetRole?: string;
+    specificAsk?: string;
+  },
+  userId: string,
+  organizationId?: string | null
+): Promise<NetworkingMessageResult> {
+  const platformLimits: Record<NetworkingPlatform, string> = {
+    linkedin: 'LinkedIn connection request (300 char limit) or InMail (up to 1900 chars)',
+    email: 'Professional email (keep under 200 words)',
+    twitter: 'Twitter DM (brief and casual, under 280 chars ideal)',
+  };
+
+  const purposeDescriptions: Record<NetworkingPurpose, string> = {
+    job_inquiry: 'Inquiring about job opportunities at their company',
+    informational_interview: 'Requesting 15-20 minutes to learn about their career path',
+    referral_request: 'Asking for a referral or introduction',
+    reconnection: 'Reconnecting with an old contact',
+    cold_outreach: 'Reaching out to someone you have never met',
+  };
+
+  const prompt = `You are an expert at professional networking and cold outreach. Write a compelling message.
+
+PLATFORM: ${platform} - ${platformLimits[platform]}
+PURPOSE: ${purposeDescriptions[purpose]}
+
+SENDER INFO:
+- Name: ${context.senderName}
+- Background: ${context.senderBackground}
+${context.targetRole ? `- Target Role: ${context.targetRole}` : ''}
+
+RECIPIENT INFO:
+- Name: ${context.recipientName}
+- Title: ${context.recipientTitle}
+- Company: ${context.recipientCompany}
+${context.commonGround?.length ? `- Common Ground: ${context.commonGround.join(', ')}` : ''}
+${context.specificAsk ? `- Specific Ask: ${context.specificAsk}` : ''}
+
+Guidelines:
+1. Lead with value or genuine interest, not with "I need a job"
+2. Reference specific common ground or their work
+3. Be concise and respect their time
+4. Make the ask clear but not pushy
+5. Sound human, not templated
+6. ${platform === 'linkedin' ? 'Keep connection request under 300 chars' : 'Appropriate length for platform'}
+
+Return JSON:
+{
+  "message": "The networking message text",
+  "platform": "${platform}",
+  "approach": "Brief explanation of the strategy used",
+  "followUpMessage": "A follow-up message if they don't respond (optional)",
+  "tips": ["3-4 tips for this type of outreach"],
+  "personalizationPoints": ["Specific elements that should be further personalized"]
+}
+
+Return only valid JSON.`;
+
+  const { content } = await callAI(prompt, userId, organizationId, 'networking_message');
+  return parseAIJSON<NetworkingMessageResult>(content);
+}
