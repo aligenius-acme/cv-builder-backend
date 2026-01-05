@@ -3,85 +3,11 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { Groq } from 'groq-sdk';
 import { config } from '../config';
 import { prisma } from '../utils/prisma';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+import * as adzunaService from '../services/adzunaService';
 
 const groq = new Groq({
   apiKey: config.ai.groqApiKey,
 });
-
-interface JobListing {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  salary?: string;
-  type: string;
-  posted: string;
-  description: string;
-  requirements?: string[];
-  source: string;
-  url: string;
-  logo?: string;
-}
-
-// Mock job data for demo - in production, this would scrape real job boards
-const generateMockJobs = async (
-  keywords: string,
-  location: string,
-  experienceLevel: string
-): Promise<JobListing[]> => {
-  const completion = await groq.chat.completions.create({
-    model: config.ai.groqModel,
-    messages: [
-      {
-        role: 'system',
-        content: `You are a job listing generator. Create realistic job listings based on the search criteria.
-Generate varied listings from different companies.`,
-      },
-      {
-        role: 'user',
-        content: `Generate 10 realistic job listings for:
-Keywords: ${keywords}
-Location: ${location}
-Experience Level: ${experienceLevel}
-
-Return as JSON array with this structure:
-[
-  {
-    "id": "unique-id",
-    "title": "Job Title",
-    "company": "Company Name",
-    "location": "City, State",
-    "salary": "$100k - $150k",
-    "type": "Full-time",
-    "posted": "2 days ago",
-    "description": "Brief job description (2-3 sentences)",
-    "requirements": ["requirement 1", "requirement 2"],
-    "source": "LinkedIn",
-    "url": "#",
-    "logo": null
-  }
-]`,
-      },
-    ],
-    temperature: 0.8,
-    max_tokens: 2500,
-  });
-
-  const responseText = completion.choices[0]?.message?.content || '[]';
-
-  try {
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch {
-    // Return empty array on parse error
-  }
-
-  return [];
-};
 
 export const searchJobs = async (
   req: AuthenticatedRequest,
@@ -99,6 +25,7 @@ export const searchJobs = async (
       postedWithin,
       page = 1,
       limit = 20,
+      sortBy,
     } = req.query;
 
     if (!keywords) {
@@ -108,61 +35,99 @@ export const searchJobs = async (
       });
     }
 
-    // Generate mock jobs (in production, this would aggregate from real job boards)
-    const jobs = await generateMockJobs(
-      keywords as string,
-      (location as string) || 'United States',
-      (experienceLevel as string) || 'mid-level'
-    );
-
-    // Apply filters
-    let filteredJobs = jobs;
-
-    if (jobType) {
-      filteredJobs = filteredJobs.filter((j) =>
-        j.type.toLowerCase().includes((jobType as string).toLowerCase())
-      );
+    // Check if Adzuna is configured
+    if (!adzunaService.isAdzunaConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Job search service not configured. Please add Adzuna API credentials.',
+      });
     }
 
+    // Build search parameters
+    const searchParams: adzunaService.SearchJobsParams = {
+      keywords: keywords as string,
+      location: (location as string) || undefined,
+      page: Number(page),
+      resultsPerPage: Number(limit),
+      sortBy: sortBy as 'relevance' | 'date' | 'salary' | undefined,
+    };
+
+    // Add job type filters
+    if (jobType === 'full-time') {
+      searchParams.fullTime = true;
+    } else if (jobType === 'part-time') {
+      searchParams.partTime = true;
+    } else if (jobType === 'contract') {
+      searchParams.contract = true;
+    }
+
+    // Add posted within filter (days)
+    if (postedWithin) {
+      searchParams.maxDaysOld = Number(postedWithin);
+    }
+
+    // Parse salary filter
+    if (salary) {
+      const salaryStr = salary as string;
+      if (salaryStr.includes('-')) {
+        const [min, max] = salaryStr.split('-').map(s => parseInt(s.replace(/\D/g, '')) * 1000);
+        searchParams.salaryMin = min;
+        searchParams.salaryMax = max;
+      } else if (salaryStr.includes('+')) {
+        searchParams.salaryMin = parseInt(salaryStr.replace(/\D/g, '')) * 1000;
+      }
+    }
+
+    // Search jobs using Adzuna API
+    const result = await adzunaService.searchJobs(searchParams);
+
+    // Apply remote filter (post-process since Adzuna doesn't have a direct remote filter)
+    let jobs = result.jobs;
     if (remote === 'true') {
-      filteredJobs = filteredJobs.filter(
+      jobs = jobs.filter(
         (j) =>
           j.location.toLowerCase().includes('remote') ||
+          j.title.toLowerCase().includes('remote') ||
           j.type.toLowerCase().includes('remote')
       );
     }
 
-    // Log AI usage
-    await prisma.aIUsageLog.create({
-      data: {
-        userId: req.user!.id,
-        operation: 'job_search',
-        promptTokens: 100,
-        completionTokens: 500,
-        totalTokens: 600,
-        model: config.ai.groqModel,
-        success: true,
-      },
-    });
-
     res.json({
       success: true,
       data: {
-        jobs: filteredJobs,
-        total: filteredJobs.length,
-        page: Number(page),
-        totalPages: Math.ceil(filteredJobs.length / Number(limit)),
+        jobs,
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
         filters: {
           keywords,
           location,
           experienceLevel,
           jobType,
           remote,
+          sortBy,
         },
+        source: 'Adzuna',
       },
     });
   } catch (error: any) {
     console.error('Job search error:', error);
+
+    // Return user-friendly error message
+    if (error.message.includes('credentials')) {
+      return res.status(503).json({
+        success: false,
+        error: 'Job search service configuration error. Please contact support.',
+      });
+    }
+
+    if (error.message.includes('rate limit')) {
+      return res.status(429).json({
+        success: false,
+        error: 'Too many requests. Please wait a moment and try again.',
+      });
+    }
+
     next(error);
   }
 };
@@ -307,9 +272,29 @@ export const getRecommendedJobs = async (
       }
     }
 
-    // Generate recommendations based on profile
-    const keywords = skills.length > 0 ? skills.slice(0, 3).join(', ') : 'software developer';
-    const jobs = await generateMockJobs(keywords, 'United States', 'mid-level');
+    // Build search keywords from skills and job titles
+    let keywords = 'software developer'; // Default
+    if (jobTitles.length > 0) {
+      keywords = jobTitles[0]; // Use most recent job title
+    } else if (skills.length > 0) {
+      keywords = skills.slice(0, 3).join(' ');
+    }
+
+    // Check if Adzuna is configured
+    let jobs: adzunaService.JobListing[] = [];
+    if (adzunaService.isAdzunaConfigured()) {
+      try {
+        const result = await adzunaService.searchJobs({
+          keywords,
+          resultsPerPage: 5,
+          sortBy: 'date',
+        });
+        jobs = result.jobs;
+      } catch (error) {
+        console.error('Adzuna error for recommendations:', error);
+        // Return empty on error
+      }
+    }
 
     res.json({
       success: true,

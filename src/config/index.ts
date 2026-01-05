@@ -39,6 +39,13 @@ export const config = {
     groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
   },
 
+  // Adzuna Job Search API
+  adzuna: {
+    appId: process.env.ADZUNA_APP_ID || '',
+    appKey: process.env.ADZUNA_APP_KEY || '',
+    baseUrl: 'https://api.adzuna.com/v1/api',
+  },
+
   // Encryption
   encryptionKey: process.env.ENCRYPTION_KEY || 'default-32-char-encryption-key!',
 };
