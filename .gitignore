@@ -1,5 +1,19 @@
 node_modules
 # Keep environment variables out of version control
 .env
+.env.*
 
+# Generated files
 /generated/prisma
+/dist
+
+# User uploads (should not be in version control)
+/uploads
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
