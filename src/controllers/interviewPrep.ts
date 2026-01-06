@@ -1,12 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { Groq } from 'groq-sdk';
-import { config } from '../config';
-import { prisma } from '../utils/prisma';
-
-const groq = new Groq({
-  apiKey: config.ai.groqApiKey,
-});
+import { executeJsonArrayCompletion, executeJsonCompletion } from '../utils/aiWrapper';
+import { sendSuccess, sendValidationError } from '../utils/responseHelpers';
 
 interface Question {
   question: string;
@@ -25,10 +20,7 @@ export const generateQuestions = async (
     const { jobTitle, company, industry, jobDescription, resumeData, questionTypes } = req.body;
 
     if (!jobTitle) {
-      return res.status(400).json({
-        success: false,
-        error: 'Job title is required',
-      });
+      return sendValidationError(res, 'Job title is required');
     }
 
     const systemPrompt = `You are an expert career coach and interview preparation specialist.
@@ -65,54 +57,38 @@ Return as JSON array with this structure:
   }
 ]`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 3000,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '[]';
-
-    let questions: Question[] = [];
-    try {
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        questions = JSON.parse(jsonMatch[0]);
-      }
-    } catch {
-      questions = [];
-    }
-
-    // Log AI usage
-    await prisma.aIUsageLog.create({
-      data: {
+    const result = await executeJsonArrayCompletion<Question>(
+      {
+        systemPrompt,
+        userPrompt,
+        temperature: 0.7,
+        maxTokens: 3000,
+      },
+      {
         userId: req.user!.id,
+        organizationId: req.user!.organizationId,
         operation: 'interview_questions',
-        promptTokens: completion.usage?.prompt_tokens || 0,
-        completionTokens: completion.usage?.completion_tokens || 0,
-        totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.groqModel,
-        success: true,
-      },
-    });
+      }
+    );
 
-    res.json({
-      success: true,
-      data: {
-        questions,
-        jobTitle,
-        company,
-      },
+    sendSuccess(res, {
+      questions: result.data,
+      jobTitle,
+      company,
     });
   } catch (error: any) {
     console.error('Interview question generation error:', error);
     next(error);
   }
 };
+
+interface Evaluation {
+  score: number;
+  strengths: string[];
+  improvements: string[];
+  improvedAnswer: string;
+  feedback: string;
+}
 
 export const evaluateAnswer = async (
   req: AuthenticatedRequest,
@@ -123,10 +99,7 @@ export const evaluateAnswer = async (
     const { question, answer, jobTitle, company } = req.body;
 
     if (!question || !answer) {
-      return res.status(400).json({
-        success: false,
-        error: 'Question and answer are required',
-      });
+      return sendValidationError(res, 'Question and answer are required');
     }
 
     const systemPrompt = `You are an expert interview coach. Evaluate the candidate's answer objectively.
@@ -150,52 +123,21 @@ Provide evaluation in this JSON format:
   "feedback": "Overall brief feedback paragraph"
 }`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.6,
-      max_tokens: 1000,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '{}';
-
-    let evaluation = {
-      score: 5,
-      strengths: [],
-      improvements: [],
-      improvedAnswer: '',
-      feedback: '',
-    };
-
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        evaluation = JSON.parse(jsonMatch[0]);
-      }
-    } catch {
-      // Use default
-    }
-
-    // Log AI usage
-    await prisma.aIUsageLog.create({
-      data: {
-        userId: req.user!.id,
-        operation: 'answer_evaluation',
-        promptTokens: completion.usage?.prompt_tokens || 0,
-        completionTokens: completion.usage?.completion_tokens || 0,
-        totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.groqModel,
-        success: true,
+    const result = await executeJsonCompletion<Evaluation>(
+      {
+        systemPrompt,
+        userPrompt,
+        temperature: 0.6,
+        maxTokens: 1000,
       },
-    });
+      {
+        userId: req.user!.id,
+        organizationId: req.user!.organizationId,
+        operation: 'answer_evaluation',
+      }
+    );
 
-    res.json({
-      success: true,
-      data: evaluation,
-    });
+    sendSuccess(res, result.data);
   } catch (error: any) {
     console.error('Answer evaluation error:', error);
     next(error);
@@ -315,12 +257,9 @@ export const getCommonQuestions = async (
       questions = [];
     }
 
-    res.json({
-      success: true,
-      data: {
-        questions,
-        categories: Object.keys(commonQuestions),
-      },
+    sendSuccess(res, {
+      questions,
+      categories: Object.keys(commonQuestions),
     });
   } catch (error: any) {
     next(error);
