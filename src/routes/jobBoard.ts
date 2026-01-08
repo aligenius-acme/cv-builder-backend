@@ -5,6 +5,7 @@ import {
   getJobDetails,
   saveJob,
   getSavedJobs,
+  deleteSavedJob,
   getRecommendedJobs,
 } from '../controllers/jobBoard';
 
@@ -15,6 +16,7 @@ router.get('/search', authenticate, searchJobs);
 router.get('/details/:id', authenticate, getJobDetails);
 router.post('/save', authenticate, saveJob);
 router.get('/saved', authenticate, getSavedJobs);
+router.delete('/saved/:jobId', authenticate, deleteSavedJob);
 router.get('/recommended', authenticate, getRecommendedJobs);
 
 export default router;
