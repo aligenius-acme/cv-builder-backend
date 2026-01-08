@@ -6,6 +6,9 @@ import config from '../config';
 import { AuthenticationError, AuthorizationError } from '../utils/errors';
 import { UserRole, PlanType } from '@prisma/client';
 
+// Re-export AuthenticatedRequest for controllers
+export { AuthenticatedRequest } from '../types';
+
 interface JWTPayload {
   userId: string;
   email: string;

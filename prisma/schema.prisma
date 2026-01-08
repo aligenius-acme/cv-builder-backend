@@ -67,6 +67,9 @@ model User {
   // Job applications
   jobApplications   JobApplication[]
 
+  // Saved jobs (from job board)
+  savedJobs         SavedJob[]
+
   // Usage tracking
   aiUsageLogs       AIUsageLog[]
 
@@ -512,6 +515,41 @@ model JobActivity {
   createdAt         DateTime          @default(now())
 
   @@index([jobApplicationId])
+  @@index([createdAt])
+}
+
+// Saved Job Model (for Job Board)
+model SavedJob {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Job identifiers
+  externalJobId     String            // ID from external job board (e.g., Adzuna)
+  source            String            @default("Adzuna")
+
+  // Job details (stored as we received them)
+  title             String
+  company           String
+  location          String
+  salary            String?
+  jobType           String?
+  description       String            @db.Text
+  url               String
+
+  // Additional metadata
+  postedAt          String?           // Relative time from source (e.g., "2 days ago")
+  logoUrl           String?
+
+  // User notes
+  notes             String?           @db.Text
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([userId, externalJobId])
+  @@index([userId])
   @@index([createdAt])
 }
 

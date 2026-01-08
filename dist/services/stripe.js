@@ -15,10 +15,21 @@ const stripe_1 = __importDefault(require("stripe"));
 const config_1 = __importDefault(require("../config"));
 const prisma_1 = require("../utils/prisma");
 const client_1 = require("@prisma/client");
-const stripe = new stripe_1.default(config_1.default.stripe.secretKey);
+// Initialize Stripe only if API key is provided
+const stripe = config_1.default.stripe.secretKey
+    ? new stripe_1.default(config_1.default.stripe.secretKey)
+    : null;
+// Helper to check if Stripe is configured
+function ensureStripe() {
+    if (!stripe) {
+        throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY in your environment.');
+    }
+    return stripe;
+}
 // Create Stripe customer for user
 async function createCustomer(userId, email, name) {
-    const customer = await stripe.customers.create({
+    const stripeClient = ensureStripe();
+    const customer = await stripeClient.customers.create({
         email,
         name: name || undefined,
         metadata: { userId },
@@ -44,7 +55,8 @@ async function createCheckoutSession(userId, planType, successUrl, cancelUrl) {
         customerId = await createCustomer(userId, user.email, `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined);
     }
     const priceId = planType === 'pro' ? config_1.default.stripe.proPriceId : config_1.default.stripe.businessPriceId;
-    const session = await stripe.checkout.sessions.create({
+    const stripeClient = ensureStripe();
+    const session = await stripeClient.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
         payment_method_types: ['card'],
@@ -71,7 +83,8 @@ async function createPortalSession(userId, returnUrl) {
     if (!subscription?.stripeCustomerId) {
         throw new Error('No Stripe customer found');
     }
-    const session = await stripe.billingPortal.sessions.create({
+    const stripeClient = ensureStripe();
+    const session = await stripeClient.billingPortal.sessions.create({
         customer: subscription.stripeCustomerId,
         return_url: returnUrl,
     });
@@ -79,7 +92,8 @@ async function createPortalSession(userId, returnUrl) {
 }
 // Handle webhook events
 async function handleWebhookEvent(payload, signature) {
-    const event = stripe.webhooks.constructEvent(payload, signature, config_1.default.stripe.webhookSecret);
+    const stripeClient = ensureStripe();
+    const event = stripeClient.webhooks.constructEvent(payload, signature, config_1.default.stripe.webhookSecret);
     switch (event.type) {
         case 'checkout.session.completed':
             await handleCheckoutCompleted(event.data.object);
@@ -208,7 +222,8 @@ async function cancelSubscription(userId) {
     if (!subscription?.stripeSubscriptionId) {
         throw new Error('No active subscription found');
     }
-    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+    const stripeClient = ensureStripe();
+    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
         cancel_at_period_end: true,
     });
     await prisma_1.prisma.subscription.update({
@@ -224,7 +239,8 @@ async function reactivateSubscription(userId) {
     if (!subscription?.stripeSubscriptionId) {
         throw new Error('No subscription found');
     }
-    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+    const stripeClient = ensureStripe();
+    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
         cancel_at_period_end: false,
     });
     await prisma_1.prisma.subscription.update({
@@ -255,8 +271,9 @@ async function createOrgCheckoutSession(organizationId, seats, successUrl, cance
     }
     let customerId = org.subscription?.stripeCustomerId;
     // Create customer if doesn't exist
+    const stripeClient = ensureStripe();
     if (!customerId) {
-        const customer = await stripe.customers.create({
+        const customer = await stripeClient.customers.create({
             name: org.name,
             metadata: { organizationId },
         });
@@ -273,7 +290,7 @@ async function createOrgCheckoutSession(organizationId, seats, successUrl, cance
             },
         });
     }
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripeClient.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
         payment_method_types: ['card'],

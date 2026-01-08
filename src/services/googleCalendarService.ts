@@ -160,7 +160,7 @@ export async function getUpcomingInterviews(
     title: event.summary || 'Interview',
     start: new Date(event.start?.dateTime || event.start?.date || ''),
     end: new Date(event.end?.dateTime || event.end?.date || ''),
-    location: event.location,
+    location: event.location || undefined,
     htmlLink: event.htmlLink!,
   }));
 }

@@ -27,7 +27,7 @@ export function initSentry(app: Express): void {
       // Enable HTTP tracing
       Sentry.httpIntegration(),
       // Enable Express tracing
-      Sentry.expressIntegration({ app }),
+      Sentry.expressIntegration(),
       // Enable profiling
       nodeProfilingIntegration(),
     ],
@@ -42,16 +42,20 @@ export function initSentry(app: Express): void {
 
       // Remove sensitive data from request body
       if (event.request?.data) {
-        const data = typeof event.request.data === 'string'
-          ? JSON.parse(event.request.data)
-          : event.request.data;
+        try {
+          const data = typeof event.request.data === 'string'
+            ? JSON.parse(event.request.data)
+            : event.request.data;
 
-        if (data.password) data.password = '[REDACTED]';
-        if (data.currentPassword) data.currentPassword = '[REDACTED]';
-        if (data.newPassword) data.newPassword = '[REDACTED]';
-        if (data.token) data.token = '[REDACTED]';
+          if (data.password) data.password = '[REDACTED]';
+          if (data.currentPassword) data.currentPassword = '[REDACTED]';
+          if (data.newPassword) data.newPassword = '[REDACTED]';
+          if (data.token) data.token = '[REDACTED]';
 
-        event.request.data = JSON.stringify(data);
+          event.request.data = JSON.stringify(data);
+        } catch {
+          // Ignore parsing errors
+        }
       }
 
       return event;
@@ -66,37 +70,31 @@ export function initSentry(app: Express): void {
     ],
   });
 
+  // Setup Express error handler
+  Sentry.setupExpressErrorHandler(app);
+
   console.log('Sentry initialized for error monitoring');
 }
 
-// Sentry request handler (use before routes)
+// Sentry request handler - no longer needed with v8+, returns passthrough middleware
 export function sentryRequestHandler() {
-  if (!config.sentry.dsn) {
-    return (req: Request, res: Response, next: NextFunction) => next();
-  }
-  return Sentry.Handlers.requestHandler();
+  return (req: Request, res: Response, next: NextFunction) => next();
 }
 
-// Sentry tracing handler (use before routes)
+// Sentry tracing handler - no longer needed with v8+, returns passthrough middleware
 export function sentryTracingHandler() {
-  if (!config.sentry.dsn) {
-    return (req: Request, res: Response, next: NextFunction) => next();
-  }
-  return Sentry.Handlers.tracingHandler();
+  return (req: Request, res: Response, next: NextFunction) => next();
 }
 
-// Sentry error handler (use after routes, before other error handlers)
+// Sentry error handler - handled by setupExpressErrorHandler in v8+
 export function sentryErrorHandler() {
-  if (!config.sentry.dsn) {
-    return (err: Error, req: Request, res: Response, next: NextFunction) => next(err);
-  }
-  return Sentry.Handlers.errorHandler({
-    shouldHandleError(error) {
-      // Capture 4xx and 5xx errors
-      const status = (error as any).status || (error as any).statusCode || 500;
-      return status >= 400;
-    },
-  });
+  return (err: Error, req: Request, res: Response, next: NextFunction) => {
+    // Capture the error with Sentry if configured
+    if (config.sentry.dsn) {
+      Sentry.captureException(err);
+    }
+    next(err);
+  };
 }
 
 // Capture exception manually

@@ -53,8 +53,13 @@ function cleanText(text) {
         .replace(/ +/g, ' ')
         .trim();
 }
-// Extract structured data from raw resume text
-function extractResumeData(rawText) {
+// Extract structured data from raw resume text using rule-based parsing
+// This does a quick parse for display - full text is stored and used during customization
+async function extractResumeData(rawText) {
+    return extractResumeDataRuleBased(rawText);
+}
+// Rule-based extraction
+function extractResumeDataRuleBased(rawText) {
     const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const data = {
         summary: '',
@@ -65,44 +70,8 @@ function extractResumeData(rawText) {
         projects: [],
         contact: extractContactInfo(lines),
     };
-    // Identify sections by common headers
-    const sectionPatterns = {
-        summary: /^(summary|objective|profile|about|about me|professional summary)/i,
-        experience: /^(experience|work experience|employment|employment history|professional experience|work history)/i,
-        education: /^(education|academic|qualifications|academic background)/i,
-        skills: /^(skills|technical skills|core competencies|competencies|technologies|expertise)/i,
-        certifications: /^(certifications|certificates|licenses|credentials)/i,
-        projects: /^(projects|portfolio|key projects|personal projects)/i,
-    };
-    let currentSection = null;
-    let sectionContent = [];
-    for (const line of lines) {
-        // Check if this line is a section header
-        let foundSection = false;
-        for (const [section, pattern] of Object.entries(sectionPatterns)) {
-            if (pattern.test(line)) {
-                // Save previous section content
-                if (currentSection && sectionContent.length > 0) {
-                    processSection(data, currentSection, sectionContent);
-                }
-                currentSection = section;
-                sectionContent = [];
-                foundSection = true;
-                break;
-            }
-        }
-        if (!foundSection && currentSection) {
-            sectionContent.push(line);
-        }
-    }
-    // Process last section
-    if (currentSection && sectionContent.length > 0) {
-        processSection(data, currentSection, sectionContent);
-    }
-    // Extract skills if not found in dedicated section
-    if (data.skills.length === 0) {
-        data.skills = extractSkillsFromText(rawText);
-    }
+    // Extract skills from full text
+    data.skills = extractSkillsFromText(rawText);
     return data;
 }
 // Extract contact information
@@ -170,20 +139,44 @@ function processSection(data, section, content) {
 function parseExperience(content) {
     const experiences = [];
     let current = null;
-    const datePattern = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}\s*[-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}|Present|Current)/i;
-    const companyPattern = /^([A-Z][A-Za-z0-9\s&.,'-]+)(?:\s*[-–|]\s*(.+))?$/;
-    for (const line of content) {
-        // Check if line contains dates (likely a new entry)
-        const dateMatch = line.match(datePattern);
-        if (dateMatch || (line.length < 60 && !line.startsWith('•') && !line.startsWith('-') && !line.startsWith('*'))) {
-            // Possibly a new job entry
-            if (current && current.title) {
-                experiences.push(current);
-            }
-            if (dateMatch) {
+    // Multiple date patterns to catch various formats
+    const datePatterns = [
+        /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}\s*[-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}|Present|Current)/i,
+        /\d{1,2}\/\d{4}\s*[-–—]\s*(?:\d{1,2}\/\d{4}|Present|Current)/i,
+        /\d{4}\s*[-–—]\s*(?:\d{4}|Present|Current)/i,
+    ];
+    const jobTitlePatterns = [
+        /\b(Engineer|Developer|Manager|Director|Lead|Senior|Junior|Analyst|Designer|Architect|Consultant|Specialist|Coordinator|Administrator|Intern)\b/i,
+    ];
+    for (let i = 0; i < content.length; i++) {
+        const line = content[i];
+        // Check if line contains dates
+        let dateMatch = null;
+        for (const pattern of datePatterns) {
+            dateMatch = line.match(pattern);
+            if (dateMatch)
+                break;
+        }
+        const hasJobTitle = jobTitlePatterns.some(p => p.test(line));
+        const isBulletPoint = /^[•\-*▪◦›]\s*/.test(line) || /^(?:Led|Built|Developed|Created|Managed|Designed|Implemented|Achieved|Improved|Reduced|Increased)\b/i.test(line);
+        if (dateMatch) {
+            // Line with date - could be a new entry or date line for current entry
+            if (current && current.title && !current.startDate) {
+                // Add date to current entry
                 const dates = dateMatch[0].split(/[-–—]/);
+                current.startDate = dates[0]?.trim();
+                current.endDate = dates[1]?.trim();
+                current.current = /present|current/i.test(dates[1] || '');
+            }
+            else {
+                // Save previous entry and start new one
+                if (current && current.title) {
+                    experiences.push(current);
+                }
+                const dates = dateMatch[0].split(/[-–—]/);
+                const titlePart = line.replace(dateMatch[0], '').trim();
                 current = {
-                    title: line.replace(datePattern, '').trim(),
+                    title: titlePart || '',
                     company: '',
                     startDate: dates[0]?.trim(),
                     endDate: dates[1]?.trim(),
@@ -191,30 +184,43 @@ function parseExperience(content) {
                     description: [],
                 };
             }
-            else {
-                const companyMatch = line.match(companyPattern);
-                if (current && !current.company && companyMatch) {
-                    current.company = companyMatch[1]?.trim() || '';
-                    if (companyMatch[2]) {
-                        current.location = companyMatch[2].trim();
-                    }
-                }
-                else {
-                    current = {
-                        title: line,
-                        company: '',
-                        description: [],
-                    };
-                }
-            }
         }
-        else if (current && (line.startsWith('•') || line.startsWith('-') || line.startsWith('*'))) {
+        else if (hasJobTitle && !isBulletPoint && line.length < 80) {
+            // Likely a job title line
+            if (current && current.title) {
+                experiences.push(current);
+            }
+            current = {
+                title: line,
+                company: '',
+                description: [],
+            };
+        }
+        else if (isBulletPoint && current) {
             // Bullet point description
             current.description = current.description || [];
-            current.description.push(line.replace(/^[•\-*]\s*/, '').trim());
+            const cleanLine = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
+            if (cleanLine.length > 5) {
+                current.description.push(cleanLine);
+            }
         }
-        else if (current && !current.company && line.length < 60) {
-            current.company = line;
+        else if (current && !current.company && line.length < 80 && line.length > 3) {
+            // Could be company name or location
+            if (/[-–|,]/.test(line)) {
+                const parts = line.split(/[-–|,]/);
+                current.company = parts[0]?.trim() || line;
+                if (parts[1]) {
+                    current.location = parts.slice(1).join(',').trim();
+                }
+            }
+            else {
+                current.company = line;
+            }
+        }
+        else if (current && line.length > 20 && !isBulletPoint) {
+            // Long line without bullet - might be description
+            current.description = current.description || [];
+            current.description.push(line);
         }
     }
     if (current && current.title) {

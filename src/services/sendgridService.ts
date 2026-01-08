@@ -32,6 +32,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   }
 
   try {
+    // Build message with required content
     const msg: sgMail.MailDataRequired = {
       to: options.to,
       from: {
@@ -39,21 +40,17 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         name: config.email.fromName || 'ResumeAI',
       },
       subject: options.subject,
+      // Provide default content (will be overwritten if templateId or html/text provided)
+      text: options.text || '',
+      html: options.html || '',
+      ...(options.templateId && {
+        templateId: options.templateId,
+        dynamicTemplateData: options.dynamicTemplateData,
+      }),
+      ...(options.attachments && options.attachments.length > 0 && {
+        attachments: options.attachments,
+      }),
     };
-
-    // Use template or custom content
-    if (options.templateId) {
-      msg.templateId = options.templateId;
-      msg.dynamicTemplateData = options.dynamicTemplateData;
-    } else {
-      msg.text = options.text;
-      msg.html = options.html;
-    }
-
-    // Add attachments if any
-    if (options.attachments && options.attachments.length > 0) {
-      msg.attachments = options.attachments;
-    }
 
     await sgMail.send(msg);
     return true;

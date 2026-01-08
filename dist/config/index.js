@@ -18,12 +18,11 @@ exports.config = {
         secret: process.env.JWT_SECRET || 'default-secret-change-me',
         expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     },
-    // AWS S3
-    aws: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-        region: process.env.AWS_REGION || 'us-east-1',
-        s3Bucket: process.env.AWS_S3_BUCKET || '',
+    // Cloudinary
+    cloudinary: {
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+        apiKey: process.env.CLOUDINARY_API_KEY || '',
+        apiSecret: process.env.CLOUDINARY_API_SECRET || '',
     },
     // Stripe
     stripe: {
@@ -32,11 +31,40 @@ exports.config = {
         proPriceId: process.env.STRIPE_PRO_PRICE_ID || '',
         businessPriceId: process.env.STRIPE_BUSINESS_PRICE_ID || '',
     },
-    // AI Providers
+    // AI Provider - Groq
     ai: {
-        provider: process.env.AI_PROVIDER || 'openai',
-        openaiApiKey: process.env.OPENAI_API_KEY || '',
-        anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+        groqApiKey: process.env.GROQ_API_KEY || '',
+        groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    },
+    // Adzuna Job Search API
+    adzuna: {
+        appId: process.env.ADZUNA_APP_ID || '',
+        appKey: process.env.ADZUNA_APP_KEY || '',
+        baseUrl: 'https://api.adzuna.com/v1/api',
+    },
+    // OAuth Providers (FREE)
+    oauth: {
+        google: {
+            clientId: process.env.GOOGLE_CLIENT_ID || '',
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+            redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/google/callback',
+        },
+        github: {
+            clientId: process.env.GITHUB_CLIENT_ID || '',
+            clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+            redirectUri: process.env.GITHUB_REDIRECT_URI || 'http://localhost:3000/auth/github/callback',
+        },
+    },
+    // Email (SendGrid - FREE 100/day)
+    email: {
+        sendgridApiKey: process.env.SENDGRID_API_KEY || '',
+        fromEmail: process.env.EMAIL_FROM_ADDRESS || 'noreply@resumeai.com',
+        fromName: process.env.EMAIL_FROM_NAME || 'ResumeAI',
+    },
+    // Sentry Error Monitoring (FREE 5K errors/month)
+    sentry: {
+        dsn: process.env.SENTRY_DSN || '',
+        release: process.env.SENTRY_RELEASE || '1.0.0',
     },
     // Encryption
     encryptionKey: process.env.ENCRYPTION_KEY || 'default-32-char-encryption-key!',

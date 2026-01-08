@@ -36,8 +36,15 @@ router.get('/', resume_1.getResumes);
 router.get('/:id', resume_1.getResume);
 router.put('/:id', resume_1.updateResume);
 router.delete('/:id', resume_1.deleteResume);
+// Resume Builder
+router.post('/create', subscription_1.checkResumeQuota, resume_1.createBlankResume);
+router.put('/:id/content', resume_1.updateResumeContent);
+router.get('/:id/download', resume_1.downloadResume);
+router.get('/:id/preview', resume_1.previewResume);
 // Resume customization
 router.post('/:id/customize', resume_1.customizeResume);
+// Job URL scraping
+router.post('/scrape-job', resume_1.scrapeJobUrl);
 // Version operations
 router.get('/:id/versions/:versionId', resume_1.getVersion);
 router.get('/:id/compare', resume_1.compareVersions);

@@ -125,10 +125,13 @@ Return as JSON array of strings.`;
       data: {
         userId: req.user!.id,
         operation: 'writing_suggestion',
+        provider: 'groq',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
         model: config.ai.groqModel,
+        estimatedCost: 0,
+        durationMs: 0,
         success: true,
       },
     });
@@ -276,10 +279,13 @@ Company: ${company}`;
       data: {
         userId: req.user!.id,
         operation: 'generate_bullets',
+        provider: 'groq',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
         model: config.ai.groqModel,
+        estimatedCost: 0,
+        durationMs: 0,
         success: true,
       },
     });

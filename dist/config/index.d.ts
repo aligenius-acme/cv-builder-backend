@@ -7,11 +7,10 @@ export declare const config: {
         secret: string;
         expiresIn: string;
     };
-    aws: {
-        accessKeyId: string;
-        secretAccessKey: string;
-        region: string;
-        s3Bucket: string;
+    cloudinary: {
+        cloudName: string;
+        apiKey: string;
+        apiSecret: string;
     };
     stripe: {
         secretKey: string;
@@ -20,9 +19,34 @@ export declare const config: {
         businessPriceId: string;
     };
     ai: {
-        provider: string;
-        openaiApiKey: string;
-        anthropicApiKey: string;
+        groqApiKey: string;
+        groqModel: string;
+    };
+    adzuna: {
+        appId: string;
+        appKey: string;
+        baseUrl: string;
+    };
+    oauth: {
+        google: {
+            clientId: string;
+            clientSecret: string;
+            redirectUri: string;
+        };
+        github: {
+            clientId: string;
+            clientSecret: string;
+            redirectUri: string;
+        };
+    };
+    email: {
+        sendgridApiKey: string;
+        fromEmail: string;
+        fromName: string;
+    };
+    sentry: {
+        dsn: string;
+        release: string;
     };
     encryptionKey: string;
 };

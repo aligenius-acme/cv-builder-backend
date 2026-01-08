@@ -135,10 +135,13 @@ Provide analysis in this JSON format:
       data: {
         userId: req.user!.id,
         operation: 'salary_analysis',
+        provider: 'groq',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
         model: config.ai.groqModel,
+        estimatedCost: 0,
+        durationMs: 0,
         success: true,
       },
     });
@@ -263,10 +266,13 @@ Provide comparison in this JSON format:
       data: {
         userId: req.user!.id,
         operation: 'offer_comparison',
+        provider: 'groq',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
         model: config.ai.groqModel,
+        estimatedCost: 0,
+        durationMs: 0,
         success: true,
       },
     });

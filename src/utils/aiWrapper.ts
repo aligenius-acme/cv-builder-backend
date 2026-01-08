@@ -158,6 +158,7 @@ export async function logAIUsage(
       completionTokens: usage.completionTokens,
       totalTokens: usage.totalTokens,
       estimatedCost,
+      durationMs: 0,
       success,
       errorMessage,
     },

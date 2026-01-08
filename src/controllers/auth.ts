@@ -122,7 +122,11 @@ export const login = async (
       throw new AuthenticationError('Invalid email or password');
     }
 
-    // Check password
+    // Check password (passwordHash can be null for OAuth users)
+    if (!user.passwordHash) {
+      throw new AuthenticationError('Invalid email or password');
+    }
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValid) {
@@ -301,7 +305,11 @@ export const changePassword = async (
       throw new NotFoundError('User not found');
     }
 
-    // Verify current password
+    // Verify current password (passwordHash can be null for OAuth users)
+    if (!user.passwordHash) {
+      throw new AuthenticationError('Cannot change password for OAuth accounts');
+    }
+
     const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isValid) {
       throw new AuthenticationError('Current password is incorrect');

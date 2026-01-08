@@ -20,6 +20,8 @@ export interface ParsedResumeData {
   skills: string[];
   certifications?: string[];
   projects?: ProjectEntry[];
+  languages?: string[];
+  awards?: string[];
   contact: ContactInfo;
 }
 

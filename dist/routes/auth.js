@@ -9,9 +9,11 @@ router.post('/register', auth_2.register);
 router.post('/login', auth_2.login);
 router.post('/forgot-password', auth_2.forgotPassword);
 router.post('/reset-password', auth_2.resetPassword);
+router.post('/verify-email', auth_2.verifyEmail);
 // Protected routes
 router.get('/me', auth_1.authenticate, auth_2.me);
 router.put('/profile', auth_1.authenticate, auth_2.updateProfile);
 router.put('/change-password', auth_1.authenticate, auth_2.changePassword);
+router.post('/resend-verification', auth_1.authenticate, auth_2.resendVerification);
 exports.default = router;
 //# sourceMappingURL=auth.js.map

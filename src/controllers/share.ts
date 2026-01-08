@@ -197,7 +197,7 @@ export const viewSharedResume = async (
     ]);
 
     // Return resume data for display
-    const tailoredData = version.tailoredData as ParsedResumeData;
+    const tailoredData = version.tailoredData as unknown as ParsedResumeData;
 
     res.json({
       success: true,
@@ -258,7 +258,7 @@ export const downloadSharedResume = async (
     ]);
 
     // Generate the document
-    const tailoredData = version.tailoredData as ParsedResumeData;
+    const tailoredData = version.tailoredData as unknown as ParsedResumeData;
     const templateConfig = getTemplate(template as string);
 
     let buffer: Buffer;

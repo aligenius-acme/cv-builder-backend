@@ -7,4 +7,6 @@ export declare const updateProfile: (req: AuthenticatedRequest, res: Response, n
 export declare const changePassword: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
 export declare const forgotPassword: (req: Request, res: Response, next: NextFunction) => Promise<void>;
 export declare const resetPassword: (req: Request, res: Response, next: NextFunction) => Promise<void>;
+export declare const verifyEmail: (req: Request, res: Response, next: NextFunction) => Promise<void>;
+export declare const resendVerification: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
 //# sourceMappingURL=auth.d.ts.map

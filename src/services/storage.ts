@@ -1,17 +1,11 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import config from '../config';
 
-// Check if S3 is configured
-const USE_LOCAL_STORAGE = !config.aws.accessKeyId || !config.aws.s3Bucket;
+// Check if Cloudinary is configured
+const USE_LOCAL_STORAGE = !config.cloudinary.cloudName || !config.cloudinary.apiKey;
 
 // Local storage directory for development
 const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
@@ -21,15 +15,15 @@ if (USE_LOCAL_STORAGE && !fs.existsSync(LOCAL_STORAGE_DIR)) {
   fs.mkdirSync(LOCAL_STORAGE_DIR, { recursive: true });
 }
 
-const s3Client = USE_LOCAL_STORAGE ? null : new S3Client({
-  region: config.aws.region,
-  credentials: {
-    accessKeyId: config.aws.accessKeyId,
-    secretAccessKey: config.aws.secretAccessKey,
-  },
-});
-
-const BUCKET_NAME = config.aws.s3Bucket;
+// Configure Cloudinary
+if (!USE_LOCAL_STORAGE) {
+  cloudinary.config({
+    cloud_name: config.cloudinary.cloudName,
+    api_key: config.cloudinary.apiKey,
+    api_secret: config.cloudinary.apiSecret,
+    secure: true,
+  });
+}
 
 export interface UploadResult {
   key: string;
@@ -43,7 +37,19 @@ function generateFileKey(userId: string, fileName: string, folder: string): stri
   return `${folder}/${userId}/${uniqueId}.${ext}`;
 }
 
-// Upload a file to S3 or local storage
+// Get resource type based on file extension
+function getResourceType(fileName: string): 'image' | 'raw' | 'video' | 'auto' {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+
+  if (imageExts.includes(ext)) {
+    return 'image';
+  }
+  // PDF, DOCX, JSON, etc. are 'raw' files
+  return 'raw';
+}
+
+// Upload a file to Cloudinary or local storage
 export async function uploadFile(
   buffer: Buffer,
   fileName: string,
@@ -65,22 +71,34 @@ export async function uploadFile(
     return { key, url };
   }
 
-  const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
-    Body: buffer,
-    ContentType: contentType,
-    ServerSideEncryption: 'AES256',
+  // Upload to Cloudinary
+  const resourceType = getResourceType(fileName);
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        public_id: key.replace(/\.[^/.]+$/, ''), // Remove extension for public_id
+        folder: 'cv-builder',
+        resource_type: resourceType,
+        access_mode: 'authenticated', // Requires signed URLs
+      },
+      (error, result: UploadApiResponse | undefined) => {
+        if (error || !result) {
+          reject(error || new Error('Upload failed'));
+          return;
+        }
+        resolve({
+          key: result.public_id,
+          url: result.secure_url,
+        });
+      }
+    );
+
+    uploadStream.end(buffer);
   });
-
-  await s3Client!.send(command);
-
-  const url = `https://${BUCKET_NAME}.s3.${config.aws.region}.amazonaws.com/${key}`;
-
-  return { key, url };
 }
 
-// Get a presigned URL for downloading
+// Get a signed URL for downloading (secure access)
 export async function getPresignedDownloadUrl(key: string, expiresIn: number = 3600): Promise<string> {
   if (USE_LOCAL_STORAGE) {
     // For local storage, return a file URL
@@ -88,38 +106,44 @@ export async function getPresignedDownloadUrl(key: string, expiresIn: number = 3
     return `file://${filePath}`;
   }
 
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
+  // Generate signed URL with expiration
+  const timestamp = Math.floor(Date.now() / 1000) + expiresIn;
+
+  // Determine resource type from key
+  const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(key);
+  const resourceType = isImage ? 'image' : 'raw';
+
+  const url = cloudinary.url(key, {
+    secure: true,
+    resource_type: resourceType,
+    sign_url: true,
+    type: 'authenticated',
+    expires_at: timestamp,
   });
 
-  return getSignedUrl(s3Client!, command, { expiresIn });
+  return url;
 }
 
-// Get file content from S3 or local storage
+// Get file content from Cloudinary or local storage
 export async function getFile(key: string): Promise<Buffer> {
   if (USE_LOCAL_STORAGE) {
     const filePath = path.join(LOCAL_STORAGE_DIR, key);
     return fs.readFileSync(filePath);
   }
 
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
-  });
+  // Get the secure URL and fetch the file
+  const url = await getPresignedDownloadUrl(key);
 
-  const response = await s3Client!.send(command);
-  const stream = response.Body as NodeJS.ReadableStream;
-
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(chunk as Buffer);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file: ${response.statusText}`);
   }
 
-  return Buffer.concat(chunks);
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
-// Delete a file from S3 or local storage
+// Delete a file from Cloudinary or local storage
 export async function deleteFile(key: string): Promise<void> {
   if (USE_LOCAL_STORAGE) {
     const filePath = path.join(LOCAL_STORAGE_DIR, key);
@@ -129,12 +153,11 @@ export async function deleteFile(key: string): Promise<void> {
     return;
   }
 
-  const command = new DeleteObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
-  });
+  // Determine resource type from key
+  const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(key);
+  const resourceType = isImage ? 'image' : 'raw';
 
-  await s3Client!.send(command);
+  await cloudinary.uploader.destroy(key, { resource_type: resourceType });
 }
 
 // Upload generated document (PDF/DOCX)
@@ -144,8 +167,35 @@ export async function uploadDocument(
   type: 'pdf' | 'docx',
   prefix: string = 'generated'
 ): Promise<UploadResult> {
-  const contentType = type === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const contentType = type === 'pdf'
+    ? 'application/pdf'
+    : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   const fileName = `${prefix}-${Date.now()}.${type}`;
 
   return uploadFile(buffer, fileName, userId, 'documents', contentType);
+}
+
+// Upload image (for thumbnails, avatars, etc.)
+export async function uploadImage(
+  buffer: Buffer,
+  userId: string,
+  folder: string = 'images'
+): Promise<UploadResult> {
+  const fileName = `image-${Date.now()}.png`;
+  return uploadFile(buffer, fileName, userId, folder, 'image/png');
+}
+
+// Get public URL for images (no authentication needed for thumbnails)
+export function getPublicImageUrl(key: string, options?: { width?: number; height?: number }): string {
+  if (USE_LOCAL_STORAGE) {
+    return `file://${path.join(LOCAL_STORAGE_DIR, key)}`;
+  }
+
+  return cloudinary.url(key, {
+    secure: true,
+    resource_type: 'image',
+    transformation: options ? [
+      { width: options.width, height: options.height, crop: 'fill' }
+    ] : undefined,
+  });
 }

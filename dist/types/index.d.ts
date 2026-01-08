@@ -16,6 +16,8 @@ export interface ParsedResumeData {
     skills: string[];
     certifications?: string[];
     projects?: ProjectEntry[];
+    languages?: string[];
+    awards?: string[];
     contact: ContactInfo;
 }
 export interface ExperienceEntry {
@@ -136,7 +138,7 @@ export interface SubscriptionLimits {
     customTemplatesEnabled: boolean;
     anonymizationEnabled: boolean;
 }
-export type AIProvider = 'openai' | 'anthropic' | 'grok';
+export type AIProvider = 'groq';
 export interface ApiResponse<T = unknown> {
     success: boolean;
     data?: T;

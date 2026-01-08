@@ -9,15 +9,18 @@ exports.analyzeATS = analyzeATS;
 exports.runTruthGuard = runTruthGuard;
 exports.generateCoverLetter = generateCoverLetter;
 exports.fullCustomizationPipeline = fullCustomizationPipeline;
-const openai_1 = __importDefault(require("openai"));
-const sdk_1 = __importDefault(require("@anthropic-ai/sdk"));
+exports.calculateJobMatchScore = calculateJobMatchScore;
+exports.quantifyAchievements = quantifyAchievements;
+exports.detectWeaknesses = detectWeaknesses;
+exports.generateFollowUpEmail = generateFollowUpEmail;
+exports.generateNetworkingMessage = generateNetworkingMessage;
+const groq_sdk_1 = __importDefault(require("groq-sdk"));
 const config_1 = __importDefault(require("../config"));
 const prisma_1 = require("../utils/prisma");
 const errors_1 = require("../utils/errors");
 const subscription_1 = require("../middleware/subscription");
-// Initialize AI clients
-const openai = config_1.default.ai.openaiApiKey ? new openai_1.default({ apiKey: config_1.default.ai.openaiApiKey }) : null;
-const anthropic = config_1.default.ai.anthropicApiKey ? new sdk_1.default({ apiKey: config_1.default.ai.anthropicApiKey }) : null;
+// Initialize Groq client
+const groq = config_1.default.ai.groqApiKey ? new groq_sdk_1.default({ apiKey: config_1.default.ai.groqApiKey }) : null;
 // Get active prompts from database or use defaults
 async function getPrompt(name) {
     const prompt = await prisma_1.prisma.promptVersion.findFirst({
@@ -155,48 +158,31 @@ Return only the cover letter text, no JSON or formatting markers.`,
     return prompts[name] || '';
 }
 // Call AI provider
-async function callAI(prompt, userId, organizationId, operation) {
+async function callAI(prompt, userId, organizationId, operation, maxTokens = 4096) {
     const startTime = Date.now();
-    const provider = config_1.default.ai.provider;
     try {
-        let result;
-        if (provider === 'anthropic' && anthropic) {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-sonnet-20241022',
-                max_tokens: 4096,
-                messages: [{ role: 'user', content: prompt }],
-            });
-            const textContent = response.content.find(c => c.type === 'text');
-            result = {
-                content: textContent?.text || '',
-                promptTokens: response.usage.input_tokens,
-                completionTokens: response.usage.output_tokens,
-            };
+        if (!groq) {
+            throw new errors_1.AIServiceError('Groq API key not configured');
         }
-        else if (openai) {
-            const response = await openai.chat.completions.create({
-                model: 'gpt-4-turbo-preview',
-                messages: [{ role: 'user', content: prompt }],
-                max_tokens: 4096,
-                temperature: 0.7,
-            });
-            result = {
-                content: response.choices[0]?.message?.content || '',
-                promptTokens: response.usage?.prompt_tokens || 0,
-                completionTokens: response.usage?.completion_tokens || 0,
-            };
-        }
-        else {
-            throw new errors_1.AIServiceError('No AI provider configured');
-        }
+        const response = await groq.chat.completions.create({
+            model: config_1.default.ai.groqModel,
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: maxTokens,
+            temperature: 0.7,
+        });
+        const result = {
+            content: response.choices[0]?.message?.content || '',
+            promptTokens: response.usage?.prompt_tokens || 0,
+            completionTokens: response.usage?.completion_tokens || 0,
+        };
         const durationMs = Date.now() - startTime;
         // Track usage
-        await (0, subscription_1.trackAIUsage)(userId, organizationId, operation, provider, provider === 'anthropic' ? 'claude-3-5-sonnet' : 'gpt-4-turbo', result.promptTokens, result.completionTokens, durationMs, true);
+        await (0, subscription_1.trackAIUsage)(userId, organizationId, operation, 'groq', config_1.default.ai.groqModel, result.promptTokens, result.completionTokens, durationMs, true);
         return result;
     }
     catch (error) {
         const durationMs = Date.now() - startTime;
-        await (0, subscription_1.trackAIUsage)(userId, organizationId, operation, provider, provider === 'anthropic' ? 'claude-3-5-sonnet' : 'gpt-4-turbo', 0, 0, durationMs, false, error.message);
+        await (0, subscription_1.trackAIUsage)(userId, organizationId, operation, 'groq', config_1.default.ai.groqModel, 0, 0, durationMs, false, error.message);
         throw new errors_1.AIServiceError(`AI service error: ${error.message}`);
     }
 }
@@ -213,7 +199,13 @@ function parseAIJSON(content) {
     if (cleaned.endsWith('```')) {
         cleaned = cleaned.slice(0, -3);
     }
-    return JSON.parse(cleaned.trim());
+    cleaned = cleaned.trim();
+    // Extract JSON object or array from response (handle extra text before/after)
+    const jsonMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    if (jsonMatch) {
+        cleaned = jsonMatch[1];
+    }
+    return JSON.parse(cleaned);
 }
 // Analyze job description
 async function analyzeJobDescription(jobDescription, userId, organizationId) {
@@ -223,14 +215,81 @@ async function analyzeJobDescription(jobDescription, userId, organizationId) {
     return parseAIJSON(content);
 }
 // Customize resume for job
-async function customizeResume(resumeData, jobData, jobTitle, companyName, userId, organizationId) {
-    const promptTemplate = await getPrompt('resume_customize');
-    const prompt = promptTemplate
-        .replace('{resume_data}', JSON.stringify(resumeData, null, 2))
-        .replace('{job_data}', JSON.stringify(jobData, null, 2))
-        .replace('{job_title}', jobTitle)
-        .replace('{company_name}', companyName);
-    const { content } = await callAI(prompt, userId, organizationId, 'resume_customize');
+async function customizeResume(resumeData, resumeText, jobData, jobTitle, companyName, userId, organizationId) {
+    // Use full resume text for better context
+    const prompt = `You are an expert resume customizer. Your task is to tailor this resume for a specific job application.
+
+CRITICAL RULES - READ CAREFULLY:
+1. PRESERVE ALL CONTENT - Do NOT remove or shorten any experience, education, projects, or skills
+2. Include EVERY job position with ALL bullet points from the original
+3. Include ALL skills, certifications, and projects
+4. You may REORDER items to put most relevant first
+5. You may REPHRASE bullet points to use job keywords naturally
+6. You may enhance the summary to target this specific role
+7. NEVER fabricate, exaggerate, or add anything not in the original
+
+ORIGINAL RESUME TEXT:
+${resumeText}
+
+TARGET JOB:
+- Position: ${jobTitle}
+- Company: ${companyName}
+- Required Skills: ${jobData.requiredSkills?.join(', ') || 'Not specified'}
+- Key Responsibilities: ${jobData.responsibilities?.slice(0, 5).join('; ') || 'Not specified'}
+- Important Keywords: ${jobData.keywords?.join(', ') || 'Not specified'}
+
+OUTPUT REQUIREMENTS:
+Return a complete JSON object. The tailoredData MUST contain ALL original content, just optimized for this job.
+
+{
+  "tailoredData": {
+    "contact": {
+      "name": "Full name from resume",
+      "email": "email from resume",
+      "phone": "phone from resume",
+      "location": "location from resume",
+      "linkedin": "linkedin if present",
+      "github": "github if present"
+    },
+    "summary": "A compelling 2-3 sentence summary tailored for ${jobTitle} role, highlighting most relevant experience",
+    "experience": [
+      {
+        "title": "Job Title",
+        "company": "Company Name",
+        "location": "Location if available",
+        "startDate": "Start Date",
+        "endDate": "End Date or empty if current",
+        "current": true/false,
+        "description": ["INCLUDE ALL original bullet points, rephrased with relevant keywords"]
+      }
+    ],
+    "education": [
+      {
+        "degree": "Degree name",
+        "institution": "School name",
+        "graduationDate": "Date",
+        "gpa": "GPA if mentioned",
+        "achievements": ["Any honors or achievements"]
+      }
+    ],
+    "skills": ["ALL skills from resume, reordered with most relevant to ${jobTitle} first"],
+    "certifications": ["ALL certifications from resume"],
+    "projects": [
+      {
+        "name": "Project name",
+        "description": "Project description",
+        "technologies": ["tech used"]
+      }
+    ]
+  },
+  "changesExplanation": "Explain what was reordered or rephrased to optimize for this role",
+  "matchedKeywords": ["job keywords found in resume"],
+  "missingKeywords": ["important job keywords NOT in the original resume"]
+}
+
+IMPORTANT: The experience array must include EVERY position from the original resume with ALL bullet points. Do not summarize or truncate.`;
+    // Use higher token limit for comprehensive resume output
+    const { content } = await callAI(prompt, userId, organizationId, 'resume_customize', 8192);
     const result = parseAIJSON(content);
     // Generate tailored text from data
     const tailoredText = generateResumeText(result.tailoredData);
@@ -352,7 +411,7 @@ async function fullCustomizationPipeline(resumeData, resumeText, jobDescription,
     // Step 1: Analyze job description
     const jobData = await analyzeJobDescription(jobDescription, userId, organizationId);
     // Step 2: Customize resume
-    const customization = await customizeResume(resumeData, jobData, jobTitle, companyName, userId, organizationId);
+    const customization = await customizeResume(resumeData, resumeText, jobData, jobTitle, companyName, userId, organizationId);
     // Step 3: Run ATS analysis
     const atsDetails = await analyzeATS(customization.tailoredText, [...jobData.requiredSkills, ...jobData.keywords], userId, organizationId);
     // Step 4: Run Truth Guard
@@ -363,5 +422,221 @@ async function fullCustomizationPipeline(resumeData, resumeText, jobDescription,
         atsDetails,
         truthGuardWarnings,
     };
+}
+async function calculateJobMatchScore(resumeData, jobDescription, jobTitle, userId, organizationId) {
+    const prompt = `You are an expert job matching analyst. Calculate how well this candidate matches the job.
+
+CANDIDATE RESUME:
+${JSON.stringify(resumeData, null, 2)}
+
+JOB DESCRIPTION:
+${jobDescription}
+
+JOB TITLE: ${jobTitle}
+
+Analyze the match and return a JSON object:
+{
+  "overallScore": 0-100 (realistic score based on actual match),
+  "breakdown": {
+    "skillsMatch": 0-100 (technical & soft skills alignment),
+    "experienceMatch": 0-100 (years and relevance of experience),
+    "educationMatch": 0-100 (degree and field alignment),
+    "keywordsMatch": 0-100 (job keywords found in resume)
+  },
+  "strengths": ["3-5 specific strengths for this role"],
+  "gaps": ["2-4 areas where candidate falls short"],
+  "verdict": "Strong Match" (85+) | "Good Match" (70-84) | "Moderate Match" (50-69) | "Weak Match" (<50),
+  "recommendation": "Specific advice on whether to apply and how to position themselves",
+  "timeToApply": "Estimated time investment worthiness: 'Worth applying immediately' | 'Consider applying with improvements' | 'Focus on building missing skills first'"
+}
+
+Be honest and realistic - don't inflate scores. Consider:
+- Direct skill matches vs transferable skills
+- Years of experience vs job requirements
+- Industry relevance
+- Seniority level alignment
+
+Return only valid JSON.`;
+    const { content } = await callAI(prompt, userId, organizationId, 'job_match_score');
+    return parseAIJSON(content);
+}
+async function quantifyAchievements(bullets, jobContext, userId, organizationId) {
+    const prompt = `You are an expert resume writer specializing in quantifying achievements. Transform vague bullet points into impactful, metrics-driven statements.
+
+BULLET POINTS TO ENHANCE:
+${bullets.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+
+${jobContext ? `JOB CONTEXT (tailor enhancements for): ${jobContext}` : ''}
+
+RULES:
+1. NEVER fabricate specific numbers - use realistic ranges or estimates
+2. Add context with percentages, team sizes, timeframes, or dollar amounts
+3. Use action verbs and quantifiable outcomes
+4. Keep the core truth of each achievement
+
+Return JSON:
+{
+  "achievements": [
+    {
+      "original": "the original bullet point",
+      "quantified": "the enhanced version with metrics",
+      "addedMetrics": ["list of metrics/numbers added"],
+      "impactLevel": "High/Medium/Low based on achievement significance",
+      "suggestions": ["alternative phrasings or additional metrics to consider"]
+    }
+  ],
+  "overallImprovement": "Summary of how these changes strengthen the resume",
+  "tips": ["3-4 general tips for writing quantified achievements"]
+}
+
+Example transformation:
+- Original: "Improved customer satisfaction"
+- Quantified: "Increased customer satisfaction scores by 25% (from 3.2 to 4.0 stars) through implementation of new feedback system, serving 500+ monthly customers"
+
+Return only valid JSON.`;
+    const { content } = await callAI(prompt, userId || '', organizationId, 'quantify_achievements');
+    return parseAIJSON(content);
+}
+async function detectWeaknesses(resumeData, resumeText, targetRole, userId, organizationId) {
+    const prompt = `You are a harsh but fair resume critic and career coach. Identify ALL weaknesses and red flags in this resume.
+
+RESUME DATA:
+${JSON.stringify(resumeData, null, 2)}
+
+RESUME TEXT:
+${resumeText}
+
+${targetRole ? `TARGET ROLE: ${targetRole}` : ''}
+
+Check for these issues:
+1. Employment gaps (unexplained periods)
+2. Job hopping (short tenures without explanation)
+3. Vague descriptions lacking metrics
+4. Missing contact information
+5. Weak or missing summary
+6. Skills mismatch with experience
+7. Formatting/structure issues
+8. Outdated or irrelevant content
+9. Overused buzzwords without substance
+10. Missing key sections
+11. Inconsistent dates or formatting
+12. Too short or too long content
+13. Lack of career progression
+14. Missing achievements (only duties listed)
+
+Return JSON:
+{
+  "weaknesses": [
+    {
+      "issue": "Clear description of the problem",
+      "location": "Where in the resume (e.g., 'Experience section - Company X')",
+      "severity": "Critical/Major/Minor",
+      "impact": "How this hurts their chances",
+      "fix": "Specific actionable fix",
+      "example": "Example of improved version (if applicable)"
+    }
+  ],
+  "overallHealth": "Excellent (0-1 issues) | Good (2-3 minor) | Needs Work (multiple issues) | Critical Issues (major red flags)",
+  "healthScore": 0-100,
+  "prioritizedActions": ["Top 3-5 fixes in order of importance"],
+  "positives": ["2-3 things the resume does well to balance feedback"]
+}
+
+Be thorough but constructive. Every weakness should have an actionable fix.
+
+Return only valid JSON.`;
+    const { content } = await callAI(prompt, userId || '', organizationId, 'weakness_detector');
+    return parseAIJSON(content);
+}
+async function generateFollowUpEmail(type, context, userId, organizationId) {
+    const typeInstructions = {
+        thank_you: 'Write a thank you email to send within 24 hours after an interview. Express gratitude, reinforce interest, and reference specific conversation points.',
+        post_interview: 'Write a follow-up email for 5-7 days after interview with no response. Politely inquire about status while reinforcing qualifications.',
+        no_response: 'Write a gentle follow-up after 2+ weeks of silence. Keep it short and professional, offer to provide additional information.',
+        after_rejection: 'Write a gracious response to rejection. Thank them, express continued interest in future opportunities, ask for feedback.',
+        networking: 'Write an email to maintain connection after a networking meeting or informational interview.',
+    };
+    const prompt = `You are an expert at professional communication. ${typeInstructions[type]}
+
+CONTEXT:
+- Candidate Name: ${context.candidateName}
+- Company: ${context.companyName}
+- Position: ${context.jobTitle}
+${context.recipientName ? `- Recipient: ${context.recipientName}${context.recipientTitle ? ` (${context.recipientTitle})` : ''}` : ''}
+${context.interviewDate ? `- Interview Date: ${context.interviewDate}` : ''}
+${context.interviewDetails ? `- Interview Details: ${context.interviewDetails}` : ''}
+${context.keyPoints?.length ? `- Key Points to Reference: ${context.keyPoints.join(', ')}` : ''}
+
+Guidelines:
+1. Professional but warm tone
+2. Concise - 3-4 short paragraphs max
+3. Specific to the context (not generic)
+4. Clear call to action or next step
+5. No desperation or over-apologizing
+
+Return JSON:
+{
+  "subject": "Email subject line",
+  "body": "Full email body with proper greeting and signature placeholder [Your Name]",
+  "timing": "When to send this email",
+  "tips": ["2-3 tips for sending this email"],
+  "alternativeSubjects": ["2 alternative subject line options"]
+}
+
+Return only valid JSON.`;
+    const { content } = await callAI(prompt, userId, organizationId, 'follow_up_email');
+    return parseAIJSON(content);
+}
+async function generateNetworkingMessage(platform, purpose, context, userId, organizationId) {
+    const platformLimits = {
+        linkedin: 'LinkedIn connection request (300 char limit) or InMail (up to 1900 chars)',
+        email: 'Professional email (keep under 200 words)',
+        twitter: 'Twitter DM (brief and casual, under 280 chars ideal)',
+    };
+    const purposeDescriptions = {
+        job_inquiry: 'Inquiring about job opportunities at their company',
+        informational_interview: 'Requesting 15-20 minutes to learn about their career path',
+        referral_request: 'Asking for a referral or introduction',
+        reconnection: 'Reconnecting with an old contact',
+        cold_outreach: 'Reaching out to someone you have never met',
+    };
+    const prompt = `You are an expert at professional networking and cold outreach. Write a compelling message.
+
+PLATFORM: ${platform} - ${platformLimits[platform]}
+PURPOSE: ${purposeDescriptions[purpose]}
+
+SENDER INFO:
+- Name: ${context.senderName}
+- Background: ${context.senderBackground}
+${context.targetRole ? `- Target Role: ${context.targetRole}` : ''}
+
+RECIPIENT INFO:
+- Name: ${context.recipientName}
+- Title: ${context.recipientTitle}
+- Company: ${context.recipientCompany}
+${context.commonGround?.length ? `- Common Ground: ${context.commonGround.join(', ')}` : ''}
+${context.specificAsk ? `- Specific Ask: ${context.specificAsk}` : ''}
+
+Guidelines:
+1. Lead with value or genuine interest, not with "I need a job"
+2. Reference specific common ground or their work
+3. Be concise and respect their time
+4. Make the ask clear but not pushy
+5. Sound human, not templated
+6. ${platform === 'linkedin' ? 'Keep connection request under 300 chars' : 'Appropriate length for platform'}
+
+Return JSON:
+{
+  "message": "The networking message text",
+  "platform": "${platform}",
+  "approach": "Brief explanation of the strategy used",
+  "followUpMessage": "A follow-up message if they don't respond (optional)",
+  "tips": ["3-4 tips for this type of outreach"],
+  "personalizationPoints": ["Specific elements that should be further personalized"]
+}
+
+Return only valid JSON.`;
+    const { content } = await callAI(prompt, userId, organizationId, 'networking_message');
+    return parseAIJSON(content);
 }
 //# sourceMappingURL=ai.js.map

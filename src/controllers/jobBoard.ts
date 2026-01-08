@@ -212,16 +212,58 @@ export const saveJob = async (
 ) => {
   try {
     const { jobId, jobData } = req.body;
+    const userId = req.user!.id;
 
-    // In production, this would save to a SavedJob table
-    // For now, just acknowledge the save
+    if (!jobId || !jobData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Job ID and job data are required',
+      });
+    }
+
+    // Check if already saved
+    const existing = await prisma.savedJob.findUnique({
+      where: {
+        userId_externalJobId: {
+          userId,
+          externalJobId: jobId,
+        },
+      },
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: 'Job already saved',
+        data: existing,
+      });
+    }
+
+    // Save the job
+    const savedJob = await prisma.savedJob.create({
+      data: {
+        userId,
+        externalJobId: jobId,
+        source: jobData.source || 'Adzuna',
+        title: jobData.title,
+        company: jobData.company,
+        location: jobData.location,
+        salary: jobData.salary || null,
+        jobType: jobData.type || null,
+        description: jobData.description,
+        url: jobData.url,
+        postedAt: jobData.postedAt || null,
+        logoUrl: jobData.logoUrl || null,
+      },
+    });
 
     res.json({
       success: true,
       message: 'Job saved successfully',
-      data: { jobId },
+      data: savedJob,
     });
   } catch (error: any) {
+    console.error('Save job error:', error);
     next(error);
   }
 };
@@ -232,15 +274,96 @@ export const getSavedJobs = async (
   next: NextFunction
 ) => {
   try {
-    // In production, this would fetch from SavedJob table
+    const userId = req.user!.id;
+    const { page = 1, limit = 20 } = req.query;
+
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const [savedJobs, total] = await Promise.all([
+      prisma.savedJob.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.savedJob.count({
+        where: { userId },
+      }),
+    ]);
+
+    // Transform to match job listing format
+    const jobs = savedJobs.map((job) => ({
+      id: job.externalJobId,
+      savedJobId: job.id,
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      salary: job.salary || '',
+      type: job.jobType || '',
+      description: job.description,
+      url: job.url,
+      postedAt: job.postedAt || '',
+      logoUrl: job.logoUrl || '',
+      source: job.source,
+      savedAt: job.createdAt,
+      notes: job.notes,
+    }));
+
     res.json({
       success: true,
       data: {
-        jobs: [],
-        total: 0,
+        jobs,
+        total,
+        page: pageNum,
+        totalPages: Math.ceil(total / limitNum),
       },
     });
   } catch (error: any) {
+    console.error('Get saved jobs error:', error);
+    next(error);
+  }
+};
+
+export const deleteSavedJob = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { jobId } = req.params;
+    const userId = req.user!.id;
+
+    // Find and delete the saved job
+    const savedJob = await prisma.savedJob.findUnique({
+      where: {
+        userId_externalJobId: {
+          userId,
+          externalJobId: jobId,
+        },
+      },
+    });
+
+    if (!savedJob) {
+      return res.status(404).json({
+        success: false,
+        error: 'Saved job not found',
+      });
+    }
+
+    await prisma.savedJob.delete({
+      where: {
+        id: savedJob.id,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Job removed from saved jobs',
+    });
+  } catch (error: any) {
+    console.error('Delete saved job error:', error);
     next(error);
   }
 };

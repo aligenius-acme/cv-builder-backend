@@ -1,7 +1,7 @@
 "use strict";
 // Custom error classes for the application
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FileProcessingError = exports.AIServiceError = exports.QuotaExceededError = exports.SubscriptionError = exports.RateLimitError = exports.ConflictError = exports.NotFoundError = exports.AuthorizationError = exports.AuthenticationError = exports.ValidationError = exports.AppError = void 0;
+exports.FileProcessingError = exports.AIServiceError = exports.QuotaExceededError = exports.SubscriptionError = exports.RateLimitError = exports.ConflictError = exports.NotFoundError = exports.ForbiddenError = exports.AuthorizationError = exports.AuthenticationError = exports.ValidationError = exports.AppError = void 0;
 class AppError extends Error {
     statusCode;
     isOperational;
@@ -31,6 +31,13 @@ class AuthorizationError extends AppError {
     }
 }
 exports.AuthorizationError = AuthorizationError;
+// Alias for AuthorizationError
+class ForbiddenError extends AppError {
+    constructor(message = 'Access denied') {
+        super(message, 403);
+    }
+}
+exports.ForbiddenError = ForbiddenError;
 class NotFoundError extends AppError {
     constructor(message = 'Resource not found') {
         super(message, 404);
