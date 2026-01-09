@@ -260,6 +260,15 @@ export async function analyzeJobDescription(
   return parseAIJSON<JobData>(content);
 }
 
+// Before/After comparison for resume sections
+export interface BeforeAfterComparison {
+  section: string;
+  before: string;
+  after: string;
+  improvement: string;
+  impactLevel: 'High' | 'Medium' | 'Low';
+}
+
 // Customize resume for job
 export async function customizeResume(
   resumeData: ParsedResumeData,
@@ -338,10 +347,32 @@ Return a complete JSON object. The tailoredData MUST contain ALL original conten
   },
   "changesExplanation": "Explain what was reordered or rephrased to optimize for this role",
   "matchedKeywords": ["job keywords found in resume"],
-  "missingKeywords": ["important job keywords NOT in the original resume"]
+  "missingKeywords": ["important job keywords NOT in the original resume"],
+  "beforeAfterComparisons": [
+    {
+      "section": "Summary|Experience - Company Name|Skills",
+      "before": "The original text before optimization",
+      "after": "The optimized text after changes",
+      "improvement": "Brief explanation of why this change improves ATS/recruiter appeal",
+      "impactLevel": "High|Medium|Low"
+    }
+  ],
+  "keywordDensity": {
+    "before": 0,
+    "after": 0,
+    "improvement": "+X keywords added naturally"
+  },
+  "optimizationSummary": {
+    "sectionsOptimized": 0,
+    "keywordsAdded": 0,
+    "bulletPointsEnhanced": 0,
+    "estimatedATSImprovement": "+X%"
+  }
 }
 
-IMPORTANT: The experience array must include EVERY position from the original resume with ALL bullet points. Do not summarize or truncate.`;
+IMPORTANT:
+- The experience array must include EVERY position from the original resume with ALL bullet points. Do not summarize or truncate.
+- Include at least 3-5 beforeAfterComparisons showing the most impactful changes made.`;
 
   // Use higher token limit for comprehensive resume output
   const { content } = await callAI(prompt, userId, organizationId, 'resume_customize', 8192);
@@ -351,6 +382,18 @@ IMPORTANT: The experience array must include EVERY position from the original re
     changesExplanation: string;
     matchedKeywords: string[];
     missingKeywords: string[];
+    beforeAfterComparisons?: BeforeAfterComparison[];
+    keywordDensity?: {
+      before: number;
+      after: number;
+      improvement: string;
+    };
+    optimizationSummary?: {
+      sectionsOptimized: number;
+      keywordsAdded: number;
+      bulletPointsEnhanced: number;
+      estimatedATSImprovement: string;
+    };
   }>(content);
 
   // Generate tailored text from data
@@ -362,6 +405,9 @@ IMPORTANT: The experience array must include EVERY position from the original re
     changesExplanation: result.changesExplanation,
     matchedKeywords: result.matchedKeywords,
     missingKeywords: result.missingKeywords,
+    beforeAfterComparisons: result.beforeAfterComparisons || [],
+    keywordDensity: result.keywordDensity,
+    optimizationSummary: result.optimizationSummary,
   };
 }
 
@@ -399,23 +445,143 @@ export async function runTruthGuard(
   return parseAIJSON<TruthGuardWarning[]>(content);
 }
 
+// Enhanced cover letter result
+export interface EnhancedCoverLetterResult {
+  content: string;
+  alternativeOpenings: {
+    style: 'story' | 'achievement' | 'connection' | 'passion';
+    opening: string;
+    description: string;
+  }[];
+  keyPhrases: {
+    phrase: string;
+    matchesJobRequirement: string;
+  }[];
+  toneAnalysis: {
+    currentTone: string;
+    formalityScore: number; // 1-10
+    enthusiasmScore: number; // 1-10
+    suggestions: string[];
+  };
+  callToActionVariations: string[];
+  subjectLineOptions: string[];
+}
+
 // Generate cover letter
 export async function generateCoverLetter(
   input: CoverLetterInput,
   userId: string,
   organizationId?: string | null
 ): Promise<string> {
-  const promptTemplate = await getPrompt('cover_letter');
-  const prompt = promptTemplate
-    .replace('{resume_data}', JSON.stringify(input.resumeData, null, 2))
-    .replace('{job_data}', JSON.stringify(input.jobData, null, 2))
-    .replace('{job_title}', input.jobTitle)
-    .replace('{company_name}', input.companyName)
-    .replace('{tone}', input.tone || 'professional');
+  const prompt = `Write a professional cover letter for this job application.
+
+Candidate Resume:
+${JSON.stringify(input.resumeData, null, 2)}
+
+Job Information:
+${JSON.stringify(input.jobData, null, 2)}
+
+Job Title: ${input.jobTitle}
+Company: ${input.companyName}
+Tone: ${input.tone || 'professional'}
+
+Guidelines:
+1. Opening: Express genuine interest in the role
+2. Body: Connect 2-3 specific experiences/skills to job requirements
+3. Use concrete examples from the resume
+4. Show knowledge of the company (if info available)
+5. Closing: Express enthusiasm and call to action
+6. Keep it concise: 3-4 paragraphs max
+7. NEVER fabricate experience or skills
+
+Return only the cover letter text, no JSON or formatting markers.`;
 
   const { content } = await callAI(prompt, userId, organizationId, 'cover_letter');
 
   return content.trim();
+}
+
+// Generate enhanced cover letter with alternatives
+export async function generateEnhancedCoverLetter(
+  input: CoverLetterInput,
+  userId: string,
+  organizationId?: string | null
+): Promise<EnhancedCoverLetterResult> {
+  const prompt = `Write a professional cover letter for this job application AND provide alternative options.
+
+Candidate Resume:
+${JSON.stringify(input.resumeData, null, 2)}
+
+Job Information:
+${JSON.stringify(input.jobData, null, 2)}
+
+Job Title: ${input.jobTitle}
+Company: ${input.companyName}
+Tone: ${input.tone || 'professional'}
+
+Guidelines:
+1. Opening: Express genuine interest in the role
+2. Body: Connect 2-3 specific experiences/skills to job requirements
+3. Use concrete examples from the resume
+4. Show knowledge of the company (if info available)
+5. Closing: Express enthusiasm and call to action
+6. Keep it concise: 3-4 paragraphs max
+7. NEVER fabricate experience or skills
+
+Return JSON:
+{
+  "content": "The full cover letter text (3-4 paragraphs)",
+  "alternativeOpenings": [
+    {
+      "style": "story",
+      "opening": "A compelling story-based opening paragraph that hooks the reader",
+      "description": "Opens with a brief professional story or anecdote"
+    },
+    {
+      "style": "achievement",
+      "opening": "An achievement-focused opening that leads with impact",
+      "description": "Opens by highlighting a key accomplishment relevant to the role"
+    },
+    {
+      "style": "connection",
+      "opening": "A connection-based opening referencing mutual contacts or company knowledge",
+      "description": "Opens by establishing a personal or professional connection"
+    },
+    {
+      "style": "passion",
+      "opening": "A passion-driven opening showing enthusiasm for the field/company",
+      "description": "Opens by expressing genuine passion for the work"
+    }
+  ],
+  "keyPhrases": [
+    {
+      "phrase": "Key phrase used in the cover letter",
+      "matchesJobRequirement": "Which job requirement this addresses"
+    }
+  ],
+  "toneAnalysis": {
+    "currentTone": "Description of the letter's tone (e.g., 'Confident and professional')",
+    "formalityScore": 7,
+    "enthusiasmScore": 8,
+    "suggestions": ["Suggestions to adjust tone if needed"]
+  },
+  "callToActionVariations": [
+    "I would welcome the opportunity to discuss how my experience can benefit [Company].",
+    "I am excited to bring my skills to your team and would love to schedule a conversation.",
+    "Let's connect to explore how I can contribute to [Company]'s continued success."
+  ],
+  "subjectLineOptions": [
+    "Application for ${input.jobTitle} - [Your Name]",
+    "Experienced [Role] Excited to Join ${input.companyName}",
+    "${input.jobTitle} Application - [Relevant Achievement/Skill]"
+  ]
+}
+
+Return only valid JSON.`;
+
+  const { content } = await callAI(prompt, userId, organizationId, 'cover_letter_enhanced', 4000);
+
+  return parseAIJSON<EnhancedCoverLetterResult>(content);
 }
 
 // Generate plain text from structured resume data
@@ -676,6 +842,9 @@ export interface ResumeWeakness {
   impact: string;
   fix: string;
   example?: string;
+  // NEW: Full rewritten version
+  rewrittenVersion?: string;
+  originalText?: string;
 }
 
 export interface WeaknessDetectorResult {
@@ -684,6 +853,19 @@ export interface WeaknessDetectorResult {
   healthScore: number;
   prioritizedActions: string[];
   positives: string[];
+  // NEW: Quick fixes ready to copy-paste
+  quickFixes?: {
+    section: string;
+    original: string;
+    improved: string;
+    changeType: 'rewrite' | 'add' | 'remove' | 'restructure';
+  }[];
+  // NEW: Industry-specific feedback
+  industryInsights?: {
+    commonMistakes: string[];
+    industryKeywords: string[];
+    competitorAdvantages: string[];
+  };
 }
 
 export async function detectWeaknesses(
@@ -728,20 +910,39 @@ Return JSON:
       "severity": "Critical/Major/Minor",
       "impact": "How this hurts their chances",
       "fix": "Specific actionable fix",
-      "example": "Example of improved version (if applicable)"
+      "example": "Brief example snippet",
+      "originalText": "The exact original text that needs fixing",
+      "rewrittenVersion": "Complete rewritten version ready to copy-paste. Make it professional, impactful, and ATS-friendly."
     }
   ],
   "overallHealth": "Excellent (0-1 issues) | Good (2-3 minor) | Needs Work (multiple issues) | Critical Issues (major red flags)",
   "healthScore": 0-100,
   "prioritizedActions": ["Top 3-5 fixes in order of importance"],
-  "positives": ["2-3 things the resume does well to balance feedback"]
+  "positives": ["2-3 things the resume does well to balance feedback"],
+  "quickFixes": [
+    {
+      "section": "Summary|Experience|Skills|etc",
+      "original": "The weak original text",
+      "improved": "The improved version ready to use",
+      "changeType": "rewrite|add|remove|restructure"
+    }
+  ],
+  "industryInsights": {
+    "commonMistakes": ["Common mistakes for this role/industry that this resume makes"],
+    "industryKeywords": ["Important keywords missing that are standard for this field"],
+    "competitorAdvantages": ["What top candidates typically include that this resume lacks"]
+  }
 }
 
-Be thorough but constructive. Every weakness should have an actionable fix.
+IMPORTANT:
+- For EVERY weakness, provide a complete rewrittenVersion that the user can copy-paste directly
+- The rewrittenVersion should be a full replacement, not just a suggestion
+- Include at least 3-5 quickFixes covering the most impactful changes
+- Be specific with industryInsights based on the target role
 
 Return only valid JSON.`;
 
-  const { content } = await callAI(prompt, userId || '', organizationId, 'weakness_detector');
+  const { content } = await callAI(prompt, userId || '', organizationId, 'weakness_detector', 6000);
   return parseAIJSON<WeaknessDetectorResult>(content);
 }
 

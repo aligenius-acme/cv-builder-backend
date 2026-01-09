@@ -9,6 +9,20 @@ interface Question {
   difficulty: 'easy' | 'medium' | 'hard';
   tips?: string;
   sampleAnswer?: string;
+  // NEW: Enhanced fields
+  redFlagAnswers?: string[];
+  followUpQuestions?: string[];
+  starTemplate?: {
+    situation: string;
+    task: string;
+    action: string;
+    result: string;
+  };
+  scoringRubric?: {
+    excellent: string;
+    good: string;
+    poor: string;
+  };
 }
 
 export const generateQuestions = async (
@@ -25,7 +39,8 @@ export const generateQuestions = async (
 
     const systemPrompt = `You are an expert career coach and interview preparation specialist.
 Generate realistic interview questions that a candidate would face for this position.
-Consider the industry, role level, and company culture in your questions.`;
+Consider the industry, role level, and company culture in your questions.
+Include comprehensive preparation materials for each question.`;
 
     let userPrompt = `Generate 10 interview questions for this position:
 Job Title: ${jobTitle}`;
@@ -46,23 +61,49 @@ Job Title: ${jobTitle}`;
     const typesToInclude = questionTypes || ['behavioral', 'technical', 'situational'];
     userPrompt += `\n\nInclude these question types: ${typesToInclude.join(', ')}
 
-Return as JSON array with this structure:
+Return as JSON array with this enhanced structure:
 [
   {
-    "question": "...",
+    "question": "The interview question",
     "category": "behavioral" | "technical" | "situational" | "company-specific",
     "difficulty": "easy" | "medium" | "hard",
     "tips": "Brief tip for answering",
-    "sampleAnswer": "A strong sample answer"
+    "sampleAnswer": "A strong sample answer demonstrating best practices",
+    "redFlagAnswers": [
+      "Example of a bad answer that would hurt chances (e.g., 'I've never had to deal with conflict')",
+      "Another answer to avoid (e.g., 'I blame others when things go wrong')",
+      "Third red flag response to avoid"
+    ],
+    "followUpQuestions": [
+      "A likely follow-up question the interviewer might ask",
+      "Another potential follow-up based on the answer"
+    ],
+    "starTemplate": {
+      "situation": "Describe a specific context prompt for STAR method",
+      "task": "What was your responsibility prompt",
+      "action": "What specific actions did you take prompt",
+      "result": "What was the outcome with metrics if possible"
+    },
+    "scoringRubric": {
+      "excellent": "What makes an excellent answer (specific, measurable outcomes, relevant experience)",
+      "good": "What makes a good answer (clear structure, relevant but less detailed)",
+      "poor": "What makes a poor answer (vague, irrelevant, negative about others)"
+    }
   }
-]`;
+]
+
+IMPORTANT:
+- Include 2-3 redFlagAnswers for each question showing what NOT to say
+- Include 2 followUpQuestions that interviewers commonly ask as follow-ups
+- For behavioral questions, always include a starTemplate with prompts
+- The scoringRubric should help candidates self-evaluate their answers`;
 
     const result = await executeJsonArrayCompletion<Question>(
       {
         systemPrompt,
         userPrompt,
         temperature: 0.7,
-        maxTokens: 3000,
+        maxTokens: 6000,
       },
       {
         userId: req.user!.id,

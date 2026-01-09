@@ -9,6 +9,7 @@ import {
   deleteCoverLetter,
   downloadCoverLetter,
   regenerateCoverLetter,
+  generateEnhancedCoverLetter,
 } from '../controllers/coverLetter';
 
 const router = Router();
@@ -19,6 +20,7 @@ router.use(checkCoverLetterAccess);
 
 // Cover letter operations
 router.post('/', generateCoverLetter);
+router.post('/enhanced', generateEnhancedCoverLetter); // Enhanced with alternatives
 router.get('/', getCoverLetters);
 router.get('/:id', getCoverLetter);
 router.put('/:id', updateCoverLetter);

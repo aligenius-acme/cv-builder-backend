@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest, ParsedResumeData, JobData } from '../types';
 import { ValidationError, NotFoundError } from '../utils/errors';
-import { generateCoverLetter as aiGenerateCoverLetter } from '../services/ai';
+import { generateCoverLetter as aiGenerateCoverLetter, generateEnhancedCoverLetter as aiGenerateEnhancedCoverLetter } from '../services/ai';
 import { generateCoverLetterPDF, generateCoverLetterDOCX } from '../services/documents';
 import { uploadDocument } from '../services/storage';
 
@@ -370,6 +370,105 @@ export const regenerateCoverLetter = async (
         content: updated.content,
         tone: updated.tone,
         updatedAt: updated.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Generate enhanced cover letter with alternatives
+export const generateEnhancedCoverLetter = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const organizationId = req.user!.organizationId;
+    const { resumeVersionId, jobTitle, companyName, jobDescription, tone = 'professional' } = req.body;
+
+    if (!jobTitle || !companyName || !jobDescription) {
+      throw new ValidationError('Job title, company name, and job description are required');
+    }
+
+    let resumeData: ParsedResumeData;
+    let jobData: JobData;
+
+    // If resumeVersionId provided, use that version's data
+    if (resumeVersionId) {
+      const version = await prisma.resumeVersion.findFirst({
+        where: { id: resumeVersionId, userId },
+      });
+
+      if (!version) {
+        throw new NotFoundError('Resume version not found');
+      }
+
+      resumeData = version.tailoredData as unknown as ParsedResumeData;
+      jobData = version.jobData as unknown as JobData;
+    } else {
+      // Use the most recent resume
+      const resume = await prisma.resume.findFirst({
+        where: { userId, parseStatus: 'completed' },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (!resume) {
+        throw new NotFoundError('No parsed resume found. Please upload a resume first.');
+      }
+
+      resumeData = resume.parsedData as unknown as ParsedResumeData;
+
+      // Extract job data from provided job description
+      jobData = {
+        requiredSkills: [],
+        preferredSkills: [],
+        responsibilities: [],
+        keywords: [],
+        qualifications: [],
+      };
+    }
+
+    // Generate enhanced cover letter using AI
+    const result = await aiGenerateEnhancedCoverLetter(
+      {
+        resumeData,
+        jobData,
+        jobTitle,
+        companyName,
+        tone: tone as 'professional' | 'enthusiastic' | 'formal',
+      },
+      userId,
+      organizationId
+    );
+
+    // Save cover letter
+    const coverLetter = await prisma.coverLetter.create({
+      data: {
+        userId,
+        resumeVersionId,
+        jobTitle,
+        companyName,
+        jobDescription,
+        content: result.content,
+        tone,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: coverLetter.id,
+        jobTitle: coverLetter.jobTitle,
+        companyName: coverLetter.companyName,
+        content: result.content,
+        alternativeOpenings: result.alternativeOpenings,
+        keyPhrases: result.keyPhrases,
+        toneAnalysis: result.toneAnalysis,
+        callToActionVariations: result.callToActionVariations,
+        subjectLineOptions: result.subjectLineOptions,
+        createdAt: coverLetter.createdAt,
       },
     });
   } catch (error) {

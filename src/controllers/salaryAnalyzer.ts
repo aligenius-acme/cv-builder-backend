@@ -299,6 +299,8 @@ export const getNegotiationScript = async (
       reasons,
       jobTitle,
       company,
+      benefits,
+      competingOffers,
     } = req.body;
 
     if (!currentOffer || !targetSalary) {
@@ -308,32 +310,92 @@ export const getNegotiationScript = async (
       });
     }
 
-    const systemPrompt = `You are an expert salary negotiation coach.
-Create professional, persuasive negotiation scripts.
-Be confident but not aggressive. Focus on value provided.`;
+    const systemPrompt = `You are an expert salary negotiation coach with 20+ years experience.
+Create professional, persuasive negotiation scripts with specific counter-offer phrases.
+Be confident but not aggressive. Focus on value provided.
+Include word-for-word scripts the candidate can use.`;
 
-    const userPrompt = `Create a salary negotiation script:
+    const userPrompt = `Create a comprehensive salary negotiation toolkit:
 
 Current Offer: ${currentOffer}
 Target Salary: ${targetSalary}
 Position: ${jobTitle || 'Not specified'}
 Company: ${company || 'Not specified'}
 Reasons for increase: ${reasons?.join(', ') || 'Market research, experience, skills'}
+${benefits ? `Benefits to negotiate: ${benefits}` : ''}
+${competingOffers ? `Competing offers: ${competingOffers}` : ''}
 
 Provide in this JSON format:
 {
-  "openingStatement": "How to start the conversation",
+  "openingStatement": "Word-for-word script to start the conversation",
   "keyPoints": [
-    {"point": "...", "elaboration": "..."}
+    {"point": "Value proposition point", "elaboration": "How to elaborate on this", "exactScript": "Word-for-word what to say"}
   ],
   "responses": {
-    "ifTheyPushBack": "How to respond if they push back",
-    "ifTheyNeedTime": "How to respond if they need to think",
-    "ifTheyCounterLow": "How to respond to a low counter"
+    "ifTheyPushBack": "Word-for-word response if they push back",
+    "ifTheyNeedTime": "What to say if they need to think",
+    "ifTheyCounterLow": "How to respond to a low counter with specific language",
+    "ifTheySayBudgetLimited": "Response if they cite budget constraints",
+    "ifTheyAskForJustification": "How to justify your number with data"
+  },
+  "counterOfferScripts": [
+    {
+      "scenario": "They offer 10% below your target",
+      "script": "Word-for-word what to say",
+      "fallbackPosition": "What to say if they won't budge"
+    },
+    {
+      "scenario": "They can't increase base but offer other comp",
+      "script": "How to negotiate sign-on bonus, equity, etc.",
+      "fallbackPosition": "Minimum acceptable alternative"
+    },
+    {
+      "scenario": "They need to check with HR/leadership",
+      "script": "How to maintain leverage while they check",
+      "fallbackPosition": "Timeline to set for follow-up"
+    }
+  ],
+  "benefitsNegotiation": {
+    "signingBonus": {
+      "script": "Word-for-word to negotiate signing bonus",
+      "typicalRange": "What's reasonable to ask for"
+    },
+    "equity": {
+      "script": "How to negotiate equity/stock options",
+      "typicalRange": "What's reasonable for this level"
+    },
+    "pto": {
+      "script": "How to ask for additional PTO",
+      "typicalRange": "What's reasonable"
+    },
+    "remoteWork": {
+      "script": "How to negotiate remote work flexibility",
+      "tips": "What to emphasize"
+    },
+    "startDate": {
+      "script": "How to negotiate a later start date",
+      "tips": "Why this matters"
+    }
   },
   "closingStatement": "How to close professionally",
-  "emailTemplate": "Full email template for written negotiation",
-  "tips": ["tip 1", "tip 2"]
+  "emailTemplates": {
+    "initial": "Full email template for initial salary negotiation",
+    "counterOffer": "Email template responding to their counter",
+    "acceptance": "Email accepting the final offer gracefully",
+    "walkAway": "Professional email if you need to decline"
+  },
+  "walkawayStrategy": {
+    "minimumAcceptable": "How to determine your walk-away number",
+    "howToDecline": "Word-for-word graceful decline",
+    "keepDoorOpen": "How to maintain relationship for future"
+  },
+  "tips": ["tip 1", "tip 2", "tip 3"],
+  "commonMistakes": ["Mistake to avoid 1", "Mistake to avoid 2"],
+  "timeline": {
+    "whenToNegotiate": "Best timing for negotiation",
+    "howLongToWait": "How long to give them to respond",
+    "deadlineStrategy": "How to use competing offers as leverage"
+  }
 }`;
 
     const completion = await groq.chat.completions.create({
@@ -343,18 +405,23 @@ Provide in this JSON format:
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.6,
-      max_tokens: 1200,
+      max_tokens: 4000,
     });
 
     const responseText = completion.choices[0]?.message?.content || '{}';
 
-    let script = {
+    let script: any = {
       openingStatement: '',
       keyPoints: [],
       responses: {},
+      counterOfferScripts: [],
+      benefitsNegotiation: {},
       closingStatement: '',
-      emailTemplate: '',
+      emailTemplates: {},
+      walkawayStrategy: {},
       tips: [],
+      commonMistakes: [],
+      timeline: {},
     };
 
     try {

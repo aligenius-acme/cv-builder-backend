@@ -90,6 +90,30 @@ export interface ATSAnalysis {
   riskyElements: string[];
 }
 
+// Before/After comparison for resume sections
+export interface BeforeAfterComparison {
+  section: string;
+  before: string;
+  after: string;
+  improvement: string;
+  impactLevel: 'High' | 'Medium' | 'Low';
+}
+
+// Keyword density tracking
+export interface KeywordDensity {
+  before: number;
+  after: number;
+  improvement: string;
+}
+
+// Optimization summary
+export interface OptimizationSummary {
+  sectionsOptimized: number;
+  keywordsAdded: number;
+  bulletPointsEnhanced: number;
+  estimatedATSImprovement: string;
+}
+
 // AI Customization Result
 export interface CustomizationResult {
   tailoredData: ParsedResumeData;
@@ -100,6 +124,10 @@ export interface CustomizationResult {
   atsScore: number;
   atsDetails: ATSAnalysis;
   truthGuardWarnings: TruthGuardWarning[];
+  // New enhanced fields
+  beforeAfterComparisons?: BeforeAfterComparison[];
+  keywordDensity?: KeywordDensity;
+  optimizationSummary?: OptimizationSummary;
 }
 
 // Truth Guard Warning
