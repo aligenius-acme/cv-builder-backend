@@ -621,12 +621,46 @@ function parseEducation(content: string[]): EducationEntry[] {
 function parseSkills(content: string[]): string[] {
   const skills: string[] = [];
 
+  // Words/phrases to filter out
+  const filterWords = /^(and|or|including|such as|like|using|with|for|the|a|an|in|on|to|of|is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|could|should|may|might|must|shall|can|need|dare|ought|used|etc|e\.g\.|i\.e\.)$/i;
+  const descriptivePhrases = /(for\s+\w+\s+development|for\s+developing|for\s+building|for\s+managing|for\s+deploying|including\s+|such\s+as\s+)/i;
+
+  // Section headers to skip
+  const sectionHeaders = /^(web\s+technologies|back-?end\s+technologies|front-?end\s+technologies|microsoft\s+stack|frameworks?\s+and\s+libraries|cloud\s+technologies|tools?\s+and\s+version\s+control|development\s+practices|technical\s+skills?|programming\s+languages?|databases?|devops|other\s+skills?):?$/i;
+
   for (const line of content) {
+    // Skip section headers
+    const cleanLine = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
+    if (sectionHeaders.test(cleanLine)) {
+      continue;
+    }
+
+    // Remove descriptive phrases
+    let processedLine = cleanLine.replace(descriptivePhrases, ' ');
+
     // Split by common delimiters
-    const parts = line.split(/[,;|•·]/);
+    const parts = processedLine.split(/[,;|•·:]/);
+
     for (const part of parts) {
-      const skill = part.replace(/^[-*]\s*/, '').trim();
-      if (skill.length > 1 && skill.length < 50) {
+      let skill = part.replace(/^[-*]\s*/, '').trim();
+
+      // Remove leading "and", "or", etc.
+      skill = skill.replace(/^(and|or)\s+/i, '').trim();
+
+      // Remove trailing descriptive text
+      skill = skill.replace(/\s+(for|including|such as|like|using|with).*$/i, '').trim();
+
+      // Skip if it's a filter word, too short, too long, or ends with a period (likely a sentence)
+      if (
+        skill.length > 1 &&
+        skill.length < 40 &&
+        !filterWords.test(skill) &&
+        !skill.endsWith('.') &&
+        !/^\d+$/.test(skill) && // Skip pure numbers
+        !/^(including|such as|like|using)\s/i.test(skill)
+      ) {
+        // Clean up common patterns
+        skill = skill.replace(/\s+/g, ' '); // Normalize whitespace
         skills.push(skill);
       }
     }

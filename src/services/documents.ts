@@ -12,6 +12,17 @@ const BULLETS: Record<string, string> = {
   none: '',
 };
 
+// Helper to clean bullet points from text
+function cleanBullet(text: string): string {
+  return text.replace(/^[•\-*▪◦›●○]\s*/, '').trim();
+}
+
+// Helper to get certification name (handles both string and object formats)
+function getCertName(cert: string | { name: string }): string {
+  if (typeof cert === 'string') return cleanBullet(cert);
+  return cleanBullet(cert.name || '');
+}
+
 // Anonymize resume data
 export function anonymizeResumeData(
   data: ParsedResumeData,
@@ -218,7 +229,7 @@ async function generateLeftAlignedPDF(
               .font('Helvetica')
               .fontSize(fontSize.body)
               .fillColor(textColor)
-              .text(`${bullet}  ${desc}`, { indent: 8, lineGap: 1 });
+              .text(`${bullet}  ${cleanBullet(desc)}`, { indent: 8, lineGap: 1 });
           }
           doc.moveDown(0.6);
         }
@@ -312,7 +323,7 @@ async function generateLeftAlignedPDF(
             .font('Helvetica')
             .fontSize(fontSize.body)
             .fillColor(textColor)
-            .text(`${bullet}  ${cert}`);
+            .text(`${bullet}  ${getCertName(cert)}`);
         }
       }
 
@@ -445,7 +456,7 @@ async function generateCenteredPDF(
               .font('Helvetica')
               .fontSize(fontSize.body)
               .fillColor(textColor)
-              .text(`${bullet}  ${desc}`, { indent: 12, lineGap: 1 });
+              .text(`${bullet}  ${cleanBullet(desc)}`, { indent: 12, lineGap: 1 });
           }
           doc.moveDown(0.6);
         }
@@ -490,7 +501,7 @@ async function generateCenteredPDF(
             .font('Helvetica')
             .fontSize(fontSize.body)
             .fillColor(textColor)
-            .text(`${bullet}  ${cert}`);
+            .text(`${bullet}  ${getCertName(cert)}`);
         }
       }
 
@@ -612,7 +623,7 @@ async function generateBannerPDF(
               .font('Helvetica')
               .fontSize(fontSize.body)
               .fillColor(textColor)
-              .text(`${bullet}  ${desc}`, 52, y, { width: pageWidth - 100, lineGap: 1 });
+              .text(`${bullet}  ${cleanBullet(desc)}`, 52, y, { width: pageWidth - 100, lineGap: 1 });
             y = doc.y + 3;
           }
           y += 10;
@@ -890,7 +901,7 @@ async function generateSidebarLeftPDF(
               .font('Helvetica')
               .fontSize(fontSize.body)
               .fillColor(mutedColor)
-              .text(`${bullet}  ${desc}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
+              .text(`${bullet}  ${cleanBullet(desc)}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
             mainY = doc.y + 3;
           }
           mainY += 10;
@@ -1048,7 +1059,7 @@ async function generateSidebarRightPDF(
               .font('Helvetica')
               .fontSize(fontSize.body)
               .fillColor(textColor)
-              .text(`${bullet}  ${desc}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
+              .text(`${bullet}  ${cleanBullet(desc)}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
             mainY = doc.y + 3;
           }
           mainY += 10;
@@ -1187,7 +1198,7 @@ async function generateSidebarRightPDF(
 
         doc.font('Helvetica').fontSize(8);
         for (const cert of data.certifications) {
-          doc.fillColor(textColor).text(`•  ${cert}`, sideX, sideY, { width: sideWidth });
+          doc.fillColor(textColor).text(`•  ${getCertName(cert)}`, sideX, sideY, { width: sideWidth });
           sideY = doc.y + 3;
         }
       }
@@ -1303,7 +1314,7 @@ export async function generateDOCX(
       for (const desc of exp.description || []) {
         children.push(
           new Paragraph({
-            children: [new TextRun({ text: `• ${desc}`, size: 22 })],
+            children: [new TextRun({ text: `• ${cleanBullet(desc)}`, size: 22 })],
             indent: { left: 200 },
             spacing: { after: 40 },
           })
@@ -1351,7 +1362,7 @@ export async function generateDOCX(
     for (const cert of data.certifications) {
       children.push(
         new Paragraph({
-          children: [new TextRun({ text: `• ${cert}`, size: 22 })],
+          children: [new TextRun({ text: `• ${getCertName(cert)}`, size: 22 })],
           spacing: { after: 40 },
         })
       );

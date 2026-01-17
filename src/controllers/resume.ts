@@ -71,7 +71,7 @@ export const uploadResume = async (
       const rawText = await parseFile(file.buffer, file.originalname);
       const parsedData = await extractResumeData(rawText);
 
-      await prisma.resume.update({
+      const updatedResume = await prisma.resume.update({
         where: { id: resume.id },
         data: {
           rawText,
@@ -91,10 +91,14 @@ export const uploadResume = async (
       res.status(201).json({
         success: true,
         data: {
-          id: resume.id,
-          fileName: file.originalname,
-          parseStatus: 'completed',
-          parsedData,
+          id: updatedResume.id,
+          title: updatedResume.title,
+          fileName: updatedResume.originalFileName,
+          parseStatus: updatedResume.parseStatus,
+          parsedData: updatedResume.parsedData,
+          rawText: updatedResume.rawText,
+          createdAt: updatedResume.createdAt,
+          updatedAt: updatedResume.updatedAt,
         },
       });
     } catch (parseError) {
@@ -191,6 +195,11 @@ export const getResume = async (
       throw new NotFoundError('Resume not found');
     }
 
+    // Ensure parsedData is properly returned as an object
+    const parsedData = resume.parsedData && typeof resume.parsedData === 'object'
+      ? resume.parsedData
+      : {};
+
     res.json({
       success: true,
       data: {
@@ -199,7 +208,7 @@ export const getResume = async (
         fileName: resume.originalFileName,
         parseStatus: resume.parseStatus,
         parseError: resume.parseError,
-        parsedData: resume.parsedData,
+        parsedData: parsedData,
         rawText: resume.rawText,
         versions: resume.versions.map((v) => ({
           id: v.id,
