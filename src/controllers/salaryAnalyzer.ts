@@ -49,10 +49,22 @@ export const analyzeSalary = async (
       });
     }
 
-    const systemPrompt = `You are an expert salary analyst with access to current market data.
-Provide realistic and well-researched salary estimates based on job market knowledge.
-Use USD unless another currency is specified.
-Be conservative with estimates and provide ranges.`;
+    const systemPrompt = `You are an expert salary analyst. Provide REALISTIC and ACCURATE salary estimates.
+
+CRITICAL RULES FOR ACCURACY:
+1. Base estimates on real market data patterns - don't inflate to make users feel good
+2. Location matters enormously - SF/NYC pay 40-60% more than average US markets
+3. Experience years have diminishing returns - 10 years doesn't pay 2x of 5 years
+4. Company size matters - startups often pay less base but more equity
+5. Be CONSERVATIVE with estimates - it's better to be pleasantly surprised than disappointed
+6. Acknowledge uncertainty - salary data varies widely and your knowledge may be dated
+
+COMMON MISTAKES TO AVOID:
+- Don't quote top-of-market FAANG salaries as typical
+- Don't assume all "Senior" titles mean the same level
+- Account for the full compensation picture (base, bonus, equity, benefits)
+
+Use USD unless another currency is specified.`;
 
     const userPrompt = `Analyze the salary market for this position:
 
@@ -179,9 +191,21 @@ export const compareOffers = async (
       });
     }
 
-    const systemPrompt = `You are an expert career advisor helping compare job offers.
-Consider total compensation, benefits, work-life balance, career growth, and other factors.
-Provide objective, actionable advice.`;
+    const systemPrompt = `You are an expert career advisor helping compare job offers with HONEST, REALISTIC analysis.
+
+CRITICAL RULES:
+1. Don't just assume higher salary = better offer - consider total compensation
+2. Be realistic about equity value - most startup equity ends up worthless
+3. Factor in cost of living differences between locations
+4. Consider career trajectory, not just immediate compensation
+5. Be honest about trade-offs - there's rarely a clearly "best" option
+6. Account for job stability and company financial health
+
+COMMON CANDIDATE MISTAKES TO WARN ABOUT:
+- Overvaluing equity at startups (90%+ fail or have minimal exits)
+- Ignoring benefits value (health insurance alone can be $15-25k/year value)
+- Not factoring in commute/remote work value
+- Chasing title over compensation or learning opportunity`;
 
     const offersDescription = offers.map((o: any, i: number) => `
 Offer ${i + 1}:

@@ -37,10 +37,20 @@ export const generateQuestions = async (
       return sendValidationError(res, 'Job title is required');
     }
 
-    const systemPrompt = `You are an expert career coach and interview preparation specialist.
-Generate realistic interview questions that a candidate would face for this position.
-Consider the industry, role level, and company culture in your questions.
-Include comprehensive preparation materials for each question.`;
+    const systemPrompt = `You are an expert career coach and interview preparation specialist who has conducted thousands of interviews.
+
+Generate REALISTIC, CHALLENGING interview questions that a candidate would ACTUALLY face for this position. Include the tough questions that trip up candidates, not just softball questions.
+
+QUESTION DIFFICULTY DISTRIBUTION:
+- 30% should be genuinely difficult questions that many candidates fail
+- 40% should be moderately challenging
+- 30% should be standard questions but with high expectations for answers
+
+Include questions that test for:
+- Actual technical/domain competence (not just buzzwords)
+- Real problem-solving ability
+- Honest self-awareness about weaknesses
+- Cultural fit concerns interviewers typically have`;
 
     let userPrompt = `Generate 10 interview questions for this position:
 Job Title: ${jobTitle}`;
@@ -143,11 +153,18 @@ export const evaluateAnswer = async (
       return sendValidationError(res, 'Question and answer are required');
     }
 
-    const systemPrompt = `You are an expert interview coach. Evaluate the candidate's answer objectively.
-Provide constructive feedback that helps them improve.
-Be encouraging but honest about areas for improvement.`;
+    const systemPrompt = `You are an HONEST and CRITICAL interview coach. Your job is to help candidates improve by giving them REAL feedback, not feel-good platitudes.
 
-    const userPrompt = `Evaluate this interview answer:
+SCORING GUIDELINES (BE STRICT):
+- 9-10: Exceptional answer that would impress even demanding interviewers (RARE)
+- 7-8: Strong answer with good structure and specific examples
+- 5-6: Adequate answer but missing key elements or specificity
+- 3-4: Weak answer with vague responses or missing the point
+- 1-2: Poor answer that would likely disqualify the candidate
+
+Most practice answers should score 4-6. A score of 8+ should be reserved for genuinely impressive responses.`;
+
+    const userPrompt = `Evaluate this interview answer CRITICALLY and HONESTLY:
 
 Position: ${jobTitle || 'Not specified'}${company ? ` at ${company}` : ''}
 
@@ -155,13 +172,23 @@ Question: "${question}"
 
 Candidate's Answer: "${answer}"
 
+EVALUATION CRITERIA:
+- Does it use the STAR method (Situation, Task, Action, Result)?
+- Are there SPECIFIC examples with concrete details?
+- Are there QUANTIFIED results where appropriate?
+- Is it concise and well-structured?
+- Does it actually answer the question asked?
+- Would this answer differentiate them from other candidates?
+
 Provide evaluation in this JSON format:
 {
-  "score": (1-10),
-  "strengths": ["strength 1", "strength 2"],
-  "improvements": ["improvement 1", "improvement 2"],
-  "improvedAnswer": "A stronger version of their answer",
-  "feedback": "Overall brief feedback paragraph"
+  "score": (1-10, BE HONEST - most answers are 4-6),
+  "strengths": ["genuine strengths only - don't manufacture positives"],
+  "improvements": ["specific, actionable improvements needed"],
+  "criticalIssues": ["any major problems that would hurt their chances"],
+  "improvedAnswer": "A significantly stronger version showing what good looks like",
+  "feedback": "Honest overall assessment - tell them what an interviewer would really think",
+  "wouldPass": true/false - "Would this answer likely advance them to the next round?"
 }`;
 
     const result = await executeJsonCompletion<Evaluation>(

@@ -103,6 +103,7 @@ export interface ATSAnalysis {
   recommendations: string[];
   atsExtractedView: string;
   riskyElements: string[];
+  honestAssessment?: string; // Blunt assessment of resume competitiveness
 }
 
 // Before/After comparison for resume sections

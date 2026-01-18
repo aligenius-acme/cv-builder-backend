@@ -45,52 +45,68 @@ export const getResumePerformanceScore = async (
 
     const startTime = Date.now();
 
-    const prompt = `Analyze this resume and provide a comprehensive performance score. Return a JSON object with the following structure:
+    const prompt = `You are a CRITICAL resume analyst. Provide an HONEST performance score - most resumes score 40-65, not 80+.
 
+SCORING GUIDELINES (BE STRICT):
+- 90-100: Exceptional resume (top 1%) - rare, almost never given
+- 75-89: Strong resume with minor improvements needed
+- 60-74: Average resume - functional but not competitive
+- 45-59: Below average - needs significant work
+- 30-44: Weak resume - major issues
+- 0-29: Poor resume - needs complete rewrite
+
+A resume with:
+- No metrics = automatic cap at 60 for quantification
+- Generic buzzwords without evidence = cap at 50 for uniqueness
+- Missing sections = cap at 50 for completeness
+- Vague bullet points = cap at 55 for impact language
+
+Return a JSON object:
 {
-  "overallScore": <number 0-100>,
+  "overallScore": <number 0-100 - BE HONEST, most resumes are 45-65>,
   "categories": {
     "impactLanguage": {
-      "score": <number 0-100>,
-      "description": "<brief explanation>",
-      "suggestions": ["<improvement suggestion>", ...]
+      "score": <0-100 - penalize heavily for weak verbs and vague statements>,
+      "description": "<honest assessment>",
+      "suggestions": ["<specific improvement with example>", ...]
     },
     "quantification": {
-      "score": <number 0-100>,
-      "description": "<brief explanation>",
-      "bulletsWithMetrics": <number>,
-      "totalBullets": <number>,
-      "suggestions": ["<improvement suggestion>", ...]
+      "score": <0-100 - count actual metrics, most resumes score 30-50 here>,
+      "description": "<honest assessment>",
+      "bulletsWithMetrics": <actual count>,
+      "totalBullets": <actual count>,
+      "suggestions": ["<specific improvement with example>", ...]
     },
     "keywordOptimization": {
-      "score": <number 0-100>,
-      "description": "<brief explanation>",
-      "strongKeywords": ["<keyword>", ...],
-      "missingKeywords": ["<keyword>", ...],
-      "suggestions": ["<improvement suggestion>", ...]
+      "score": <0-100 - based on industry-relevant keywords present>,
+      "description": "<honest assessment>",
+      "strongKeywords": ["<actual relevant keywords found>", ...],
+      "missingKeywords": ["<important keywords missing for their field>", ...],
+      "suggestions": ["<specific improvement>", ...]
     },
     "readability": {
-      "score": <number 0-100>,
-      "description": "<brief explanation>",
+      "score": <0-100>,
+      "description": "<honest assessment>",
       "avgSentenceLength": <number>,
-      "suggestions": ["<improvement suggestion>", ...]
+      "suggestions": ["<specific improvement>", ...]
     },
     "uniqueness": {
-      "score": <number 0-100>,
-      "description": "<brief explanation>",
-      "genericPhrases": ["<phrase>", ...],
-      "suggestions": ["<improvement suggestion>", ...]
+      "score": <0-100 - penalize heavily for clichés and generic phrases>,
+      "description": "<honest assessment>",
+      "genericPhrases": ["<overused phrases found>", ...],
+      "suggestions": ["<specific improvement>", ...]
     },
     "completeness": {
-      "score": <number 0-100>,
-      "description": "<brief explanation>",
-      "missingSections": ["<section>", ...],
-      "suggestions": ["<improvement suggestion>", ...]
+      "score": <0-100>,
+      "description": "<honest assessment>",
+      "missingSections": ["<missing sections>", ...],
+      "suggestions": ["<specific improvement>", ...]
     }
   },
-  "topStrengths": ["<strength>", "<strength>", "<strength>"],
-  "priorityImprovements": ["<improvement>", "<improvement>", "<improvement>"],
-  "competitiveAnalysis": "<brief analysis of how this resume compares to typical industry standards>"
+  "topStrengths": ["<genuine strengths only - OK to have fewer than 3 if resume is weak>"],
+  "priorityImprovements": ["<most critical fixes needed>", "<second priority>", "<third priority>"],
+  "competitiveAnalysis": "<HONEST assessment of how this compares to other candidates - tell them if they'd struggle to get interviews>",
+  "bluntAssessment": "<1-2 sentence brutally honest summary>"
 }
 
 Resume:
@@ -177,54 +193,69 @@ export const analyzeSkillGap = async (
 
     const startTime = Date.now();
 
-    const prompt = `Analyze the skill gap between this candidate's resume and their target role. Return a JSON object:
+    const prompt = `You are a REALISTIC career advisor. Analyze the skill gap HONESTLY - don't sugarcoat if there's a significant gap.
 
+CRITICAL RULES FOR HONEST ASSESSMENT:
+1. matchPercentage should be MATHEMATICAL: (skills they have / skills required) * 100
+2. If they're missing critical skills, readinessLevel should reflect that honestly
+3. Don't inflate matchPercentage to make them feel good - a 40% match IS a 40% match
+4. Time estimates for learning should be REALISTIC - you can't become proficient in a new programming language in 2 weeks
+5. If the gap is significant, SAY SO clearly
+
+MATCH PERCENTAGE GUIDELINES:
+- 80-100%: Ready to apply now
+- 60-79%: Almost ready, minor gaps to address
+- 40-59%: Significant development needed (months of work)
+- 20-39%: Major gap - consider intermediate roles first
+- 0-19%: Different career path needed
+
+Return a JSON object:
 {
   "currentSkills": {
-    "technical": ["<skill>", ...],
-    "soft": ["<skill>", ...],
-    "tools": ["<tool>", ...],
-    "certifications": ["<cert>", ...]
+    "technical": ["<only skills ACTUALLY listed>", ...],
+    "soft": ["<only if mentioned>", ...],
+    "tools": ["<only tools mentioned>", ...],
+    "certifications": ["<only if listed>", ...]
   },
   "requiredSkills": {
-    "technical": ["<skill>", ...],
-    "soft": ["<skill>", ...],
-    "tools": ["<tool>", ...],
-    "certifications": ["<cert>", ...]
+    "technical": ["<required for target role>", ...],
+    "soft": ["<required for target role>", ...],
+    "tools": ["<required for target role>", ...],
+    "certifications": ["<required or strongly preferred>", ...]
   },
   "skillGaps": [
     {
-      "skill": "<skill name>",
+      "skill": "<missing skill>",
       "category": "technical|soft|tools|certification",
-      "importance": "critical|important|nice-to-have",
+      "importance": "critical (dealbreaker)|important (strong preference)|nice-to-have",
       "currentLevel": "none|beginner|intermediate|advanced",
       "requiredLevel": "beginner|intermediate|advanced|expert",
       "learningPath": {
-        "estimatedTime": "<e.g., 2-4 weeks>",
+        "estimatedTime": "<REALISTIC time - learning React basics takes 2-3 months, not 2 weeks>",
         "resources": [
           {
             "type": "course|book|tutorial|certification|project",
-            "name": "<resource name>",
-            "provider": "<provider name>",
-            "url": "<optional url>",
+            "name": "<real resource name>",
+            "provider": "<real provider>",
             "cost": "free|paid",
-            "duration": "<estimated time>"
+            "duration": "<realistic duration>"
           }
         ]
       }
     }
   ],
-  "matchPercentage": <number 0-100>,
-  "readinessLevel": "ready|almost-ready|needs-development|significant-gap",
+  "matchPercentage": <HONEST 0-100 - most career changers score 30-50>,
+  "readinessLevel": "ready (75%+)|almost-ready (60-74%)|needs-development (40-59%)|significant-gap (20-39%)|major-pivot-needed (<20%)",
   "prioritizedActions": [
     {
       "action": "<specific action>",
       "impact": "high|medium|low",
-      "timeframe": "<estimated time>",
+      "timeframe": "<REALISTIC timeframe>",
       "description": "<why this matters>"
     }
   ],
-  "careerPathInsights": "<paragraph about career progression and opportunities>"
+  "careerPathInsights": "<HONEST assessment - if they need intermediate steps, say so>",
+  "honestAssessment": "<1-2 sentences of blunt truth about their readiness>"
 }
 
 Candidate Skills: ${Array.isArray(skillsToAnalyze) ? skillsToAnalyze.join(', ') : skillsToAnalyze}
