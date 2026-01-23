@@ -9,6 +9,7 @@ import { generatePDF, generateDOCX, anonymizeResumeData } from '../services/docu
 import { getTemplate, isValidTemplate } from '../services/templates';
 import { getSubscriptionLimits } from '../middleware/subscription';
 import { scrapeJobPosting, formatJobDescription, ScrapedJobData } from '../services/jobScraper';
+import { PlanType } from '@prisma/client';
 
 // Upload and parse resume
 export const uploadResume = async (
@@ -330,6 +331,23 @@ export const customizeResume = async (
 
     if (resume.parseStatus !== 'completed') {
       throw new ValidationError('Resume parsing is not completed');
+    }
+
+    // Check version quota
+    const versionCount = await prisma.resumeVersion.count({
+      where: { resumeId: id },
+    });
+
+    const limits = getSubscriptionLimits(req.user!.planType);
+    if (limits.maxVersionsPerResume !== -1 && versionCount >= limits.maxVersionsPerResume) {
+      const currentPlan = req.user!.planType;
+      const upgradeMessage = currentPlan === PlanType.FREE
+        ? 'Upgrade to Pro or Business for unlimited resume versions.'
+        : 'Upgrade to Business for unlimited resume versions.';
+
+      throw new QuotaExceededError(
+        `You've reached your plan's limit of ${limits.maxVersionsPerResume} versions per resume (${versionCount}/${limits.maxVersionsPerResume}). ${upgradeMessage}`
+      );
     }
 
     // Get next version number

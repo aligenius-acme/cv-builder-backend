@@ -74,7 +74,9 @@ export const requireProPlan = async (
     }
 
     if (req.user.planType === PlanType.FREE) {
-      return next(new SubscriptionError('Pro subscription required for this feature'));
+      return next(new SubscriptionError(
+        'This feature requires a Pro or Business plan. Upgrade to access premium features.'
+      ));
     }
 
     next();
@@ -130,8 +132,14 @@ export const checkResumeQuota = async (
     });
 
     if (resumeCount >= limits.maxResumes) {
+      // Generate plan-specific upgrade message
+      const currentPlan = req.user.planType;
+      const upgradeMessage = currentPlan === PlanType.FREE
+        ? 'Upgrade to Pro for up to 10 resumes or Business for unlimited resumes.'
+        : 'Upgrade to Business for unlimited resumes.';
+
       return next(new QuotaExceededError(
-        `Resume limit reached (${limits.maxResumes}). Upgrade to Pro for more resumes.`
+        `You've reached your plan's resume limit (${resumeCount}/${limits.maxResumes}). ${upgradeMessage}`
       ));
     }
 
@@ -155,7 +163,14 @@ export const checkCoverLetterAccess = async (
     const limits = getSubscriptionLimits(req.user.planType);
 
     if (!limits.coverLettersEnabled) {
-      return next(new SubscriptionError('Cover letter generation requires Pro subscription'));
+      const currentPlan = req.user.planType;
+      const availablePlans = currentPlan === PlanType.FREE
+        ? 'Pro or Business plan'
+        : 'Business plan';
+
+      return next(new SubscriptionError(
+        `Cover letter generation is not available on your current plan. Upgrade to ${availablePlans} to unlock this feature.`
+      ));
     }
 
     next();
@@ -178,7 +193,14 @@ export const checkATSSimulatorAccess = async (
     const limits = getSubscriptionLimits(req.user.planType);
 
     if (!limits.atsSimulatorEnabled) {
-      return next(new SubscriptionError('ATS Simulator requires Pro subscription'));
+      const currentPlan = req.user.planType;
+      const availablePlans = currentPlan === PlanType.FREE
+        ? 'Pro or Business plan'
+        : 'Business plan';
+
+      return next(new SubscriptionError(
+        `ATS Simulator is not available on your current plan. Upgrade to ${availablePlans} to unlock this feature.`
+      ));
     }
 
     next();
@@ -201,7 +223,9 @@ export const checkAnonymizationAccess = async (
     const limits = getSubscriptionLimits(req.user.planType);
 
     if (!limits.anonymizationEnabled) {
-      return next(new SubscriptionError('Anonymization requires Business subscription'));
+      return next(new SubscriptionError(
+        `Anonymization feature is only available on the Business plan. Upgrade to Business to mask candidate information for recruiting purposes.`
+      ));
     }
 
     next();
