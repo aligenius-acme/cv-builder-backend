@@ -36,8 +36,8 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     const msg: sgMail.MailDataRequired = {
       to: options.to,
       from: {
-        email: config.email.fromEmail || 'noreply@resumeai.com',
-        name: config.email.fromName || 'ResumeAI',
+        email: config.email.fromEmail || 'noreply@jobtools.ai',
+        name: config.email.fromName || 'JobTools AI',
       },
       subject: options.subject,
       // Provide default content (will be overwritten if templateId or html/text provided)
@@ -69,7 +69,7 @@ export async function sendWelcomeEmail(
 
   return sendEmail({
     to: email,
-    subject: 'Welcome to ResumeAI! 🎉',
+    subject: 'Welcome to JobTools AI! 🎉',
     html: `
       <!DOCTYPE html>
       <html>
@@ -79,12 +79,12 @@ export async function sendWelcomeEmail(
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #6366f1; margin: 0;">ResumeAI</h1>
+          <h1 style="color: #6366f1; margin: 0;">JobTools AI</h1>
         </div>
 
         <h2 style="color: #1e293b;">Welcome, ${name}! 👋</h2>
 
-        <p>Thanks for joining ResumeAI. We're excited to help you land your dream job!</p>
+        <p>Thanks for joining JobTools AI. We're excited to help you land your dream job!</p>
 
         <p>Here's what you can do:</p>
         <ul style="padding-left: 20px;">
@@ -103,12 +103,12 @@ export async function sendWelcomeEmail(
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
 
         <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-          © ${new Date().getFullYear()} ResumeAI. All rights reserved.
+          © ${new Date().getFullYear()} JobTools AI. All rights reserved.
         </p>
       </body>
       </html>
     `,
-    text: `Welcome to ResumeAI, ${name}!\n\nThanks for joining us. Get started at ${config.frontendUrl}/dashboard`,
+    text: `Welcome to JobTools AI, ${name}!\n\nThanks for joining us. Get started at ${config.frontendUrl}/dashboard`,
   });
 }
 
@@ -123,7 +123,7 @@ export async function sendPasswordResetEmail(
 
   return sendEmail({
     to: email,
-    subject: 'Reset Your Password - ResumeAI',
+    subject: 'Reset Your Password - JobTools AI',
     html: `
       <!DOCTYPE html>
       <html>
@@ -133,7 +133,7 @@ export async function sendPasswordResetEmail(
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #6366f1; margin: 0;">ResumeAI</h1>
+          <h1 style="color: #6366f1; margin: 0;">JobTools AI</h1>
         </div>
 
         <h2 style="color: #1e293b;">Reset Your Password</h2>
@@ -151,7 +151,7 @@ export async function sendPasswordResetEmail(
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
 
         <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-          © ${new Date().getFullYear()} ResumeAI. All rights reserved.
+          © ${new Date().getFullYear()} JobTools AI. All rights reserved.
         </p>
       </body>
       </html>
@@ -171,7 +171,7 @@ export async function sendVerificationEmail(
 
   return sendEmail({
     to: email,
-    subject: 'Verify Your Email - ResumeAI',
+    subject: 'Verify Your Email - JobTools AI',
     html: `
       <!DOCTYPE html>
       <html>
@@ -181,7 +181,7 @@ export async function sendVerificationEmail(
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #6366f1; margin: 0;">ResumeAI</h1>
+          <h1 style="color: #6366f1; margin: 0;">JobTools AI</h1>
         </div>
 
         <h2 style="color: #1e293b;">Verify Your Email</h2>
@@ -199,7 +199,7 @@ export async function sendVerificationEmail(
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
 
         <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-          © ${new Date().getFullYear()} ResumeAI. All rights reserved.
+          © ${new Date().getFullYear()} JobTools AI. All rights reserved.
         </p>
       </body>
       </html>
@@ -242,7 +242,7 @@ export async function sendInterviewReminder(
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #6366f1; margin: 0;">ResumeAI</h1>
+          <h1 style="color: #6366f1; margin: 0;">JobTools AI</h1>
         </div>
 
         <h2 style="color: #1e293b;">Interview Reminder 📅</h2>
@@ -276,7 +276,7 @@ export async function sendInterviewReminder(
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
 
         <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-          © ${new Date().getFullYear()} ResumeAI. All rights reserved.
+          © ${new Date().getFullYear()} JobTools AI. All rights reserved.
         </p>
       </body>
       </html>

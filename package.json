@@ -1,7 +1,7 @@
 {
-  "name": "ai-resume-customizer-backend",
+  "name": "jobtools-ai-backend",
   "version": "1.0.0",
-  "description": "AI Resume & CV Customizer Backend API",
+  "description": "JobTools AI - AI-Powered Job Search Platform Backend API",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

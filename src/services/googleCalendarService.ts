@@ -42,7 +42,7 @@ export async function createInterviewEvent(
 
   const calendarEvent = {
     summary: event.title,
-    description: event.description || 'Interview scheduled via ResumeAI',
+    description: event.description || 'Interview scheduled via JobTools AI',
     start: {
       dateTime: event.startTime.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,

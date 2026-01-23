@@ -62,8 +62,8 @@ export const config = {
   // Email (SendGrid - FREE 100/day)
   email: {
     sendgridApiKey: process.env.SENDGRID_API_KEY || '',
-    fromEmail: process.env.EMAIL_FROM_ADDRESS || 'noreply@resumeai.com',
-    fromName: process.env.EMAIL_FROM_NAME || 'ResumeAI',
+    fromEmail: process.env.EMAIL_FROM_ADDRESS || 'noreply@jobtools.ai',
+    fromName: process.env.EMAIL_FROM_NAME || 'JobTools AI',
   },
 
   // Sentry Error Monitoring (FREE 5K errors/month)
