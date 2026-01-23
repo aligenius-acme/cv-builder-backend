@@ -738,10 +738,7 @@ export const createBlankResume = async (
       awards: [],
     };
 
-    // Generate initial rawText from blank data
-    const rawText = generateRawTextFromParsedData(blankResumeData);
-
-    // Create resume record
+    // Create resume record with empty rawText (will be generated when user adds content)
     const resume = await prisma.resume.create({
       data: {
         userId,
@@ -749,7 +746,7 @@ export const createBlankResume = async (
         originalFileName: 'Created with Resume Builder',
         originalFileUrl: '',
         originalFileKey: '',
-        rawText,
+        rawText: '', // Empty initially, generated on first save
         parsedData: blankResumeData as any,
         parseStatus: 'completed',
         isBase: true,
