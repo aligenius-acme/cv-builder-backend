@@ -786,6 +786,11 @@ export const updateResumeContent = async (
     const { id } = req.params;
     const { parsedData, title } = req.body;
 
+    console.log('=== UPDATE RESUME CONTENT DEBUG ===');
+    console.log('Resume ID:', id);
+    console.log('Received parsedData:', JSON.stringify(parsedData, null, 2));
+    console.log('Title:', title);
+
     const resume = await prisma.resume.findFirst({
       where: { id, userId },
     });
@@ -793,6 +798,8 @@ export const updateResumeContent = async (
     if (!resume) {
       throw new NotFoundError('Resume not found');
     }
+
+    console.log('Current parsedData in DB:', JSON.stringify(resume.parsedData, null, 2));
 
     // Validate parsedData structure
     if (parsedData) {
@@ -812,8 +819,13 @@ export const updateResumeContent = async (
     const currentData = resume.parsedData as any;
     const updatedData = parsedData ? { ...currentData, ...parsedData } : currentData;
 
+    console.log('Merged updatedData:', JSON.stringify(updatedData, null, 2));
+
     // Generate raw text from parsed data for search/ATS purposes
     const rawText = generateRawTextFromParsedData(updatedData);
+
+    console.log('Generated rawText length:', rawText.length);
+    console.log('Generated rawText preview:', rawText.substring(0, 200));
 
     const updated = await prisma.resume.update({
       where: { id },
