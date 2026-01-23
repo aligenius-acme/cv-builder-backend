@@ -738,6 +738,9 @@ export const createBlankResume = async (
       awards: [],
     };
 
+    // Generate initial rawText from blank data
+    const rawText = generateRawTextFromParsedData(blankResumeData);
+
     // Create resume record
     const resume = await prisma.resume.create({
       data: {
@@ -746,7 +749,7 @@ export const createBlankResume = async (
         originalFileName: 'Created with Resume Builder',
         originalFileUrl: '',
         originalFileKey: '',
-        rawText: '',
+        rawText,
         parsedData: blankResumeData as any,
         parseStatus: 'completed',
         isBase: true,
