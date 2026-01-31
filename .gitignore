@@ -17,3 +17,17 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Debug files
+debug-*.html
+debug-*.pdf
+nul
+
+# Test output
+/test-output
+/coverage
+
+# Temporary files
+*.tmp
+*.temp
+.cache
