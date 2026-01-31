@@ -1,9 +1,37 @@
 import { ParsedResumeData, JobData, ATSAnalysis, CustomizationResult, TruthGuardWarning, CoverLetterInput } from '../types';
 export declare function analyzeJobDescription(jobDescription: string, userId: string, organizationId?: string | null): Promise<JobData>;
+export interface BeforeAfterComparison {
+    section: string;
+    before: string;
+    after: string;
+    improvement: string;
+    impactLevel: 'High' | 'Medium' | 'Low';
+}
 export declare function customizeResume(resumeData: ParsedResumeData, resumeText: string, jobData: JobData, jobTitle: string, companyName: string, userId: string, organizationId?: string | null): Promise<Omit<CustomizationResult, 'atsScore' | 'atsDetails' | 'truthGuardWarnings'>>;
 export declare function analyzeATS(resumeText: string, jobKeywords: string[], userId: string, organizationId?: string | null): Promise<ATSAnalysis>;
 export declare function runTruthGuard(originalData: ParsedResumeData, tailoredData: ParsedResumeData, userId: string, organizationId?: string | null): Promise<TruthGuardWarning[]>;
+export interface EnhancedCoverLetterResult {
+    content: string;
+    alternativeOpenings: {
+        style: 'story' | 'achievement' | 'connection' | 'passion';
+        opening: string;
+        description: string;
+    }[];
+    keyPhrases: {
+        phrase: string;
+        matchesJobRequirement: string;
+    }[];
+    toneAnalysis: {
+        currentTone: string;
+        formalityScore: number;
+        enthusiasmScore: number;
+        suggestions: string[];
+    };
+    callToActionVariations: string[];
+    subjectLineOptions: string[];
+}
 export declare function generateCoverLetter(input: CoverLetterInput, userId: string, organizationId?: string | null): Promise<string>;
+export declare function generateEnhancedCoverLetter(input: CoverLetterInput, userId: string, organizationId?: string | null): Promise<EnhancedCoverLetterResult>;
 export declare function fullCustomizationPipeline(resumeData: ParsedResumeData, resumeText: string, jobDescription: string, jobTitle: string, companyName: string, userId: string, organizationId?: string | null): Promise<CustomizationResult>;
 export interface JobMatchResult {
     overallScore: number;
@@ -15,9 +43,10 @@ export interface JobMatchResult {
     };
     strengths: string[];
     gaps: string[];
-    verdict: 'Strong Match' | 'Good Match' | 'Moderate Match' | 'Weak Match';
+    verdict: 'Strong Match' | 'Good Match' | 'Moderate Match' | 'Weak Match' | 'Poor Match';
     recommendation: string;
     timeToApply: string;
+    dealBreakers?: string[];
 }
 export declare function calculateJobMatchScore(resumeData: ParsedResumeData, jobDescription: string, jobTitle: string, userId: string, organizationId?: string | null): Promise<JobMatchResult>;
 export interface QuantifiedAchievement {
@@ -40,6 +69,8 @@ export interface ResumeWeakness {
     impact: string;
     fix: string;
     example?: string;
+    rewrittenVersion?: string;
+    originalText?: string;
 }
 export interface WeaknessDetectorResult {
     weaknesses: ResumeWeakness[];
@@ -47,6 +78,18 @@ export interface WeaknessDetectorResult {
     healthScore: number;
     prioritizedActions: string[];
     positives: string[];
+    quickFixes?: {
+        section: string;
+        original: string;
+        improved: string;
+        changeType: 'rewrite' | 'add' | 'remove' | 'restructure';
+    }[];
+    industryInsights?: {
+        commonMistakes: string[];
+        industryKeywords: string[];
+        competitorAdvantages: string[];
+    };
+    bluntAssessment?: string;
 }
 export declare function detectWeaknesses(resumeData: ParsedResumeData, resumeText: string, targetRole?: string, userId?: string, organizationId?: string | null): Promise<WeaknessDetectorResult>;
 export interface FollowUpEmailResult {

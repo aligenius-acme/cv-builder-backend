@@ -14,10 +14,10 @@ export interface ParsedResumeData {
     experience: ExperienceEntry[];
     education: EducationEntry[];
     skills: string[];
-    certifications?: string[];
+    certifications?: CertificationEntry[];
     projects?: ProjectEntry[];
     languages?: string[];
-    awards?: string[];
+    awards?: AwardEntry[];
     contact: ContactInfo;
 }
 export interface ExperienceEntry {
@@ -42,6 +42,19 @@ export interface ProjectEntry {
     description: string;
     technologies?: string[];
     url?: string;
+    link?: string;
+    company?: string;
+    dates?: string;
+}
+export interface CertificationEntry {
+    name: string;
+    issuer?: string;
+    date?: string;
+}
+export interface AwardEntry {
+    name: string;
+    issuer?: string;
+    date?: string;
 }
 export interface ContactInfo {
     name?: string;
@@ -76,6 +89,25 @@ export interface ATSAnalysis {
     recommendations: string[];
     atsExtractedView: string;
     riskyElements: string[];
+    honestAssessment?: string;
+}
+export interface BeforeAfterComparison {
+    section: string;
+    before: string;
+    after: string;
+    improvement: string;
+    impactLevel: 'High' | 'Medium' | 'Low';
+}
+export interface KeywordDensity {
+    before: number;
+    after: number;
+    improvement: string;
+}
+export interface OptimizationSummary {
+    sectionsOptimized: number;
+    keywordsAdded: number;
+    bulletPointsEnhanced: number;
+    estimatedATSImprovement: string;
 }
 export interface CustomizationResult {
     tailoredData: ParsedResumeData;
@@ -86,6 +118,9 @@ export interface CustomizationResult {
     atsScore: number;
     atsDetails: ATSAnalysis;
     truthGuardWarnings: TruthGuardWarning[];
+    beforeAfterComparisons?: BeforeAfterComparison[];
+    keywordDensity?: KeywordDensity;
+    optimizationSummary?: OptimizationSummary;
 }
 export interface TruthGuardWarning {
     type: 'exaggeration' | 'inconsistency' | 'unsupported_claim';

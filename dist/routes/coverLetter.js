@@ -10,6 +10,7 @@ router.use(auth_1.authenticate);
 router.use(subscription_1.checkCoverLetterAccess);
 // Cover letter operations
 router.post('/', coverLetter_1.generateCoverLetter);
+router.post('/enhanced', coverLetter_1.generateEnhancedCoverLetter); // Enhanced with alternatives
 router.get('/', coverLetter_1.getCoverLetters);
 router.get('/:id', coverLetter_1.getCoverLetter);
 router.put('/:id', coverLetter_1.updateCoverLetter);

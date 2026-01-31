@@ -12,27 +12,62 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+// Skill category type for grouped skills
+export interface SkillCategory {
+  category: string;
+  items: string[];
+}
+
+// Publication entry type
+export interface PublicationEntry {
+  title: string;
+  authors?: string[];
+  venue: string;
+  year: string;
+  citations?: number;
+  awards?: string[];
+  type?: string;
+}
+
+// Leadership entry type
+export interface LeadershipEntry {
+  role: string;
+  organization: string;
+  period: string;
+  highlights?: string[];
+}
+
 // Resume parsed data structure
 export interface ParsedResumeData {
   summary?: string;
   experience: ExperienceEntry[];
   education: EducationEntry[];
-  skills: string[];
+  skills: string[] | SkillCategory[]; // Can be simple list or categorized
   certifications?: CertificationEntry[];
   projects?: ProjectEntry[];
   languages?: string[];
-  awards?: AwardEntry[];
+  awards?: AwardEntry[] | string[]; // Can be objects or simple strings
   contact: ContactInfo;
+  // Optional extended fields for academic/executive templates
+  publications?: (string | PublicationEntry)[];
+  leadership?: (string | LeadershipEntry)[];
+  achievements?: string[];
+  professionalAffiliations?: string[];
+  grants?: string[]; // Research grants (academic)
+  speaking?: string[]; // Speaking engagements (creative/executive)
+  volunteerWork?: string[]; // Volunteer work (entry-level)
 }
 
 export interface ExperienceEntry {
-  title: string;
+  title?: string; // Job title
   company: string;
   location?: string;
   startDate?: string;
   endDate?: string;
   current?: boolean;
-  description: string[];
+  description?: string[]; // Bullet points describing work
+  position?: string; // Alternative to title (academic templates)
+  highlights?: string[]; // Alternative to description (sample data)
 }
 
 export interface EducationEntry {
@@ -42,6 +77,10 @@ export interface EducationEntry {
   graduationDate?: string;
   gpa?: string;
   achievements?: string[];
+  honors?: string | string[]; // For academic templates - can be string or array
+  thesis?: string; // For academic templates
+  advisor?: string; // For academic templates (PhD advisor)
+  relevantCoursework?: string[]; // For entry-level templates
 }
 
 export interface ProjectEntry {
@@ -52,12 +91,14 @@ export interface ProjectEntry {
   link?: string;
   company?: string;
   dates?: string;
+  highlights?: string[]; // For creative templates
 }
 
 export interface CertificationEntry {
   name: string;
   issuer?: string;
   date?: string;
+  status?: string; // For professional templates
 }
 
 export interface AwardEntry {
@@ -74,6 +115,7 @@ export interface ContactInfo {
   linkedin?: string;
   github?: string;
   website?: string;
+  portfolio?: string; // For creative templates
 }
 
 // Job description extracted data

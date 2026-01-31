@@ -6,10 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.anonymizeResumeData = anonymizeResumeData;
 exports.generatePDF = generatePDF;
 exports.generateDOCX = generateDOCX;
+exports.generateDOCXEnhanced = generateDOCXEnhanced;
 exports.generateCoverLetterPDF = generateCoverLetterPDF;
 exports.generateCoverLetterDOCX = generateCoverLetterDOCX;
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const docx_1 = require("docx");
+const templates_1 = require("./templates");
+const react_docx_generator_1 = require("./react-docx-generator");
 // Bullet character map
 const BULLETS = {
     dot: '•',
@@ -18,6 +21,16 @@ const BULLETS = {
     check: '✓',
     none: '',
 };
+// Helper to clean bullet points from text
+function cleanBullet(text) {
+    return text.replace(/^[•\-*▪◦›●○]\s*/, '').trim();
+}
+// Helper to get certification name (handles both string and object formats)
+function getCertName(cert) {
+    if (typeof cert === 'string')
+        return cleanBullet(cert);
+    return cleanBullet(cert.name || '');
+}
 // Anonymize resume data
 function anonymizeResumeData(data, config) {
     const anonymized = JSON.parse(JSON.stringify(data));
@@ -197,7 +210,7 @@ async function generateLeftAlignedPDF(data, template) {
                             .font('Helvetica')
                             .fontSize(fontSize.body)
                             .fillColor(textColor)
-                            .text(`${bullet}  ${desc}`, { indent: 8, lineGap: 1 });
+                            .text(`${bullet}  ${cleanBullet(desc)}`, { indent: 8, lineGap: 1 });
                     }
                     doc.moveDown(0.6);
                 }
@@ -286,7 +299,7 @@ async function generateLeftAlignedPDF(data, template) {
                         .font('Helvetica')
                         .fontSize(fontSize.body)
                         .fillColor(textColor)
-                        .text(`${bullet}  ${cert}`);
+                        .text(`${bullet}  ${getCertName(cert)}`);
                 }
             }
             doc.end();
@@ -402,7 +415,7 @@ async function generateCenteredPDF(data, template) {
                             .font('Helvetica')
                             .fontSize(fontSize.body)
                             .fillColor(textColor)
-                            .text(`${bullet}  ${desc}`, { indent: 12, lineGap: 1 });
+                            .text(`${bullet}  ${cleanBullet(desc)}`, { indent: 12, lineGap: 1 });
                     }
                     doc.moveDown(0.6);
                 }
@@ -443,7 +456,7 @@ async function generateCenteredPDF(data, template) {
                         .font('Helvetica')
                         .fontSize(fontSize.body)
                         .fillColor(textColor)
-                        .text(`${bullet}  ${cert}`);
+                        .text(`${bullet}  ${getCertName(cert)}`);
                 }
             }
             doc.end();
@@ -549,7 +562,7 @@ async function generateBannerPDF(data, template) {
                             .font('Helvetica')
                             .fontSize(fontSize.body)
                             .fillColor(textColor)
-                            .text(`${bullet}  ${desc}`, 52, y, { width: pageWidth - 100, lineGap: 1 });
+                            .text(`${bullet}  ${cleanBullet(desc)}`, 52, y, { width: pageWidth - 100, lineGap: 1 });
                         y = doc.y + 3;
                     }
                     y += 10;
@@ -800,7 +813,7 @@ async function generateSidebarLeftPDF(data, template) {
                             .font('Helvetica')
                             .fontSize(fontSize.body)
                             .fillColor(mutedColor)
-                            .text(`${bullet}  ${desc}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
+                            .text(`${bullet}  ${cleanBullet(desc)}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
                         mainY = doc.y + 3;
                     }
                     mainY += 10;
@@ -937,7 +950,7 @@ async function generateSidebarRightPDF(data, template) {
                             .font('Helvetica')
                             .fontSize(fontSize.body)
                             .fillColor(textColor)
-                            .text(`${bullet}  ${desc}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
+                            .text(`${bullet}  ${cleanBullet(desc)}`, mainX + 8, mainY, { width: contentWidth - 8, lineGap: 1 });
                         mainY = doc.y + 3;
                     }
                     mainY += 10;
@@ -1061,7 +1074,7 @@ async function generateSidebarRightPDF(data, template) {
                 sideY = doc.y + 8;
                 doc.font('Helvetica').fontSize(8);
                 for (const cert of data.certifications) {
-                    doc.fillColor(textColor).text(`•  ${cert}`, sideX, sideY, { width: sideWidth });
+                    doc.fillColor(textColor).text(`•  ${getCertName(cert)}`, sideX, sideY, { width: sideWidth });
                     sideY = doc.y + 3;
                 }
             }
@@ -1154,7 +1167,7 @@ async function generateDOCX(data, template) {
             }));
             for (const desc of exp.description || []) {
                 children.push(new docx_1.Paragraph({
-                    children: [new docx_1.TextRun({ text: `• ${desc}`, size: 22 })],
+                    children: [new docx_1.TextRun({ text: `• ${cleanBullet(desc)}`, size: 22 })],
                     indent: { left: 200 },
                     spacing: { after: 40 },
                 }));
@@ -1191,7 +1204,7 @@ async function generateDOCX(data, template) {
         addSectionHeader('Certifications');
         for (const cert of data.certifications) {
             children.push(new docx_1.Paragraph({
-                children: [new docx_1.TextRun({ text: `• ${cert}`, size: 22 })],
+                children: [new docx_1.TextRun({ text: `• ${getCertName(cert)}`, size: 22 })],
                 spacing: { after: 40 },
             }));
         }
@@ -1222,6 +1235,24 @@ async function generateDOCX(data, template) {
         sections: [{ children }],
     });
     return docx_1.Packer.toBuffer(doc);
+}
+/**
+ * Generate DOCX using template-specific generators (Module 4 - React DOCX)
+ * Falls back to legacy generateDOCX if template doesn't have a custom generator
+ */
+async function generateDOCXEnhanced(data, templateId, template) {
+    // Use template-specific DOCX generator if available
+    if ((0, react_docx_generator_1.templateSupportsDOCX)(templateId)) {
+        try {
+            return await (0, react_docx_generator_1.generateDOCXFromReact)(templateId, data);
+        }
+        catch (error) {
+            console.warn(`Failed to use template-specific DOCX generator, falling back to legacy:`, error);
+        }
+    }
+    // Fallback to legacy DOCX generation
+    const templateConfig = template || (0, templates_1.getTemplateConfig)(templateId);
+    return generateDOCX(data, templateConfig);
 }
 // ============================================================================
 // COVER LETTER GENERATION

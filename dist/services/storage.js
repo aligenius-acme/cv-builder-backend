@@ -154,9 +154,17 @@ async function getFile(key) {
 }
 // Delete a file from Cloudinary or local storage
 async function deleteFile(key) {
+    // Skip if key is empty or invalid
+    if (!key || key.trim() === '') {
+        return;
+    }
     if (USE_LOCAL_STORAGE) {
         const filePath = path.join(LOCAL_STORAGE_DIR, key);
-        if (fs.existsSync(filePath)) {
+        // Ensure we're not trying to delete the uploads directory itself
+        if (filePath === LOCAL_STORAGE_DIR || !filePath.startsWith(LOCAL_STORAGE_DIR + path.sep)) {
+            return;
+        }
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             fs.unlinkSync(filePath);
         }
         return;

@@ -10,6 +10,7 @@ const documents_1 = require("../services/documents");
 const templates_1 = require("../services/templates");
 const subscription_1 = require("../middleware/subscription");
 const jobScraper_1 = require("../services/jobScraper");
+const client_1 = require("@prisma/client");
 // Upload and parse resume
 const uploadResume = async (req, res, next) => {
     try {
@@ -51,7 +52,7 @@ const uploadResume = async (req, res, next) => {
         try {
             const rawText = await (0, parser_1.parseFile)(file.buffer, file.originalname);
             const parsedData = await (0, parser_1.extractResumeData)(rawText);
-            await prisma_1.prisma.resume.update({
+            const updatedResume = await prisma_1.prisma.resume.update({
                 where: { id: resume.id },
                 data: {
                     rawText,
@@ -69,10 +70,14 @@ const uploadResume = async (req, res, next) => {
             res.status(201).json({
                 success: true,
                 data: {
-                    id: resume.id,
-                    fileName: file.originalname,
-                    parseStatus: 'completed',
-                    parsedData,
+                    id: updatedResume.id,
+                    title: updatedResume.title,
+                    fileName: updatedResume.originalFileName,
+                    parseStatus: updatedResume.parseStatus,
+                    parsedData: updatedResume.parsedData,
+                    rawText: updatedResume.rawText,
+                    createdAt: updatedResume.createdAt,
+                    updatedAt: updatedResume.updatedAt,
                 },
             });
         }
@@ -151,6 +156,10 @@ const getResume = async (req, res, next) => {
         if (!resume) {
             throw new errors_1.NotFoundError('Resume not found');
         }
+        // Ensure parsedData is properly returned as an object
+        const parsedData = resume.parsedData && typeof resume.parsedData === 'object'
+            ? resume.parsedData
+            : {};
         res.json({
             success: true,
             data: {
@@ -159,7 +168,7 @@ const getResume = async (req, res, next) => {
                 fileName: resume.originalFileName,
                 parseStatus: resume.parseStatus,
                 parseError: resume.parseError,
-                parsedData: resume.parsedData,
+                parsedData: parsedData,
                 rawText: resume.rawText,
                 versions: resume.versions.map((v) => ({
                     id: v.id,
@@ -260,6 +269,18 @@ const customizeResume = async (req, res, next) => {
         }
         if (resume.parseStatus !== 'completed') {
             throw new errors_1.ValidationError('Resume parsing is not completed');
+        }
+        // Check version quota
+        const versionCount = await prisma_1.prisma.resumeVersion.count({
+            where: { resumeId: id },
+        });
+        const limits = (0, subscription_1.getSubscriptionLimits)(req.user.planType);
+        if (limits.maxVersionsPerResume !== -1 && versionCount >= limits.maxVersionsPerResume) {
+            const currentPlan = req.user.planType;
+            const upgradeMessage = currentPlan === client_1.PlanType.FREE
+                ? 'Upgrade to Pro or Business for unlimited resume versions.'
+                : 'Upgrade to Business for unlimited resume versions.';
+            throw new errors_1.QuotaExceededError(`You've reached your plan's limit of ${limits.maxVersionsPerResume} versions per resume (${versionCount}/${limits.maxVersionsPerResume}). ${upgradeMessage}`);
         }
         // Get next version number
         const latestVersion = await prisma_1.prisma.resumeVersion.findFirst({
@@ -583,7 +604,7 @@ const createBlankResume = async (req, res, next) => {
             languages: [],
             awards: [],
         };
-        // Create resume record
+        // Create resume record with empty rawText (will be generated when user adds content)
         const resume = await prisma_1.prisma.resume.create({
             data: {
                 userId,
@@ -591,7 +612,7 @@ const createBlankResume = async (req, res, next) => {
                 originalFileName: 'Created with Resume Builder',
                 originalFileUrl: '',
                 originalFileKey: '',
-                rawText: '',
+                rawText: '', // Empty initially, generated on first save
                 parsedData: blankResumeData,
                 parseStatus: 'completed',
                 isBase: true,
@@ -625,12 +646,17 @@ const updateResumeContent = async (req, res, next) => {
         const userId = req.user.id;
         const { id } = req.params;
         const { parsedData, title } = req.body;
+        console.log('=== UPDATE RESUME CONTENT DEBUG ===');
+        console.log('Resume ID:', id);
+        console.log('Received parsedData:', JSON.stringify(parsedData, null, 2));
+        console.log('Title:', title);
         const resume = await prisma_1.prisma.resume.findFirst({
             where: { id, userId },
         });
         if (!resume) {
             throw new errors_1.NotFoundError('Resume not found');
         }
+        console.log('Current parsedData in DB:', JSON.stringify(resume.parsedData, null, 2));
         // Validate parsedData structure
         if (parsedData) {
             const validSections = [
@@ -646,8 +672,11 @@ const updateResumeContent = async (req, res, next) => {
         // Merge with existing data
         const currentData = resume.parsedData;
         const updatedData = parsedData ? { ...currentData, ...parsedData } : currentData;
+        console.log('Merged updatedData:', JSON.stringify(updatedData, null, 2));
         // Generate raw text from parsed data for search/ATS purposes
         const rawText = generateRawTextFromParsedData(updatedData);
+        console.log('Generated rawText length:', rawText.length);
+        console.log('Generated rawText preview:', rawText.substring(0, 200));
         const updated = await prisma_1.prisma.resume.update({
             where: { id },
             data: {

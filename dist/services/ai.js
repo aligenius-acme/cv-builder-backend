@@ -8,6 +8,7 @@ exports.customizeResume = customizeResume;
 exports.analyzeATS = analyzeATS;
 exports.runTruthGuard = runTruthGuard;
 exports.generateCoverLetter = generateCoverLetter;
+exports.generateEnhancedCoverLetter = generateEnhancedCoverLetter;
 exports.fullCustomizationPipeline = fullCustomizationPipeline;
 exports.calculateJobMatchScore = calculateJobMatchScore;
 exports.quantifyAchievements = quantifyAchievements;
@@ -32,27 +33,42 @@ async function getPrompt(name) {
 // Default prompts
 function getDefaultPrompt(name) {
     const prompts = {
-        job_analysis: `Analyze the following job description and extract structured information.
-Return a JSON object with these fields:
-- requiredSkills: array of required technical and soft skills
-- preferredSkills: array of preferred/nice-to-have skills
-- responsibilities: array of key job responsibilities
-- keywords: array of important keywords for ATS matching
-- qualifications: array of required qualifications
-- companyInfo: brief description of company/role context
+        job_analysis: `You are an expert job description analyst. Extract ACCURATE, SPECIFIC information from this job posting.
+
+CRITICAL RULES:
+1. Only extract skills/qualifications EXPLICITLY mentioned - do not infer or add common ones
+2. Distinguish between REQUIRED (must-have) and PREFERRED (nice-to-have) carefully
+3. Extract EXACT keywords as written - these matter for ATS matching
+4. If something is unclear or not mentioned, leave the array empty rather than guessing
+5. Pay attention to years of experience requirements - this is often a hard filter
 
 Job Description:
 {job_description}
 
-Return only valid JSON, no markdown.`,
-        resume_customize: `You are an expert resume customizer. Your task is to tailor a resume for a specific job while maintaining 100% factual accuracy.
+Return a JSON object:
+{
+  "requiredSkills": ["ONLY skills explicitly marked as required or must-have"],
+  "preferredSkills": ["Skills marked as preferred, nice-to-have, or bonus"],
+  "responsibilities": ["Key job duties - be specific, not generic"],
+  "keywords": ["Exact technical terms, tools, methodologies mentioned"],
+  "qualifications": ["Degree requirements, certifications, years of experience"],
+  "companyInfo": "Brief company/role context if mentioned"
+}
 
-CRITICAL RULES:
-1. NEVER fabricate skills, experience, or qualifications the candidate doesn't have
-2. NEVER add fake projects or achievements
-3. Only rephrase, reorder, and highlight EXISTING content
-4. Optimize for ATS by incorporating relevant keywords naturally
-5. Maintain professional tone
+Return only valid JSON, no markdown.`,
+        resume_customize: `You are an expert resume customizer. Tailor this resume for a specific job while maintaining 100% factual accuracy.
+
+ABSOLUTE RULES - VIOLATION MEANS FAILURE:
+1. NEVER fabricate skills, experience, or qualifications not in the original
+2. NEVER add fake projects, achievements, or metrics
+3. NEVER claim expertise in tools/technologies not demonstrated
+4. Only rephrase, reorder, and highlight EXISTING content
+5. If the candidate lacks a required skill, put it in missingKeywords - do NOT add it
+
+HONEST ASSESSMENT REQUIRED:
+- If this resume is a poor match for the job, SAY SO in changesExplanation
+- If critical requirements are missing, list them ALL in missingKeywords
+- Do not oversell transferable skills - be realistic about the match
 
 Original Resume Data:
 {resume_data}
@@ -64,19 +80,19 @@ Job Title: {job_title}
 Company: {company_name}
 
 Return a JSON object with:
-- tailoredData: the modified resume data in the same structure as input
-- changesExplanation: detailed explanation of what was changed and why
-- matchedKeywords: array of job keywords found in the resume
-- missingKeywords: array of job keywords NOT in the resume (candidate lacks these)
+- tailoredData: the modified resume data (same structure as input)
+- changesExplanation: HONEST explanation including how strong/weak this match is
+- matchedKeywords: array of job keywords genuinely found in the resume
+- missingKeywords: array of ALL job keywords the candidate lacks (be thorough)
+- matchStrength: "strong" | "moderate" | "weak" | "poor" - honest assessment
 
 Focus on:
 1. Reordering bullet points to highlight most relevant experience first
 2. Rephrasing descriptions to match job language while staying truthful
-3. Emphasizing transferable skills
-4. Adding relevant keywords naturally where the experience supports them
+3. Being HONEST about gaps - a candidate with 2 years experience applying for a senior role should have that noted
 
 Return only valid JSON.`,
-        ats_analysis: `Analyze this resume for ATS (Applicant Tracking System) compatibility against the job description.
+        ats_analysis: `You are a STRICT and CRITICAL ATS (Applicant Tracking System) analyzer. Your job is to provide HONEST, ACCURATE scores - NOT inflated ones.
 
 Resume:
 {resume_text}
@@ -84,27 +100,51 @@ Resume:
 Job Keywords:
 {job_keywords}
 
+CRITICAL SCORING RULES - FOLLOW EXACTLY:
+1. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+
+2. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
+3. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
+4. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
+5. IRRELEVANT EXPERIENCE = DOES NOT COUNT: Don't give credit for unrelated skills
+6. SHORT/THIN RESUMES score LOW: A resume with minimal content cannot score high
+
+SCORE GUIDELINES (BE STRICT):
+- 90-100: Near-perfect keyword match, quantified achievements, directly relevant experience (RARE)
+- 75-89: Strong match with most keywords, good metrics, relevant background
+- 60-74: Moderate match, some relevant keywords, lacks quantification
+- 40-59: Weak match, missing many keywords, vague descriptions
+- 20-39: Poor match, mostly irrelevant content, major gaps
+- 0-19: Essentially no match to job requirements
+
+A DUMMY/FAKE RESUME with generic info should score 20-40 MAX.
+A resume missing 50%+ of required skills should score BELOW 50.
+
 Provide a detailed analysis as JSON:
 {
-  "score": 0-100 overall ATS score,
-  "keywordMatchPercentage": percentage of job keywords found,
-  "matchedKeywords": [...keywords found in resume],
-  "missingKeywords": [...keywords not in resume],
+  "score": 0-100 (BE HONEST - most resumes score 40-70, not 80+),
+  "keywordMatchPercentage": ACTUAL percentage calculated mathematically,
+  "matchedKeywords": [...keywords ACTUALLY found - must exist verbatim or as clear synonyms],
+  "missingKeywords": [...keywords NOT in resume - be thorough],
   "sectionScores": {
-    "summary": 0-100,
-    "experience": 0-100,
-    "skills": 0-100,
-    "education": 0-100,
-    "formatting": 0-100
+    "summary": 0-100 (0 if missing, penalize if generic/vague),
+    "experience": 0-100 (penalize lack of metrics, irrelevant roles),
+    "skills": 0-100 (only count RELEVANT skills that match job),
+    "education": 0-100 (based on job requirements match),
+    "formatting": 0-100 (structure, readability, ATS-friendliness)
   },
-  "formattingIssues": [...any formatting problems that might confuse ATS],
-  "recommendations": [...specific improvements],
+  "formattingIssues": [...any formatting problems],
+  "recommendations": [...specific, actionable improvements with examples],
   "atsExtractedView": "plain text as an ATS would see it",
-  "riskyElements": [...elements that ATS might ignore or misread]
+  "riskyElements": [...elements ATS might ignore or misread],
+  "honestAssessment": "A blunt 1-2 sentence assessment of this resume's actual competitiveness"
 }
 
+REMEMBER: Your job is to help users improve by being HONEST, not to make them feel good with inflated scores.
+
 Return only valid JSON.`,
-        truth_guard: `Review this tailored resume for potential exaggerations or inconsistencies.
+        truth_guard: `You are a STRICT accuracy checker. Your job is to catch ANY fabrication, exaggeration, or misrepresentation between the original and tailored resume.
+
+BE EXTREMELY VIGILANT. Even small exaggerations can cost candidates job offers if discovered.
 
 Original Resume:
 {original_data}
@@ -112,25 +152,38 @@ Original Resume:
 Tailored Resume:
 {tailored_data}
 
-Check for:
-1. Exaggerated claims (e.g., "managed" when originally "assisted")
-2. Added skills not present in original
-3. Inflated numbers or metrics
-4. Inconsistent dates or titles
-5. Unsupported claims
+CHECK FOR THESE RED FLAGS (be thorough):
+1. ROLE INFLATION: "assisted" → "managed", "participated" → "led", "helped" → "spearheaded"
+2. ADDED SKILLS: Any skill in tailored version not present in original
+3. METRIC FABRICATION: Numbers/percentages that weren't in original or seem inflated
+4. SCOPE EXAGGERATION: Team sizes, budget amounts, user counts inflated
+5. TITLE CHANGES: Job titles modified to sound more senior
+6. DATE MANIPULATION: Gaps hidden, tenure extended
+7. RESPONSIBILITY CREEP: Taking credit for team/company achievements
+8. KEYWORD STUFFING: Adding technologies/tools not actually used
+9. UNSUPPORTED CLAIMS: "Expert in X" when original shows basic exposure
+
+SEVERITY GUIDELINES:
+- HIGH: Fabricated skills, significantly inflated metrics, added experiences that don't exist
+- MEDIUM: Role inflation (assisted→managed), moderately inflated numbers
+- LOW: Minor rephrasing that slightly overstates (but still defensible)
 
 Return a JSON array of warnings:
 [
   {
-    "type": "exaggeration|inconsistency|unsupported_claim",
+    "type": "exaggeration|fabrication|inconsistency|unsupported_claim",
     "section": "section name",
-    "original": "original text",
-    "concern": "description of the issue",
-    "severity": "low|medium|high"
+    "original": "exact original text",
+    "tailored": "the modified text",
+    "concern": "specific explanation of the issue",
+    "severity": "low|medium|high",
+    "recommendation": "how to fix this while staying honest"
   }
 ]
 
-If no issues found, return empty array: []
+IMPORTANT: It's better to flag something questionable than to miss a fabrication. Err on the side of caution.
+
+If genuinely no issues found, return empty array: []
 Return only valid JSON.`,
         cover_letter: `Write a professional cover letter for this job application.
 
@@ -144,14 +197,22 @@ Job Title: {job_title}
 Company: {company_name}
 Tone: {tone}
 
-Guidelines:
-1. Opening: Express genuine interest in the role
-2. Body: Connect 2-3 specific experiences/skills to job requirements
-3. Use concrete examples from the resume
-4. Show knowledge of the company (if info available)
+CRITICAL RULES:
+1. ONLY reference experiences, skills, and achievements that exist in the resume
+2. NEVER claim expertise in tools/technologies not demonstrated in the resume
+3. NEVER fabricate metrics, team sizes, or project outcomes
+4. If the candidate is underqualified, focus on genuine transferable skills and learning ability
+5. Be honest about experience level - don't claim senior expertise if resume shows junior experience
+
+GUIDELINES:
+1. Opening: Express genuine interest (but don't oversell fit if resume doesn't support it)
+2. Body: Connect 2-3 REAL experiences from the resume to job requirements
+3. Use ACTUAL metrics and achievements from the resume
+4. If candidate lacks a key requirement, acknowledge eagerness to learn rather than claiming expertise
 5. Closing: Express enthusiasm and call to action
 6. Keep it concise: 3-4 paragraphs max
-7. NEVER fabricate experience or skills
+
+HONESTY CHECK: If the candidate's resume doesn't strongly match the job requirements, the cover letter should still be compelling but realistic. Overselling leads to awkward interviews.
 
 Return only the cover letter text, no JSON or formatting markers.`,
     };
@@ -168,7 +229,7 @@ async function callAI(prompt, userId, organizationId, operation, maxTokens = 409
             model: config_1.default.ai.groqModel,
             messages: [{ role: 'user', content: prompt }],
             max_tokens: maxTokens,
-            temperature: 0.7,
+            temperature: 0.3, // Lower temperature for more consistent, critical analysis
         });
         const result = {
             content: response.choices[0]?.message?.content || '',
@@ -284,10 +345,32 @@ Return a complete JSON object. The tailoredData MUST contain ALL original conten
   },
   "changesExplanation": "Explain what was reordered or rephrased to optimize for this role",
   "matchedKeywords": ["job keywords found in resume"],
-  "missingKeywords": ["important job keywords NOT in the original resume"]
+  "missingKeywords": ["important job keywords NOT in the original resume"],
+  "beforeAfterComparisons": [
+    {
+      "section": "Summary|Experience - Company Name|Skills",
+      "before": "The original text before optimization",
+      "after": "The optimized text after changes",
+      "improvement": "Brief explanation of why this change improves ATS/recruiter appeal",
+      "impactLevel": "High|Medium|Low"
+    }
+  ],
+  "keywordDensity": {
+    "before": 0,
+    "after": 0,
+    "improvement": "+X keywords added naturally"
+  },
+  "optimizationSummary": {
+    "sectionsOptimized": 0,
+    "keywordsAdded": 0,
+    "bulletPointsEnhanced": 0,
+    "estimatedATSImprovement": "+X%"
+  }
 }
 
-IMPORTANT: The experience array must include EVERY position from the original resume with ALL bullet points. Do not summarize or truncate.`;
+IMPORTANT:
+- The experience array must include EVERY position from the original resume with ALL bullet points. Do not summarize or truncate.
+- Include at least 3-5 beforeAfterComparisons showing the most impactful changes made.`;
     // Use higher token limit for comprehensive resume output
     const { content } = await callAI(prompt, userId, organizationId, 'resume_customize', 8192);
     const result = parseAIJSON(content);
@@ -299,6 +382,9 @@ IMPORTANT: The experience array must include EVERY position from the original re
         changesExplanation: result.changesExplanation,
         matchedKeywords: result.matchedKeywords,
         missingKeywords: result.missingKeywords,
+        beforeAfterComparisons: result.beforeAfterComparisons || [],
+        keywordDensity: result.keywordDensity,
+        optimizationSummary: result.optimizationSummary,
     };
 }
 // Analyze ATS compatibility
@@ -321,15 +407,106 @@ async function runTruthGuard(originalData, tailoredData, userId, organizationId)
 }
 // Generate cover letter
 async function generateCoverLetter(input, userId, organizationId) {
-    const promptTemplate = await getPrompt('cover_letter');
-    const prompt = promptTemplate
-        .replace('{resume_data}', JSON.stringify(input.resumeData, null, 2))
-        .replace('{job_data}', JSON.stringify(input.jobData, null, 2))
-        .replace('{job_title}', input.jobTitle)
-        .replace('{company_name}', input.companyName)
-        .replace('{tone}', input.tone || 'professional');
+    const prompt = `Write a professional cover letter for this job application.
+
+Candidate Resume:
+${JSON.stringify(input.resumeData, null, 2)}
+
+Job Information:
+${JSON.stringify(input.jobData, null, 2)}
+
+Job Title: ${input.jobTitle}
+Company: ${input.companyName}
+Tone: ${input.tone || 'professional'}
+
+Guidelines:
+1. Opening: Express genuine interest in the role
+2. Body: Connect 2-3 specific experiences/skills to job requirements
+3. Use concrete examples from the resume
+4. Show knowledge of the company (if info available)
+5. Closing: Express enthusiasm and call to action
+6. Keep it concise: 3-4 paragraphs max
+7. NEVER fabricate experience or skills
+
+Return only the cover letter text, no JSON or formatting markers.`;
     const { content } = await callAI(prompt, userId, organizationId, 'cover_letter');
     return content.trim();
+}
+// Generate enhanced cover letter with alternatives
+async function generateEnhancedCoverLetter(input, userId, organizationId) {
+    const prompt = `Write a professional cover letter for this job application AND provide alternative options.
+
+Candidate Resume:
+${JSON.stringify(input.resumeData, null, 2)}
+
+Job Information:
+${JSON.stringify(input.jobData, null, 2)}
+
+Job Title: ${input.jobTitle}
+Company: ${input.companyName}
+Tone: ${input.tone || 'professional'}
+
+Guidelines:
+1. Opening: Express genuine interest in the role
+2. Body: Connect 2-3 specific experiences/skills to job requirements
+3. Use concrete examples from the resume
+4. Show knowledge of the company (if info available)
+5. Closing: Express enthusiasm and call to action
+6. Keep it concise: 3-4 paragraphs max
+7. NEVER fabricate experience or skills
+
+Return JSON:
+{
+  "content": "The full cover letter text (3-4 paragraphs)",
+  "alternativeOpenings": [
+    {
+      "style": "story",
+      "opening": "A compelling story-based opening paragraph that hooks the reader",
+      "description": "Opens with a brief professional story or anecdote"
+    },
+    {
+      "style": "achievement",
+      "opening": "An achievement-focused opening that leads with impact",
+      "description": "Opens by highlighting a key accomplishment relevant to the role"
+    },
+    {
+      "style": "connection",
+      "opening": "A connection-based opening referencing mutual contacts or company knowledge",
+      "description": "Opens by establishing a personal or professional connection"
+    },
+    {
+      "style": "passion",
+      "opening": "A passion-driven opening showing enthusiasm for the field/company",
+      "description": "Opens by expressing genuine passion for the work"
+    }
+  ],
+  "keyPhrases": [
+    {
+      "phrase": "Key phrase used in the cover letter",
+      "matchesJobRequirement": "Which job requirement this addresses"
+    }
+  ],
+  "toneAnalysis": {
+    "currentTone": "Description of the letter's tone (e.g., 'Confident and professional')",
+    "formalityScore": 7,
+    "enthusiasmScore": 8,
+    "suggestions": ["Suggestions to adjust tone if needed"]
+  },
+  "callToActionVariations": [
+    "I would welcome the opportunity to discuss how my experience can benefit [Company].",
+    "I am excited to bring my skills to your team and would love to schedule a conversation.",
+    "Let's connect to explore how I can contribute to [Company]'s continued success."
+  ],
+  "subjectLineOptions": [
+    "Application for ${input.jobTitle} - [Your Name]",
+    "Experienced [Role] Excited to Join ${input.companyName}",
+    "${input.jobTitle} Application - [Relevant Achievement/Skill]"
+  ]
+}
+
+Return only valid JSON.`;
+    const { content } = await callAI(prompt, userId, organizationId, 'cover_letter_enhanced', 4000);
+    return parseAIJSON(content);
 }
 // Generate plain text from structured resume data
 function generateResumeText(data) {
@@ -424,7 +601,7 @@ async function fullCustomizationPipeline(resumeData, resumeText, jobDescription,
     };
 }
 async function calculateJobMatchScore(resumeData, jobDescription, jobTitle, userId, organizationId) {
-    const prompt = `You are an expert job matching analyst. Calculate how well this candidate matches the job.
+    const prompt = `You are a BRUTALLY HONEST job matching analyst. Your job is to give REALISTIC scores, not feel-good numbers.
 
 CANDIDATE RESUME:
 ${JSON.stringify(resumeData, null, 2)}
@@ -434,71 +611,115 @@ ${jobDescription}
 
 JOB TITLE: ${jobTitle}
 
-Analyze the match and return a JSON object:
+STRICT SCORING CRITERIA - FOLLOW EXACTLY:
+
+SKILLS MATCH (be mathematical):
+- Count required skills in job posting
+- Count how many the candidate ACTUALLY has (not "could learn" or "similar to")
+- Calculate: (matched / required) * 100
+- Transferable skills count at 50% value only
+- "Familiar with" or "exposure to" = 25% credit max
+
+EXPERIENCE MATCH:
+- If job requires 5 years and candidate has 2, that's a 40% match, NOT 70%
+- Irrelevant industry experience counts at 30% value
+- Junior applying to Senior role = automatic cap at 50%
+- No relevant experience = 0-20% maximum
+
+EDUCATION MATCH:
+- Missing required degree = 50% cap unless experience compensates
+- Wrong field = 60% cap
+- No education listed when required = 20% max
+
+KEYWORDS MATCH:
+- Calculate mathematically: (found keywords / total required keywords) * 100
+- Generic words don't count ("leadership", "communication" without specifics)
+- Must find ACTUAL evidence, not just claims
+
+OVERALL SCORE CALCULATION:
+- Weight: Skills 35%, Experience 35%, Education 15%, Keywords 15%
+- A FAKE/DUMMY resume with generic info should score 15-30 MAX
+- Someone clearly unqualified should score BELOW 40
+- Most real candidates score 40-65
+- 70+ is genuinely good
+- 85+ is exceptional (rare)
+
+Return JSON:
 {
-  "overallScore": 0-100 (realistic score based on actual match),
+  "overallScore": 0-100 (REALISTIC - average should be 45-55, not 70+),
   "breakdown": {
-    "skillsMatch": 0-100 (technical & soft skills alignment),
-    "experienceMatch": 0-100 (years and relevance of experience),
-    "educationMatch": 0-100 (degree and field alignment),
-    "keywordsMatch": 0-100 (job keywords found in resume)
+    "skillsMatch": 0-100 (MATHEMATICAL calculation),
+    "experienceMatch": 0-100 (years + relevance factored),
+    "educationMatch": 0-100 (degree + field alignment),
+    "keywordsMatch": 0-100 (actual keywords found)
   },
-  "strengths": ["3-5 specific strengths for this role"],
-  "gaps": ["2-4 areas where candidate falls short"],
-  "verdict": "Strong Match" (85+) | "Good Match" (70-84) | "Moderate Match" (50-69) | "Weak Match" (<50),
-  "recommendation": "Specific advice on whether to apply and how to position themselves",
-  "timeToApply": "Estimated time investment worthiness: 'Worth applying immediately' | 'Consider applying with improvements' | 'Focus on building missing skills first'"
+  "strengths": ["ONLY list genuine strengths backed by evidence - if none, say so"],
+  "gaps": ["List ALL significant gaps - be thorough, minimum 3-5 for most candidates"],
+  "verdict": "Strong Match" (80+) | "Good Match" (65-79) | "Moderate Match" (45-64) | "Weak Match" (30-44) | "Poor Match" (<30),
+  "recommendation": "Blunt, honest advice - tell them if they're wasting time applying",
+  "timeToApply": "'Worth applying immediately' (70+) | 'Consider applying with improvements' (50-69) | 'Significant skill building needed' (30-49) | 'Not a fit - look elsewhere' (<30)",
+  "dealBreakers": ["List any absolute disqualifiers - missing required certs, years, skills"]
 }
 
-Be honest and realistic - don't inflate scores. Consider:
-- Direct skill matches vs transferable skills
-- Years of experience vs job requirements
-- Industry relevance
-- Seniority level alignment
+YOUR GOAL: Help users by being HONEST. An inflated score that leads to rejection hurts more than an honest low score that helps them improve or target better-fit roles.
 
 Return only valid JSON.`;
     const { content } = await callAI(prompt, userId, organizationId, 'job_match_score');
     return parseAIJSON(content);
 }
 async function quantifyAchievements(bullets, jobContext, userId, organizationId) {
-    const prompt = `You are an expert resume writer specializing in quantifying achievements. Transform vague bullet points into impactful, metrics-driven statements.
+    const prompt = `You are an expert resume writer. Help quantify achievements while staying HONEST and REALISTIC.
 
 BULLET POINTS TO ENHANCE:
 ${bullets.map((b, i) => `${i + 1}. ${b}`).join('\n')}
 
 ${jobContext ? `JOB CONTEXT (tailor enhancements for): ${jobContext}` : ''}
 
-RULES:
-1. NEVER fabricate specific numbers - use realistic ranges or estimates
-2. Add context with percentages, team sizes, timeframes, or dollar amounts
-3. Use action verbs and quantifiable outcomes
-4. Keep the core truth of each achievement
+CRITICAL RULES - HONESTY FIRST:
+1. Use PLACEHOLDER BRACKETS like [X]%, [N]+, [$X] where users MUST fill in their actual numbers
+2. NEVER invent specific percentages, dollar amounts, or counts - users must verify these
+3. Suggest REALISTIC ranges based on typical outcomes for similar roles
+4. If a bullet is too vague to quantify honestly, say so and suggest what info the user needs to provide
+5. Don't turn minor tasks into major achievements - keep impact levels honest
+
+REALISTIC METRIC GUIDELINES:
+- Most individual contributors don't "increase revenue by millions" - be realistic about scope
+- Team sizes are usually 3-10, not 50+ unless it's a director-level role
+- Efficiency improvements of 15-30% are realistic; 80%+ is rare and suspicious
+- Cost savings should match the scope of the role
 
 Return JSON:
 {
   "achievements": [
     {
       "original": "the original bullet point",
-      "quantified": "the enhanced version with metrics",
-      "addedMetrics": ["list of metrics/numbers added"],
-      "impactLevel": "High/Medium/Low based on achievement significance",
-      "suggestions": ["alternative phrasings or additional metrics to consider"]
+      "quantified": "enhanced version with [PLACEHOLDER] metrics user must fill in",
+      "addedMetrics": ["list of placeholder metrics added - user must verify"],
+      "impactLevel": "High/Medium/Low - be realistic about actual impact",
+      "suggestions": ["what specific data the user should look up to fill in placeholders"],
+      "warningIfFabricated": "what could go wrong if user uses fake numbers"
     }
   ],
-  "overallImprovement": "Summary of how these changes strengthen the resume",
-  "tips": ["3-4 general tips for writing quantified achievements"]
+  "overallImprovement": "Summary of improvements with reminder to fill in real numbers",
+  "tips": [
+    "Always use your actual numbers - interviewers will ask for specifics",
+    "If you don't have exact numbers, use conservative estimates you can defend",
+    "It's better to have fewer quantified bullets with real data than many with fabricated metrics"
+  ],
+  "honestAssessment": "Assessment of whether these bullets have enough substance to quantify meaningfully"
 }
 
 Example transformation:
 - Original: "Improved customer satisfaction"
-- Quantified: "Increased customer satisfaction scores by 25% (from 3.2 to 4.0 stars) through implementation of new feedback system, serving 500+ monthly customers"
+- Quantified: "Increased customer satisfaction scores by [X]% (from [baseline] to [new score]) through [specific initiative], serving [N]+ monthly customers"
+- Note: User must fill in actual metrics from their work records
 
 Return only valid JSON.`;
     const { content } = await callAI(prompt, userId || '', organizationId, 'quantify_achievements');
     return parseAIJSON(content);
 }
 async function detectWeaknesses(resumeData, resumeText, targetRole, userId, organizationId) {
-    const prompt = `You are a harsh but fair resume critic and career coach. Identify ALL weaknesses and red flags in this resume.
+    const prompt = `You are an EXTREMELY CRITICAL resume reviewer - think of yourself as a hiring manager who has seen 10,000 resumes and has no patience for mediocrity. Your job is to FIND PROBLEMS, not give compliments.
 
 RESUME DATA:
 ${JSON.stringify(resumeData, null, 2)}
@@ -508,44 +729,95 @@ ${resumeText}
 
 ${targetRole ? `TARGET ROLE: ${targetRole}` : ''}
 
-Check for these issues:
-1. Employment gaps (unexplained periods)
-2. Job hopping (short tenures without explanation)
-3. Vague descriptions lacking metrics
-4. Missing contact information
-5. Weak or missing summary
-6. Skills mismatch with experience
-7. Formatting/structure issues
-8. Outdated or irrelevant content
-9. Overused buzzwords without substance
-10. Missing key sections
-11. Inconsistent dates or formatting
-12. Too short or too long content
-13. Lack of career progression
-14. Missing achievements (only duties listed)
+MANDATORY CHECKS - Find issues in ALL these areas (every resume has problems):
+
+1. CONTENT QUALITY ISSUES:
+   - Vague bullet points without metrics (e.g., "Responsible for sales" = WEAK)
+   - Duties instead of achievements (what they DID vs what IMPACT they had)
+   - No numbers, percentages, dollar amounts, or quantified results
+   - Generic descriptions that could apply to anyone
+   - Buzzwords without evidence ("results-driven" means nothing without results)
+
+2. STRUCTURAL ISSUES:
+   - Missing or weak professional summary
+   - Poor bullet point structure (not starting with action verbs)
+   - Too short (under-selling) or too long (unfocused)
+   - Missing sections (skills, education, etc.)
+   - Inconsistent formatting
+
+3. EXPERIENCE RED FLAGS:
+   - Employment gaps (any period > 3 months unexplained)
+   - Job hopping (multiple roles < 1 year)
+   - Lack of career progression
+   - Irrelevant experience taking up space
+   - Outdated experience (10+ years ago) given too much weight
+
+4. SKILLS & KEYWORDS:
+   - Missing industry-standard skills for the target role
+   - Skills listed but not demonstrated in experience
+   - Outdated technologies or skills
+   - No technical skills when expected
+
+5. CREDIBILITY ISSUES:
+   - Claims without evidence
+   - Exaggerated-sounding achievements
+   - Missing dates or vague timeframes
+   - No LinkedIn/portfolio when expected
+
+HEALTH SCORE GUIDELINES (BE HARSH):
+- 90-100: Near-perfect resume (EXTREMELY RARE - maybe 1 in 100)
+- 75-89: Strong resume with minor issues
+- 60-74: Decent resume but needs work
+- 40-59: Below average, multiple problems
+- 20-39: Poor resume, major issues
+- 0-19: Unusable, needs complete rewrite
+
+A DUMMY/FAKE resume with generic content should score 15-30 MAX.
+Most real resumes score 40-65. An "Excellent" rating should be RARE.
+
+MINIMUM REQUIREMENTS:
+- Find AT LEAST 5 weaknesses (every resume has them)
+- At least 2 should be "Major" or "Critical" severity
+- For dummy/thin content: find 8+ issues and rate as "Critical Issues"
 
 Return JSON:
 {
   "weaknesses": [
     {
-      "issue": "Clear description of the problem",
-      "location": "Where in the resume (e.g., 'Experience section - Company X')",
-      "severity": "Critical/Major/Minor",
-      "impact": "How this hurts their chances",
-      "fix": "Specific actionable fix",
-      "example": "Example of improved version (if applicable)"
+      "issue": "Specific, clear description of the problem",
+      "location": "Exact location in resume",
+      "severity": "Critical (deal-breaker) | Major (significant problem) | Minor (improvement opportunity)",
+      "impact": "How this SPECIFICALLY hurts their job search",
+      "fix": "Concrete, actionable fix with specific guidance",
+      "example": "Example of what good looks like",
+      "originalText": "The exact weak text",
+      "rewrittenVersion": "Complete replacement text they can copy-paste"
     }
   ],
-  "overallHealth": "Excellent (0-1 issues) | Good (2-3 minor) | Needs Work (multiple issues) | Critical Issues (major red flags)",
-  "healthScore": 0-100,
-  "prioritizedActions": ["Top 3-5 fixes in order of importance"],
-  "positives": ["2-3 things the resume does well to balance feedback"]
+  "overallHealth": "Excellent (85+, rare) | Good (70-84) | Needs Work (50-69) | Critical Issues (<50)",
+  "healthScore": 0-100 (BE HONEST - most resumes are 40-65),
+  "prioritizedActions": ["Top 5 fixes ranked by impact - be specific"],
+  "positives": ["1-2 genuine positives ONLY if they exist - it's OK to have none"],
+  "quickFixes": [
+    {
+      "section": "Section name",
+      "original": "Weak original text",
+      "improved": "Improved version",
+      "changeType": "rewrite|add|remove|restructure"
+    }
+  ],
+  "industryInsights": {
+    "commonMistakes": ["Specific mistakes for ${targetRole || 'this role'}"],
+    "industryKeywords": ["Missing keywords standard in this field"],
+    "competitorAdvantages": ["What winning candidates include that this one lacks"]
+  },
+  "bluntAssessment": "A 2-3 sentence brutally honest assessment of this resume's competitiveness in today's job market"
 }
 
-Be thorough but constructive. Every weakness should have an actionable fix.
+REMEMBER: Your job is to HELP by being HONEST. Finding no problems helps no one. A resume that seems "fine" at first glance always has issues upon closer inspection.
 
 Return only valid JSON.`;
-    const { content } = await callAI(prompt, userId || '', organizationId, 'weakness_detector');
+    const { content } = await callAI(prompt, userId || '', organizationId, 'weakness_detector', 6000);
     return parseAIJSON(content);
 }
 async function generateFollowUpEmail(type, context, userId, organizationId) {

@@ -670,11 +670,13 @@ function generateResumeText(data: ParsedResumeData): string {
   if (data.experience.length > 0) {
     lines.push('EXPERIENCE');
     for (const exp of data.experience) {
-      lines.push(`${exp.title} at ${exp.company}`);
+      const title = exp.title || exp.position || 'Position';
+      lines.push(`${title} at ${exp.company}`);
       if (exp.startDate || exp.endDate) {
         lines.push(`${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`);
       }
-      for (const desc of exp.description) {
+      const descriptions = exp.description || exp.highlights || [];
+      for (const desc of descriptions) {
         lines.push(`• ${desc}`);
       }
       lines.push('');

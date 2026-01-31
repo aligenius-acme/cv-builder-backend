@@ -4,6 +4,7 @@ import { getAllTemplates, getTemplate, isValidTemplate } from '../services/templ
 import { generatePDF } from '../services/documents';
 import { prisma } from '../utils/prisma';
 import { NotFoundError, ValidationError } from '../utils/errors';
+import * as TemplateRegistry from '../services/template-registry';
 
 // Get all available templates
 export const getTemplates = async (
@@ -12,10 +13,163 @@ export const getTemplates = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const templates = getAllTemplates();
+    // Extract query parameters for filtering
+    const {
+      category,
+      designStyle,
+      atsCompatibility,
+      pageLength,
+      experienceLevel,
+      industryTags,
+      targetRoles,
+      isPremium,
+      isFeatured,
+      search,
+      limit,
+      offset,
+    } = req.query;
+
+    // Build filters
+    const filters: TemplateRegistry.TemplateFilters = {
+      primaryCategory: category as string,
+      designStyle: designStyle as string,
+      atsCompatibility: atsCompatibility as string,
+      pageLength: pageLength as string,
+      experienceLevel: experienceLevel as string,
+      industryTags: industryTags ? (Array.isArray(industryTags) ? industryTags as string[] : [industryTags as string]) : undefined,
+      targetRoles: targetRoles ? (Array.isArray(targetRoles) ? targetRoles as string[] : [targetRoles as string]) : undefined,
+      isPremium: isPremium === 'true' ? true : isPremium === 'false' ? false : undefined,
+      isFeatured: isFeatured === 'true' ? true : isFeatured === 'false' ? false : undefined,
+      searchQuery: search as string,
+      limit: limit ? parseInt(limit as string) : undefined,
+      offset: offset ? parseInt(offset as string) : undefined,
+    };
+
+    const templates = await TemplateRegistry.getAllTemplates(filters);
+
     res.json({
       success: true,
+      count: templates.length,
       data: templates,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get template by ID
+export const getTemplateDetails = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { templateId } = req.params;
+
+    const template = await TemplateRegistry.getTemplateById(templateId);
+
+    if (!template) {
+      throw new NotFoundError(`Template not found: ${templateId}`);
+    }
+
+    res.json({
+      success: true,
+      data: template,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get templates by category
+export const getTemplatesByCategory = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { category } = req.params;
+
+    const templates = await TemplateRegistry.getTemplatesByCategory(category);
+
+    res.json({
+      success: true,
+      count: templates.length,
+      data: templates,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get filter options
+export const getFilterOptions = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const options = await TemplateRegistry.getFilterOptions();
+
+    res.json({
+      success: true,
+      data: options,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get recommended templates
+export const getRecommendedTemplates = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { resumeId, limit } = req.query;
+
+    let resumeData: ParsedResumeData | undefined;
+
+    // If resume ID provided, load user's resume data for personalization
+    if (resumeId) {
+      const resume = await prisma.resume.findFirst({
+        where: { id: resumeId as string, userId },
+      });
+
+      if (resume) {
+        resumeData = resume.parsedData as unknown as ParsedResumeData;
+      }
+    }
+
+    const templates = await TemplateRegistry.getRecommendedTemplates(
+      resumeData,
+      limit ? parseInt(limit as string) : 5
+    );
+
+    res.json({
+      success: true,
+      count: templates.length,
+      data: templates,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get template statistics
+export const getTemplateStats = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const stats = await TemplateRegistry.getTemplateStats();
+
+    res.json({
+      success: true,
+      data: stats,
     });
   } catch (error) {
     next(error);
@@ -137,8 +291,8 @@ function getSampleResumeData(): ParsedResumeData {
       'GraphQL',
     ],
     certifications: [
-      'AWS Solutions Architect - Professional',
-      'Google Cloud Professional Developer',
+      { name: 'AWS Solutions Architect - Professional' },
+      { name: 'Google Cloud Professional Developer' },
     ],
     projects: [
       {

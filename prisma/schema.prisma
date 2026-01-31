@@ -339,14 +339,41 @@ model ResumeTemplate {
   isPremium         Boolean           @default(false)
   organizationId    String?           // For B2B custom templates
 
-  // ATS safety
+  // ATS safety (legacy)
   isAtsSafe         Boolean           @default(true)
+
+  // ============================================================================
+  // NEW FIELDS - Enhanced Template System 2026
+  // ============================================================================
+
+  // Primary taxonomy
+  primaryCategory   String?           // 'ats-professional' | 'tech-startup' | etc.
+  designStyle       String?           // 'minimal' | 'modern' | 'bold' | 'traditional'
+  pageLength        String?           // 'one-page' | 'standard' | 'cv-length'
+  atsCompatibility  String?           // 'ats-safe' | 'ats-friendly' | 'visual-first'
+
+  // Targeting & Discovery
+  industryTags      String[]          // ['finance', 'technology', 'healthcare']
+  targetRoles       String[]          // ['software-engineer', 'product-manager']
+  experienceLevel   String?           // 'entry' | 'mid' | 'senior' | 'executive'
+  searchKeywords    String[]          // SEO/search optimization terms
+
+  // Engagement & Analytics
+  popularityScore   Int               @default(0)
+  isFeatured        Boolean           @default(false)
+  supportedFormats  String[]          @default(["pdf", "docx"])
+  usageCount        Int               @default(0)
 
   // Timestamps
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
   @@index([organizationId])
+  @@index([primaryCategory])
+  @@index([designStyle])
+  @@index([atsCompatibility])
+  @@index([popularityScore])
+  @@index([isFeatured])
 }
 
 // AI Usage Log (for cost tracking)

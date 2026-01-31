@@ -1,5 +1,6 @@
 import { PrismaClient, UserRole, PlanType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { seedTemplates } from './seeds/templates';
 
 const prisma = new PrismaClient();
 
@@ -280,6 +281,9 @@ Return only the cover letter text, no JSON or formatting markers.`,
     });
     console.log('Created prompt:', prompt.name);
   }
+
+  // Seed 80 resume templates
+  await seedTemplates();
 
   console.log('Seeding completed!');
 }

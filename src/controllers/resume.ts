@@ -7,6 +7,7 @@ import { parseFile, extractResumeData, logParsingError } from '../services/parse
 import { fullCustomizationPipeline, analyzeATS } from '../services/ai';
 import { generatePDF, generateDOCX, anonymizeResumeData } from '../services/documents';
 import { getTemplate, isValidTemplate } from '../services/templates';
+import { getTemplateById, getTemplateConfigFromDB } from '../services/template-registry';
 import { getSubscriptionLimits } from '../middleware/subscription';
 import { scrapeJobPosting, formatJobDescription, ScrapedJobData } from '../services/jobScraper';
 import { PlanType } from '@prisma/client';
@@ -937,12 +938,16 @@ export const downloadResume = async (
       throw new NotFoundError('Resume not found');
     }
 
-    // Validate and get template
+    // Validate and get template from database
     const templateId = template as string;
-    if (!isValidTemplate(templateId)) {
+    const templateMetadata = await getTemplateById(templateId);
+
+    if (!templateMetadata) {
       throw new ValidationError(`Invalid template: ${templateId}`);
     }
-    const templateConfig = getTemplate(templateId);
+
+    // Get template configuration from database
+    const templateConfig = await getTemplateConfigFromDB(templateId);
 
     const resumeData = resume.parsedData as unknown as ParsedResumeData;
 
@@ -977,7 +982,7 @@ export const previewResume = async (
   try {
     const userId = req.user!.id;
     const { id } = req.params;
-    const { template = 'london-navy' } = req.query;
+    const { template = 'corporate-standard' } = req.query;
 
     const resume = await prisma.resume.findFirst({
       where: { id, userId },
@@ -987,17 +992,20 @@ export const previewResume = async (
       throw new NotFoundError('Resume not found');
     }
 
-    // Validate and get template
+    // Validate and get template from database
     const templateId = template as string;
-    if (!isValidTemplate(templateId)) {
+    const templateMetadata = await getTemplateById(templateId);
+
+    if (!templateMetadata) {
       throw new ValidationError(`Invalid template: ${templateId}`);
     }
-    const templateConfig = getTemplate(templateId);
 
     const resumeData = resume.parsedData as unknown as ParsedResumeData;
 
-    // Generate preview HTML/image
-    const buffer = await generatePDF(resumeData, templateConfig);
+    // Generate preview using HTML templates (matches preview images)
+    console.log(`🎯 Generating preview for template: ${templateId}`);
+    const { generateTemplatePDF } = await import('../services/template-html-generator');
+    const buffer = await generateTemplatePDF(templateId, resumeData);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.send(buffer);

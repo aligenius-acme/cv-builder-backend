@@ -7,4 +7,5 @@ export declare const updateCoverLetter: (req: AuthenticatedRequest, res: Respons
 export declare const deleteCoverLetter: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
 export declare const downloadCoverLetter: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
 export declare const regenerateCoverLetter: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const generateEnhancedCoverLetter: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
 //# sourceMappingURL=coverLetter.d.ts.map

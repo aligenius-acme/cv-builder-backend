@@ -1,7 +1,8 @@
 import PDFDocument from 'pdfkit';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from 'docx';
-import { ParsedResumeData, AnonymizationConfig } from '../types';
+import { ParsedResumeData, AnonymizationConfig, SkillCategory } from '../types';
 import { ExtendedTemplateConfig, getTemplateConfig, BASE_LAYOUTS, COLOR_PALETTES } from './templates';
+import { generateDOCXFromReact, templateSupportsDOCX } from './react-docx-generator';
 
 // Bullet character map
 const BULLETS: Record<string, string> = {
@@ -21,6 +22,19 @@ function cleanBullet(text: string): string {
 function getCertName(cert: string | { name: string }): string {
   if (typeof cert === 'string') return cleanBullet(cert);
   return cleanBullet(cert.name || '');
+}
+
+// Helper to normalize skills to string array
+function normalizeSkills(skills: string[] | SkillCategory[]): string[] {
+  if (!skills || skills.length === 0) return [];
+
+  // Check if it's categorized skills
+  if (typeof skills[0] === 'object' && 'category' in skills[0]) {
+    // Flatten categorized skills into a single array
+    return (skills as SkillCategory[]).flatMap(cat => cat.items);
+  }
+
+  return skills as string[];
 }
 
 // Anonymize resume data
@@ -63,20 +77,32 @@ export async function generatePDF(
   data: ParsedResumeData,
   template: ExtendedTemplateConfig
 ): Promise<Buffer> {
+  console.log(`📄 Generating PDF with:`, {
+    templateName: template.name,
+    hasSidebar: template.hasSidebar,
+    headerStyle: template.headerStyle,
+    sidebarPosition: template.sidebarPosition
+  });
+
   // Route to appropriate layout generator
   if (template.hasSidebar) {
     if (template.sidebarPosition === 'right') {
+      console.log('  → Using generateSidebarRightPDF');
       return generateSidebarRightPDF(data, template);
     }
+    console.log('  → Using generateSidebarLeftPDF');
     return generateSidebarLeftPDF(data, template);
   }
 
   switch (template.headerStyle) {
     case 'banner':
+      console.log('  → Using generateBannerPDF');
       return generateBannerPDF(data, template);
     case 'centered':
+      console.log('  → Using generateCenteredPDF');
       return generateCenteredPDF(data, template);
     default:
+      console.log('  → Using generateLeftAlignedPDF');
       return generateLeftAlignedPDF(data, template);
   }
 }
@@ -207,11 +233,12 @@ async function generateLeftAlignedPDF(
       if (data.experience.length > 0) {
         renderSection('Experience');
         for (const exp of data.experience) {
+          const title = exp.title || exp.position || 'Position';
           doc
             .font('Helvetica-Bold')
             .fontSize(fontSize.body + 0.5)
             .fillColor(textColor)
-            .text(exp.title);
+            .text(title);
 
           const company = exp.company + (exp.location ? `, ${exp.location}` : '');
           const dates = [exp.startDate, exp.current ? 'Present' : exp.endDate].filter(Boolean).join(' – ');
@@ -224,7 +251,8 @@ async function generateLeftAlignedPDF(
 
           doc.moveDown(0.25);
 
-          for (const desc of exp.description || []) {
+          const descriptions = exp.description || exp.highlights || [];
+          for (const desc of descriptions) {
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
@@ -262,11 +290,12 @@ async function generateLeftAlignedPDF(
       // Skills
       if (data.skills.length > 0) {
         renderSection('Skills');
+        const normalizedSkills = normalizeSkills(data.skills);
         if (template.skillsStyle === 'pills') {
           doc.font('Helvetica').fontSize(fontSize.body - 1);
           let x = margins.left;
           let y = doc.y;
-          for (const skill of data.skills) {
+          for (const skill of normalizedSkills) {
             const width = doc.widthOfString(skill) + 14;
             if (x + width > margins.left + pageWidth) {
               x = margins.left;
@@ -435,11 +464,12 @@ async function generateCenteredPDF(
       if (data.experience.length > 0) {
         renderSection('Experience');
         for (const exp of data.experience) {
+          const title = exp.title || exp.position || 'Position';
           doc
             .font('Helvetica-Bold')
             .fontSize(fontSize.body + 0.5)
             .fillColor(textColor)
-            .text(exp.title);
+            .text(title);
 
           const info = [exp.company, exp.location].filter(Boolean).join(', ');
           const dates = [exp.startDate, exp.current ? 'Present' : exp.endDate].filter(Boolean).join(' – ');
@@ -451,7 +481,8 @@ async function generateCenteredPDF(
             .text(`${info}  |  ${dates}`);
 
           doc.moveDown(0.25);
-          for (const desc of exp.description || []) {
+          const descriptions = exp.description || exp.highlights || [];
+          for (const desc of descriptions) {
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
@@ -618,7 +649,8 @@ async function generateBannerPDF(
             .text(`${info}  |  ${dates}`, 40, y);
           y = doc.y + 6;
 
-          for (const desc of exp.description || []) {
+          const descriptions = exp.description || exp.highlights || [];
+          for (const desc of descriptions) {
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
@@ -633,12 +665,13 @@ async function generateBannerPDF(
       // Skills
       if (data.skills.length > 0) {
         renderSection('Skills');
+        const normalizedSkills2 = normalizeSkills(data.skills);
         if (template.skillsStyle === 'grid') {
           const cols = 3;
           const colWidth = (pageWidth - 100) / cols;
           let col = 0;
           let startY = y;
-          for (const skill of data.skills) {
+          for (const skill of normalizedSkills2) {
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
@@ -655,7 +688,7 @@ async function generateBannerPDF(
           doc.font('Helvetica').fontSize(fontSize.body - 1);
           let x = 40;
           let pillY = y;
-          for (const skill of data.skills) {
+          for (const skill of normalizedSkills2) {
             const width = doc.widthOfString(skill) + 16;
             if (x + width > pageWidth - 40) {
               x = 40;
@@ -786,11 +819,12 @@ async function generateSidebarLeftPDF(
           .text('SKILLS', 18, sideY);
         sideY = doc.y + 10;
 
+        const normalizedSkills3 = normalizeSkills(data.skills);
         if (template.skillsStyle === 'pills') {
           doc.font('Helvetica').fontSize(8);
           let x = 18;
           let pillY = sideY;
-          for (const skill of data.skills) {
+          for (const skill of normalizedSkills3) {
             const width = doc.widthOfString(skill) + 12;
             if (x + width > sidebarWidth - 18) {
               x = 18;
@@ -803,7 +837,7 @@ async function generateSidebarLeftPDF(
           sideY = pillY + 28;
         } else {
           doc.font('Helvetica').fontSize(8.5);
-          for (const skill of data.skills) {
+          for (const skill of normalizedSkills3) {
             doc.fillColor('rgba(255,255,255,0.85)').text(`•  ${skill}`, 18, sideY, { width: sidebarWidth - 36 });
             sideY = doc.y + 3;
           }
@@ -896,7 +930,8 @@ async function generateSidebarLeftPDF(
             .text(`${info}  |  ${dates}`, mainX, mainY, { width: contentWidth });
           mainY = doc.y + 6;
 
-          for (const desc of exp.description || []) {
+          const descriptions = exp.description || exp.highlights || [];
+          for (const desc of descriptions) {
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
@@ -1054,7 +1089,8 @@ async function generateSidebarRightPDF(
             .text(`${info}  |  ${dates}`, mainX, mainY);
           mainY = doc.y + 5;
 
-          for (const desc of exp.description || []) {
+          const descriptions = exp.description || exp.highlights || [];
+          for (const desc of descriptions) {
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
@@ -1147,8 +1183,9 @@ async function generateSidebarRightPDF(
           .text('SKILLS', sideX, sideY);
         sideY = doc.y + 8;
 
+        const normalizedSkills4 = normalizeSkills(data.skills);
         doc.font('Helvetica').fontSize(8.5);
-        for (const skill of data.skills) {
+        for (const skill of normalizedSkills4) {
           doc.fillColor(textColor).text(`•  ${skill}`, sideX, sideY, { width: sideWidth });
           sideY = doc.y + 3;
         }
@@ -1311,7 +1348,8 @@ export async function generateDOCX(
           spacing: { after: 50 },
         })
       );
-      for (const desc of exp.description || []) {
+      const descList = exp.description || exp.highlights || [];
+      for (const desc of descList) {
         children.push(
           new Paragraph({
             children: [new TextRun({ text: `• ${cleanBullet(desc)}`, size: 22 })],
@@ -1403,6 +1441,109 @@ export async function generateDOCX(
   });
 
   return Packer.toBuffer(doc);
+}
+
+/**
+ * Generate DOCX using template-specific generators (Module 4 - React DOCX)
+ * Falls back to legacy generateDOCX if template doesn't have a custom generator
+ */
+export async function generateDOCXEnhanced(
+  data: ParsedResumeData,
+  templateId: string,
+  template?: ExtendedTemplateConfig
+): Promise<Buffer> {
+  // Use template-specific DOCX generator if available
+  if (templateSupportsDOCX(templateId)) {
+    try {
+      return await generateDOCXFromReact(templateId, data);
+    } catch (error) {
+      console.warn(`Failed to use template-specific DOCX generator, falling back to legacy:`, error);
+    }
+  }
+
+  // Fallback to legacy DOCX generation
+  const templateConfig = template || getTemplateConfig(templateId);
+  return generateDOCX(data, templateConfig);
+}
+
+// ============================================================================
+// TEMPLATE REGISTRY INTEGRATION (Module 6)
+// ============================================================================
+
+/**
+ * Generate PDF using template from registry
+ * Loads template dynamically and uses React template if available
+ */
+export async function generatePDFFromRegistry(
+  data: ParsedResumeData,
+  templateId: string
+): Promise<Buffer> {
+  // Try to load template from registry
+  const { loadTemplateModule, incrementTemplateUsage } = await import('./template-registry');
+
+  const reactTemplate = await loadTemplateModule(templateId);
+
+  if (reactTemplate) {
+    // Increment usage count
+    await incrementTemplateUsage(templateId);
+
+    // Use React PDF renderer if available
+    try {
+      const { generatePDFFromReact } = await import('./react-pdf-generator');
+      return await generatePDFFromReact(templateId, data);
+    } catch (error) {
+      console.warn(`React PDF generation failed for ${templateId}, falling back to legacy:`, error);
+    }
+  }
+
+  // Fallback to legacy PDF generation
+  const templateConfig = getTemplateConfig(templateId);
+  return generatePDF(data, templateConfig);
+}
+
+/**
+ * Generate DOCX using template from registry
+ * Loads template dynamically and uses React DOCX if available
+ */
+export async function generateDOCXFromRegistry(
+  data: ParsedResumeData,
+  templateId: string
+): Promise<Buffer> {
+  // Try to load template from registry
+  const { loadTemplateModule, incrementTemplateUsage, getTemplateById } = await import('./template-registry');
+
+  // Check if template supports DOCX
+  const metadata = await getTemplateById(templateId);
+
+  if (!metadata || !metadata.supportedFormats.includes('docx')) {
+    throw new Error(`Template ${templateId} does not support DOCX export. Please use PDF format.`);
+  }
+
+  const reactTemplate = await loadTemplateModule(templateId);
+
+  if (reactTemplate) {
+    // Increment usage count
+    await incrementTemplateUsage(templateId);
+
+    // Try React DOCX generator
+    try {
+      if (reactTemplate.generateDOCX) {
+        // Get default color palette from shared styles
+        const { colorPalettes, getColorPalette } = await import('../templates/shared/styles/colors');
+        const defaultColors = getColorPalette('professional');
+
+        const docxDoc = await reactTemplate.generateDOCX(data, defaultColors);
+        // Convert DOCX Document to Buffer
+        const { Packer } = await import('docx');
+        return await Packer.toBuffer(docxDoc);
+      }
+    } catch (error) {
+      console.warn(`React DOCX generation failed for ${templateId}, falling back to legacy:`, error);
+    }
+  }
+
+  // Fallback to legacy DOCX generation
+  return generateDOCXEnhanced(data, templateId);
 }
 
 // ============================================================================

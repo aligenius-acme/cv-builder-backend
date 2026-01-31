@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.regenerateCoverLetter = exports.downloadCoverLetter = exports.deleteCoverLetter = exports.updateCoverLetter = exports.getCoverLetter = exports.getCoverLetters = exports.generateCoverLetter = void 0;
+exports.generateEnhancedCoverLetter = exports.regenerateCoverLetter = exports.downloadCoverLetter = exports.deleteCoverLetter = exports.updateCoverLetter = exports.getCoverLetter = exports.getCoverLetters = exports.generateCoverLetter = void 0;
 const prisma_1 = require("../utils/prisma");
 const errors_1 = require("../utils/errors");
 const ai_1 = require("../services/ai");
@@ -301,4 +301,86 @@ const regenerateCoverLetter = async (req, res, next) => {
     }
 };
 exports.regenerateCoverLetter = regenerateCoverLetter;
+// Generate enhanced cover letter with alternatives
+const generateEnhancedCoverLetter = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const organizationId = req.user.organizationId;
+        const { resumeVersionId, jobTitle, companyName, jobDescription, tone = 'professional' } = req.body;
+        if (!jobTitle || !companyName || !jobDescription) {
+            throw new errors_1.ValidationError('Job title, company name, and job description are required');
+        }
+        let resumeData;
+        let jobData;
+        // If resumeVersionId provided, use that version's data
+        if (resumeVersionId) {
+            const version = await prisma_1.prisma.resumeVersion.findFirst({
+                where: { id: resumeVersionId, userId },
+            });
+            if (!version) {
+                throw new errors_1.NotFoundError('Resume version not found');
+            }
+            resumeData = version.tailoredData;
+            jobData = version.jobData;
+        }
+        else {
+            // Use the most recent resume
+            const resume = await prisma_1.prisma.resume.findFirst({
+                where: { userId, parseStatus: 'completed' },
+                orderBy: { createdAt: 'desc' },
+            });
+            if (!resume) {
+                throw new errors_1.NotFoundError('No parsed resume found. Please upload a resume first.');
+            }
+            resumeData = resume.parsedData;
+            // Extract job data from provided job description
+            jobData = {
+                requiredSkills: [],
+                preferredSkills: [],
+                responsibilities: [],
+                keywords: [],
+                qualifications: [],
+            };
+        }
+        // Generate enhanced cover letter using AI
+        const result = await (0, ai_1.generateEnhancedCoverLetter)({
+            resumeData,
+            jobData,
+            jobTitle,
+            companyName,
+            tone: tone,
+        }, userId, organizationId);
+        // Save cover letter
+        const coverLetter = await prisma_1.prisma.coverLetter.create({
+            data: {
+                userId,
+                resumeVersionId,
+                jobTitle,
+                companyName,
+                jobDescription,
+                content: result.content,
+                tone,
+            },
+        });
+        res.status(201).json({
+            success: true,
+            data: {
+                id: coverLetter.id,
+                jobTitle: coverLetter.jobTitle,
+                companyName: coverLetter.companyName,
+                content: result.content,
+                alternativeOpenings: result.alternativeOpenings,
+                keyPhrases: result.keyPhrases,
+                toneAnalysis: result.toneAnalysis,
+                callToActionVariations: result.callToActionVariations,
+                subjectLineOptions: result.subjectLineOptions,
+                createdAt: coverLetter.createdAt,
+            },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.generateEnhancedCoverLetter = generateEnhancedCoverLetter;
 //# sourceMappingURL=coverLetter.js.map
