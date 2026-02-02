@@ -1478,27 +1478,54 @@ export async function generatePDFFromRegistry(
   data: ParsedResumeData,
   templateId: string
 ): Promise<Buffer> {
-  // Try to load template from registry
-  const { loadTemplateModule, incrementTemplateUsage } = await import('./template-registry');
+  // Use HTML-to-PDF approach (same as preview) for consistency
+  const { generateTemplateHTML } = await import('./template-html-generator');
+  const { incrementTemplateUsage } = await import('./template-registry');
+  const puppeteer = await import('puppeteer');
 
-  const reactTemplate = await loadTemplateModule(templateId);
+  // Increment usage count
+  await incrementTemplateUsage(templateId);
 
-  if (reactTemplate) {
-    // Increment usage count
-    await incrementTemplateUsage(templateId);
+  // Generate HTML using the same method as preview
+  const html = await generateTemplateHTML(templateId, data);
 
-    // Use React PDF renderer if available
-    try {
-      const { generatePDFFromReact } = await import('./react-pdf-generator');
-      return await generatePDFFromReact(templateId, data);
-    } catch (error) {
-      console.warn(`React PDF generation failed for ${templateId}, falling back to legacy:`, error);
-    }
+  // Convert HTML to PDF using Puppeteer
+  console.log(`Starting PDF generation for template: ${templateId}`);
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  try {
+    const page = await browser.newPage();
+
+    // Set viewport for A4 size
+    await page.setViewport({
+      width: 794, // A4 width in pixels at 96 DPI
+      height: 1123, // A4 height in pixels at 96 DPI
+      deviceScaleFactor: 2,
+    });
+
+    // Set HTML content
+    await page.setContent(html, {
+      waitUntil: 'networkidle0',
+      timeout: 30000,
+    });
+
+    // Generate PDF
+    const pdfData = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
+    });
+
+    // Ensure it's a proper Buffer (Puppeteer returns Uint8Array)
+    const pdfBuffer = Buffer.from(pdfData);
+    console.log(`PDF generated successfully, size: ${pdfBuffer.length} bytes`);
+    return pdfBuffer;
+  } finally {
+    await browser.close();
   }
-
-  // Fallback to legacy PDF generation
-  const templateConfig = getTemplateConfig(templateId);
-  return generatePDF(data, templateConfig);
 }
 
 /**
@@ -1509,41 +1536,161 @@ export async function generateDOCXFromRegistry(
   data: ParsedResumeData,
   templateId: string
 ): Promise<Buffer> {
-  // Try to load template from registry
-  const { loadTemplateModule, incrementTemplateUsage, getTemplateById } = await import('./template-registry');
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import('docx');
+  const { incrementTemplateUsage, getTemplateById } = await import('./template-registry');
 
-  // Check if template supports DOCX
-  const metadata = await getTemplateById(templateId);
-
-  if (!metadata || !metadata.supportedFormats.includes('docx')) {
-    throw new Error(`Template ${templateId} does not support DOCX export. Please use PDF format.`);
-  }
-
-  const reactTemplate = await loadTemplateModule(templateId);
-
-  if (reactTemplate) {
-    // Increment usage count
+  // Increment usage count
+  try {
     await incrementTemplateUsage(templateId);
-
-    // Try React DOCX generator
-    try {
-      if (reactTemplate.generateDOCX) {
-        // Get default color palette from shared styles
-        const { colorPalettes, getColorPalette } = await import('../templates/shared/styles/colors');
-        const defaultColors = getColorPalette('professional');
-
-        const docxDoc = await reactTemplate.generateDOCX(data, defaultColors);
-        // Convert DOCX Document to Buffer
-        const { Packer } = await import('docx');
-        return await Packer.toBuffer(docxDoc);
-      }
-    } catch (error) {
-      console.warn(`React DOCX generation failed for ${templateId}, falling back to legacy:`, error);
-    }
+  } catch (err) {
+    console.warn('Failed to increment template usage:', err);
   }
 
-  // Fallback to legacy DOCX generation
-  return generateDOCXEnhanced(data, templateId);
+  // Generate a simple DOCX document from resume data
+  console.log(`Generating DOCX for template: ${templateId}`);
+
+  const sections = [];
+
+  // Header with name
+  sections.push(
+    new Paragraph({
+      text: data.contact?.name || 'Resume',
+      heading: HeadingLevel.TITLE,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+    })
+  );
+
+  // Contact info
+  if (data.contact) {
+    const contactParts = [];
+    if (data.contact.email) contactParts.push(data.contact.email);
+    if (data.contact.phone) contactParts.push(data.contact.phone);
+    if (data.contact.location) contactParts.push(data.contact.location);
+    if (data.contact.linkedin) contactParts.push(data.contact.linkedin);
+
+    sections.push(
+      new Paragraph({
+        text: contactParts.join(' | '),
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
+      })
+    );
+  }
+
+  // Summary
+  if (data.summary) {
+    sections.push(
+      new Paragraph({
+        text: 'PROFESSIONAL SUMMARY',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      }),
+      new Paragraph({
+        text: data.summary,
+        spacing: { after: 400 },
+      })
+    );
+  }
+
+  // Experience
+  if (data.experience && data.experience.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'EXPERIENCE',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      })
+    );
+
+    data.experience.forEach((exp: any) => {
+      sections.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: exp.title || '', bold: true }),
+            new TextRun({ text: exp.company ? ` - ${exp.company}` : '', bold: true }),
+          ],
+          spacing: { before: 200, after: 50 },
+        }),
+        new Paragraph({
+          text: `${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`,
+          italics: true,
+          spacing: { after: 100 },
+        })
+      );
+
+      if (exp.description && Array.isArray(exp.description)) {
+        exp.description.forEach((bullet: string) => {
+          sections.push(
+            new Paragraph({
+              text: `• ${bullet}`,
+              spacing: { after: 50 },
+            })
+          );
+        });
+      }
+
+      sections.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+    });
+  }
+
+  // Education
+  if (data.education && data.education.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'EDUCATION',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      })
+    );
+
+    data.education.forEach((edu: any) => {
+      sections.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: edu.degree || '', bold: true }),
+            new TextRun({ text: edu.institution ? ` - ${edu.institution}` : '' }),
+          ],
+          spacing: { before: 100, after: 50 },
+        }),
+        new Paragraph({
+          text: edu.graduationDate || '',
+          italics: true,
+          spacing: { after: 200 },
+        })
+      );
+    });
+  }
+
+  // Skills
+  if (data.skills && data.skills.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'SKILLS',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      }),
+      new Paragraph({
+        text: data.skills.join(', '),
+        spacing: { after: 200 },
+      })
+    );
+  }
+
+  // Create document
+  const doc = new Document({
+    sections: [
+      {
+        properties: {},
+        children: sections,
+      },
+    ],
+  });
+
+  // Convert to buffer
+  const buffer = await Packer.toBuffer(doc);
+  console.log(`DOCX generated successfully, size: ${buffer.length} bytes`);
+  return buffer;
 }
 
 // ============================================================================

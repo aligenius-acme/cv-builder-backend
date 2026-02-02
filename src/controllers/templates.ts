@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest, ParsedResumeData } from '../types';
 import { getAllTemplates, getTemplate, isValidTemplate } from '../services/templates';
 import { generatePDF } from '../services/documents';
+import { generateTemplateHTML } from '../services/template-html-generator';
 import { prisma } from '../utils/prisma';
 import { NotFoundError, ValidationError } from '../utils/errors';
 import * as TemplateRegistry from '../services/template-registry';
@@ -128,7 +129,7 @@ export const getRecommendedTemplates = async (
 ): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const { resumeId, limit } = req.query;
+    const { resumeId, limit, industry, experienceLevel, skills } = req.body;
 
     let resumeData: ParsedResumeData | undefined;
 
@@ -141,17 +142,26 @@ export const getRecommendedTemplates = async (
       if (resume) {
         resumeData = resume.parsedData as unknown as ParsedResumeData;
       }
+    } else if (industry || experienceLevel || skills) {
+      // Use provided data for recommendations
+      resumeData = {
+        contact: { name: '', email: '', phone: '', location: '' },
+        summary: '',
+        experience: [],
+        education: [],
+        skills: skills || [],
+      } as ParsedResumeData;
     }
 
     const templates = await TemplateRegistry.getRecommendedTemplates(
       resumeData,
-      limit ? parseInt(limit as string) : 5
+      limit || 5
     );
 
     res.json({
       success: true,
       count: templates.length,
-      data: templates,
+      data: { templates },
     });
   } catch (error) {
     next(error);
@@ -187,11 +197,12 @@ export const previewTemplate = async (
     const { resumeId, versionId } = req.query;
     const userId = req.user!.id;
 
-    if (!isValidTemplate(templateId)) {
+    // Validate template exists in database registry
+    const template = await TemplateRegistry.getTemplateById(templateId);
+    if (!template) {
       throw new ValidationError(`Invalid template: ${templateId}`);
     }
 
-    const template = getTemplate(templateId);
     let resumeData: ParsedResumeData;
 
     if (versionId && resumeId) {
@@ -221,12 +232,12 @@ export const previewTemplate = async (
       resumeData = getSampleResumeData();
     }
 
-    // Generate PDF preview
-    const buffer = await generatePDF(resumeData, template);
+    // Generate HTML preview for iframe rendering
+    const html = await generateTemplateHTML(templateId, resumeData);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="preview-${templateId}.pdf"`);
-    res.send(buffer);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(html);
   } catch (error) {
     next(error);
   }

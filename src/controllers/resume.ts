@@ -5,7 +5,7 @@ import { ValidationError, NotFoundError, QuotaExceededError } from '../utils/err
 import { uploadFile, deleteFile, getPresignedDownloadUrl } from '../services/storage';
 import { parseFile, extractResumeData, logParsingError } from '../services/parser';
 import { fullCustomizationPipeline, analyzeATS } from '../services/ai';
-import { generatePDF, generateDOCX, anonymizeResumeData } from '../services/documents';
+import { generatePDF, generateDOCX, generatePDFFromRegistry, generateDOCXFromRegistry, anonymizeResumeData } from '../services/documents';
 import { getTemplate, isValidTemplate } from '../services/templates';
 import { getTemplateById, getTemplateConfigFromDB } from '../services/template-registry';
 import { getSubscriptionLimits } from '../middleware/subscription';
@@ -544,12 +544,12 @@ export const downloadVersion = async (
       throw new NotFoundError('Version not found');
     }
 
-    // Validate and get template
+    // Validate template exists in database
     const templateId = template as string;
-    if (!isValidTemplate(templateId)) {
+    const dbTemplate = await getTemplateById(templateId);
+    if (!dbTemplate) {
       throw new ValidationError(`Invalid template: ${templateId}`);
     }
-    const templateConfig = getTemplate(templateId);
 
     let resumeData = version.tailoredData as unknown as ParsedResumeData;
 
@@ -569,18 +569,19 @@ export const downloadVersion = async (
     let fileName: string;
 
     if (format === 'docx') {
-      buffer = await generateDOCX(resumeData, templateConfig);
+      buffer = await generateDOCXFromRegistry(resumeData, templateId);
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       fileName = `resume-v${version.versionNumber}-${version.companyName}.docx`;
     } else {
-      buffer = await generatePDF(resumeData, templateConfig);
+      buffer = await generatePDFFromRegistry(resumeData, templateId);
       contentType = 'application/pdf';
       fileName = `resume-v${version.versionNumber}-${version.companyName}.pdf`;
     }
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.send(buffer);
+    res.setHeader('Content-Length', buffer.length.toString());
+    res.end(buffer, 'binary');
   } catch (error) {
     next(error);
   }
@@ -938,16 +939,13 @@ export const downloadResume = async (
       throw new NotFoundError('Resume not found');
     }
 
-    // Validate and get template from database
+    // Validate template exists in database
     const templateId = template as string;
     const templateMetadata = await getTemplateById(templateId);
 
     if (!templateMetadata) {
       throw new ValidationError(`Invalid template: ${templateId}`);
     }
-
-    // Get template configuration from database
-    const templateConfig = await getTemplateConfigFromDB(templateId);
 
     const resumeData = resume.parsedData as unknown as ParsedResumeData;
 
@@ -956,18 +954,19 @@ export const downloadResume = async (
     let fileName: string;
 
     if (format === 'docx') {
-      buffer = await generateDOCX(resumeData, templateConfig);
+      buffer = await generateDOCXFromRegistry(resumeData, templateId);
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       fileName = `${resume.title || 'resume'}.docx`;
     } else {
-      buffer = await generatePDF(resumeData, templateConfig);
+      buffer = await generatePDFFromRegistry(resumeData, templateId);
       contentType = 'application/pdf';
       fileName = `${resume.title || 'resume'}.pdf`;
     }
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.send(buffer);
+    res.setHeader('Content-Length', buffer.length.toString());
+    res.end(buffer, 'binary');
   } catch (error) {
     next(error);
   }

@@ -24,18 +24,20 @@ router.get('/filters', getFilterOptions);
 // Get templates by category
 router.get('/category/:category', getTemplatesByCategory);
 
-// Get specific template details by ID
-router.get('/:templateId', getTemplateDetails);
-
 // Protected routes (authentication required)
 // Get recommended templates based on user data
 // Query params: resumeId (optional), limit (optional)
-router.get('/recommended', authenticate, getRecommendedTemplates);
+router.post('/recommended', authenticate, getRecommendedTemplates);
 
 // Get template statistics
 router.get('/stats', authenticate, getTemplateStats);
 
 // Preview a template with sample or user data
 router.get('/:templateId/preview', authenticate, previewTemplate);
+
+// Get specific template details by ID
+// NOTE: This route must come AFTER more specific routes like /:templateId/preview
+// to avoid matching them incorrectly
+router.get('/:templateId', getTemplateDetails);
 
 export default router;
