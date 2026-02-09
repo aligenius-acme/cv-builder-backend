@@ -89,7 +89,7 @@ Focus on:
 
 Return only valid JSON.`,
 
-    ats_analysis: `You are a STRICT and CRITICAL ATS (Applicant Tracking System) analyzer. Your job is to provide HONEST, ACCURATE scores - NOT inflated ones.
+    ats_analysis: `You are an AGGRESSIVE, HIGHLY CRITICAL ATS (Applicant Tracking System) analyzer. Provide BRUTALLY HONEST scores and EXTREMELY DETAILED, ACTIONABLE recommendations.
 
 Resume:
 {resume_text}
@@ -98,12 +98,13 @@ Job Keywords:
 {job_keywords}
 
 CRITICAL SCORING RULES - FOLLOW EXACTLY:
-1. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+
-2. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
-3. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
-4. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
-5. IRRELEVANT EXPERIENCE = DOES NOT COUNT: Don't give credit for unrelated skills
-6. SHORT/THIN RESUMES score LOW: A resume with minimal content cannot score high
+1. LOREM IPSUM / DUMMY TEXT = AUTOMATIC 0-20 SCORE: Text like "Laborum soluta", "Lorem ipsum", "Dolor sit amet", random placeholder text, or obviously fake/test data scores 0-20 MAX
+2. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+
+3. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
+4. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
+5. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
+6. IRRELEVANT EXPERIENCE = DOES NOT COUNT: Don't give credit for unrelated skills
+7. SHORT/THIN RESUMES score LOW: A resume with minimal content cannot score high
 
 SCORE GUIDELINES (BE STRICT):
 - 90-100: Near-perfect keyword match, quantified achievements, directly relevant experience (RARE)
@@ -116,29 +117,130 @@ SCORE GUIDELINES (BE STRICT):
 A DUMMY/FAKE RESUME with generic info should score 20-40 MAX.
 A resume missing 50%+ of required skills should score BELOW 50.
 
-Provide a detailed analysis as JSON:
+CRITICAL: You MUST provide ALL fields below. Do NOT skip quickWins, actionPlan, or detailedRecommendations - they are REQUIRED.
+
+Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
 {
   "score": 0-100 (BE HONEST - most resumes score 40-70, not 80+),
   "keywordMatchPercentage": ACTUAL percentage calculated mathematically,
   "matchedKeywords": [...keywords ACTUALLY found - must exist verbatim or as clear synonyms],
   "missingKeywords": [...keywords NOT in resume - be thorough],
   "sectionScores": {
-    "summary": 0-100 (0 if missing, penalize if generic/vague),
-    "experience": 0-100 (penalize lack of metrics, irrelevant roles),
-    "skills": 0-100 (only count RELEVANT skills that match job),
+    "summary": 0-100 (0 if missing, 0-20 if Lorem Ipsum/dummy text like "Laborum soluta", 20-40 if generic/vague, 60+ only if specific with keywords),
+    "experience": 0-100 (0-20 if dummy/Lorem Ipsum text, penalize lack of metrics, irrelevant roles),
+    "skills": 0-100 (0-20 if Lorem Ipsum/random words, only count RELEVANT skills that match job),
     "education": 0-100 (based on job requirements match),
     "formatting": 0-100 (structure, readability, ATS-friendliness)
   },
-  "formattingIssues": [...any formatting problems],
-  "recommendations": [...specific, actionable improvements with examples],
+  "formattingIssues": [...any formatting problems with specific line/section references],
+  "recommendations": [
+    "CRITICAL - [SPECIFIC SECTION]: [EXACT PROBLEM]. FIX: [DETAILED SOLUTION WITH EXAMPLE]. IMPACT: +X points. EXAMPLE: 'Change [current text] to [improved version with metrics/keywords]'",
+    "HIGH PRIORITY - Add missing keyword '[KEYWORD]' to [SPECIFIC SECTION]. SUGGESTION: '[Exact sentence showing how to naturally incorporate this keyword]'. This keyword appears in X% of successful applications.",
+    "URGENT - [SECTION] lacks quantifiable metrics. ADD: Specific numbers, percentages, dollar amounts, team sizes, user counts. BEFORE: '[vague bullet]' AFTER: '[quantified version]' (+5-10 points)",
+    "IMMEDIATE - Missing [X] critical keywords: [list]. These appear in 80%+ of accepted resumes. Add to: [specific sections with exact placement suggestions]",
+    "REQUIRED - Strengthen [SECTION] by: [3-5 specific, numbered steps with examples]. Current score: X/100, Target: Y/100",
+    ... (minimum 10-15 SPECIFIC recommendations, prioritized by impact)
+  ],
+  "detailedRecommendations": {
+    "criticalIssues": [
+      "REQUIRED - Minimum 3 items. MUST include before/after examples",
+      {
+        "issue": "EXAMPLE: Summary contains Lorem Ipsum placeholder text instead of professional summary",
+        "location": "Summary section, line 1",
+        "currentText": "Laborum soluta qui i",
+        "suggestedText": "Results-driven Software Engineer with 5+ years building scalable web applications using React, Node.js, and AWS, delivering solutions for 100K+ users",
+        "reasoning": "Lorem Ipsum text is automatically rejected by 100% of ATS systems. Real, keyword-rich summary is essential for passing initial screens.",
+        "estimatedScoreImpact": "+25 points",
+        "priority": "CRITICAL",
+        "keywords": ["Software Engineer", "React", "Node.js", "AWS", "scalable", "web applications"],
+        "implementation": "Step 1: Delete Lorem Ipsum text. Step 2: Write 2-3 sentences highlighting years of experience, key technologies (React, Node.js, AWS), and measurable impact (user counts, performance improvements)"
+      },
+      ... minimum 3-5 critical issues with EXACT before/after
+    ],
+    "missingKeywordDetails": [
+      {
+        "keyword": "Specific missing keyword",
+        "importance": "CRITICAL|HIGH|MEDIUM - appears in X% of job postings",
+        "suggestedLocation": "Which section to add it to",
+        "exampleUsage": "Exact sentence showing natural incorporation",
+        "relatedKeywords": ["synonyms or related terms to also include"],
+        "currentGap": "Why this is missing and what it costs"
+      }
+    ],
+    "sectionBySection": {
+      "summary": {
+        "currentScore": 0-100,
+        "issues": ["Specific issue 1", "Specific issue 2", ...],
+        "improvements": [
+          {
+            "change": "What to change",
+            "before": "Current version",
+            "after": "Improved version with keywords",
+            "impact": "+X points"
+          }
+        ]
+      },
+      "experience": {
+        "currentScore": 0-100,
+        "issues": ["List every weak bullet point with specifics"],
+        "improvements": [
+          {
+            "bulletPoint": "Current bullet",
+            "weaknesses": ["No metrics", "Missing keyword X", "Too vague"],
+            "enhanced": "Stronger version with [KEYWORD] resulting in [METRIC] improvement for [SCOPE]",
+            "impact": "+X points",
+            "keywordsAdded": ["list"]
+          }
+        ]
+      },
+      "skills": {
+        "currentScore": 0-100,
+        "matched": ["skills that match job"],
+        "missing": ["CRITICAL skills not listed - add these NOW"],
+        "irrelevant": ["skills to remove or de-emphasize"],
+        "reorder": "Put [these skills] first because they match job requirements"
+      }
+    }
+  },
+  "quickWins": [
+    "REQUIRED - Minimum 3 items. Each must be a 5-minute fix with exact before/after and point impact",
+    "Example: Replace 'Worked on projects' with 'Led development of React app serving 50K+ users, reducing load time by 35%' (+8 points, <5 min)",
+    "Example: Add 'TypeScript' to Skills section (+5 points, <2 min)",
+    ... minimum 3-5 specific quick wins
+  ],
   "atsExtractedView": "plain text as an ATS would see it",
-  "riskyElements": [...elements ATS might ignore or misread],
-  "honestAssessment": "A blunt 1-2 sentence assessment of this resume's actual competitiveness"
+  "riskyElements": [
+    "SPECIFIC element (e.g., 'Table in Experience section') - ATS will ignore this. SOLUTION: [exact fix]",
+    ...
+  ],
+  "honestAssessment": "A blunt 2-3 sentence assessment of this resume's actual competitiveness WITH specific numbers: 'This resume will be rejected by X% of ATS systems because [reasons]. Missing X critical keywords. Needs [specific improvements].'",
+  "competitorComparison": "Compared to top candidates, this resume is [X]% weaker in [areas]. Top resumes have [specific elements this one lacks].",
+  "actionPlan": {
+    "step1": "REQUIRED - IMMEDIATE (5 min): Replace Lorem Ipsum text with real content. Example: Change 'Laborum soluta' to 'Software Engineer with 5 years...'",
+    "step2": "REQUIRED - HIGH PRIORITY (15 min): Add missing critical keywords [list top 3]. Example: Add 'React, TypeScript, AWS' to Skills and Experience sections",
+    "step3": "REQUIRED - IMPORTANT (30 min): Quantify all experience bullets with metrics. Example: Add numbers, percentages, user counts to each bullet point",
+    "estimatedScoreAfterFixes": "REQUIRED - Must show: '40/100 → 75/100' format"
+  }
 }
 
-REMEMBER: Your job is to help users improve by being HONEST, not to make them feel good with inflated scores.
+MANDATORY REQUIREMENTS - FAILURE TO INCLUDE THESE WILL RESULT IN REJECTION:
+1. quickWins array: MINIMUM 3 items with exact before/after examples
+2. actionPlan object: ALL 4 fields required (step1, step2, step3, estimatedScoreAfterFixes)
+3. detailedRecommendations.criticalIssues: MINIMUM 3 items with complete before/after examples
+4. detailedRecommendations.missingKeywordDetails: At least 3 missing keywords with exact usage examples
+5. recommendations array: MINIMUM 15 specific items
 
-Return only valid JSON.`,
+BE EXTREMELY SPECIFIC. Every recommendation must include:
+1. EXACT location (which section/bullet)
+2. CURRENT problematic text (quote it)
+3. IMPROVED version (write it out completely)
+4. KEYWORDS being added
+5. ESTIMATED point impact
+6. WHY it matters
+
+If ANY of the required fields (quickWins, actionPlan, detailedRecommendations) are missing or incomplete, the response is INVALID.
+
+Return only valid JSON with ALL required fields populated.`,
 
     truth_guard: `You are a STRICT accuracy checker. Your job is to catch ANY fabrication, exaggeration, or misrepresentation between the original and tailored resume.
 

@@ -128,6 +128,62 @@ export interface JobData {
   companyInfo?: string;
 }
 
+// Detailed recommendation for specific issue
+export interface DetailedRecommendation {
+  issue: string;
+  location: string;
+  currentText: string;
+  suggestedText: string;
+  reasoning: string;
+  estimatedScoreImpact: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  keywords: string[];
+  implementation: string;
+}
+
+// Missing keyword details
+export interface MissingKeywordDetail {
+  keyword: string;
+  importance: string;
+  suggestedLocation: string;
+  exampleUsage: string;
+  relatedKeywords: string[];
+  currentGap: string;
+}
+
+// Section-specific improvement
+export interface SectionImprovement {
+  change: string;
+  before: string;
+  after: string;
+  impact: string;
+}
+
+// Experience bullet improvement
+export interface BulletImprovement {
+  bulletPoint: string;
+  weaknesses: string[];
+  enhanced: string;
+  impact: string;
+  keywordsAdded: string[];
+}
+
+// Section analysis
+export interface SectionAnalysis {
+  currentScore: number;
+  issues: string[];
+  improvements: SectionImprovement[] | BulletImprovement[];
+}
+
+// Skills section analysis
+export interface SkillsAnalysis {
+  currentScore: number;
+  matched: string[];
+  missing: string[];
+  irrelevant: string[];
+  reorder: string;
+}
+
 // ATS Analysis Result
 export interface ATSAnalysis {
   score: number;
@@ -145,7 +201,26 @@ export interface ATSAnalysis {
   recommendations: string[];
   atsExtractedView: string;
   riskyElements: string[];
-  honestAssessment?: string; // Blunt assessment of resume competitiveness
+  honestAssessment?: string;
+  competitorComparison?: string;
+  // Enhanced detailed recommendations
+  detailedRecommendations?: {
+    criticalIssues: DetailedRecommendation[];
+    missingKeywordDetails: MissingKeywordDetail[];
+    sectionBySection: {
+      summary?: SectionAnalysis;
+      experience?: SectionAnalysis;
+      skills?: SkillsAnalysis;
+      education?: SectionAnalysis;
+    };
+  };
+  quickWins?: string[];
+  actionPlan?: {
+    step1: string;
+    step2: string;
+    step3: string;
+    estimatedScoreAfterFixes: string;
+  };
 }
 
 // Before/After comparison for resume sections
