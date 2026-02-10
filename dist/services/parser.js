@@ -163,11 +163,11 @@ function extractResumeDataRuleBased(rawText) {
         data.education = parseEducation(lines);
     }
     // Fallback: If no certifications found, try to extract from full text
-    if (data.certifications.length === 0) {
+    if (data.certifications && data.certifications.length === 0) {
         data.certifications = extractCertificationsFromText(lines);
     }
     // Fallback: If no languages found, try to extract from full text
-    if (data.languages.length === 0) {
+    if (data.languages && data.languages.length === 0) {
         data.languages = extractLanguagesFromText(rawText);
     }
     // Log parsing results for debugging
@@ -177,11 +177,11 @@ function extractResumeDataRuleBased(rawText) {
         hasSummary: !!data.summary,
         experienceCount: data.experience.length,
         educationCount: data.education.length,
-        skillsCount: data.skills.length,
-        certificationsCount: data.certifications.length,
-        projectsCount: data.projects.length,
-        languagesCount: data.languages.length,
-        awardsCount: data.awards.length,
+        skillsCount: Array.isArray(data.skills) ? data.skills.length : 0,
+        certificationsCount: data.certifications?.length || 0,
+        projectsCount: data.projects?.length || 0,
+        languagesCount: data.languages?.length || 0,
+        awardsCount: data.awards?.length || 0,
     });
     return data;
 }

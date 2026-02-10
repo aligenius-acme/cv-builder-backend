@@ -19,12 +19,15 @@ const upload = (0, multer_1.default)({
         const allowedTypes = [
             'application/pdf',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
         ];
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
         }
         else {
-            cb(new Error('Only PDF and DOCX files are allowed'));
+            cb(new Error('Only PDF, DOCX, and image files (JPG, PNG, WebP) are allowed'));
         }
     },
 });

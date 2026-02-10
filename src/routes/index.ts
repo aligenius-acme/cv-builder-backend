@@ -18,6 +18,7 @@ import oauthRoutes from './oauth';
 import grammarRoutes from './grammar';
 import companyLogoRoutes from './companyLogo';
 import aiFeaturesRoutes from './aiFeatures';
+import uploadRoutes from './upload';
 
 const router = Router();
 
@@ -41,6 +42,7 @@ router.use('/oauth', oauthRoutes);
 router.use('/grammar', grammarRoutes);
 router.use('/company-logos', companyLogoRoutes);
 router.use('/ai-features', aiFeaturesRoutes);
+router.use('/upload', uploadRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

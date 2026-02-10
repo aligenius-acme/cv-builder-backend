@@ -163,6 +163,7 @@ export const getResumes = async (
         title: resume.title,
         fileName: resume.originalFileName,
         parseStatus: resume.parseStatus,
+        photoUrl: resume.photoUrl,
         versionCount: resume._count.versions,
         createdAt: resume.createdAt,
         updatedAt: resume.updatedAt,
@@ -211,6 +212,7 @@ export const getResume = async (
         parseStatus: resume.parseStatus,
         parseError: resume.parseError,
         parsedData: parsedData,
+        photoUrl: resume.photoUrl,
         rawText: resume.rawText,
         versions: resume.versions.map((v) => ({
           id: v.id,
@@ -786,12 +788,13 @@ export const updateResumeContent = async (
   try {
     const userId = req.user!.id;
     const { id } = req.params;
-    const { parsedData, title } = req.body;
+    const { parsedData, title, photoUrl } = req.body;
 
     console.log('=== UPDATE RESUME CONTENT DEBUG ===');
     console.log('Resume ID:', id);
     console.log('Received parsedData:', JSON.stringify(parsedData, null, 2));
     console.log('Title:', title);
+    console.log('PhotoUrl:', photoUrl);
 
     const resume = await prisma.resume.findFirst({
       where: { id, userId },
@@ -807,7 +810,7 @@ export const updateResumeContent = async (
     if (parsedData) {
       const validSections = [
         'contact', 'summary', 'experience', 'education',
-        'skills', 'certifications', 'projects', 'languages', 'awards'
+        'skills', 'certifications', 'projects', 'languages', 'awards', 'photoUrl'
       ];
 
       for (const key of Object.keys(parsedData)) {
@@ -820,6 +823,15 @@ export const updateResumeContent = async (
     // Merge with existing data
     const currentData = resume.parsedData as any;
     const updatedData = parsedData ? { ...currentData, ...parsedData } : currentData;
+
+    // Add photoUrl to parsedData if provided
+    if (photoUrl !== undefined) {
+      updatedData.photoUrl = photoUrl;
+      // Also add to contact info
+      if (updatedData.contact) {
+        updatedData.contact.photoUrl = photoUrl;
+      }
+    }
 
     console.log('Merged updatedData:', JSON.stringify(updatedData, null, 2));
 
@@ -835,6 +847,7 @@ export const updateResumeContent = async (
         parsedData: updatedData,
         rawText,
         ...(title && { title }),
+        ...(photoUrl !== undefined && { photoUrl }),
         updatedAt: new Date(),
       },
     });
@@ -845,6 +858,7 @@ export const updateResumeContent = async (
         id: updated.id,
         title: updated.title,
         parsedData: updatedData,
+        photoUrl: updated.photoUrl,
         updatedAt: updated.updatedAt,
       },
     });

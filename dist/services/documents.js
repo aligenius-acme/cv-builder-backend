@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -7,6 +40,8 @@ exports.anonymizeResumeData = anonymizeResumeData;
 exports.generatePDF = generatePDF;
 exports.generateDOCX = generateDOCX;
 exports.generateDOCXEnhanced = generateDOCXEnhanced;
+exports.generatePDFFromRegistry = generatePDFFromRegistry;
+exports.generateDOCXFromRegistry = generateDOCXFromRegistry;
 exports.generateCoverLetterPDF = generateCoverLetterPDF;
 exports.generateCoverLetterDOCX = generateCoverLetterDOCX;
 const pdfkit_1 = __importDefault(require("pdfkit"));
@@ -30,6 +65,17 @@ function getCertName(cert) {
     if (typeof cert === 'string')
         return cleanBullet(cert);
     return cleanBullet(cert.name || '');
+}
+// Helper to normalize skills to string array
+function normalizeSkills(skills) {
+    if (!skills || skills.length === 0)
+        return [];
+    // Check if it's categorized skills
+    if (typeof skills[0] === 'object' && 'category' in skills[0]) {
+        // Flatten categorized skills into a single array
+        return skills.flatMap(cat => cat.items);
+    }
+    return skills;
 }
 // Anonymize resume data
 function anonymizeResumeData(data, config) {
@@ -61,19 +107,30 @@ function anonymizeResumeData(data, config) {
 // MAIN PDF GENERATION
 // ============================================================================
 async function generatePDF(data, template) {
+    console.log(`📄 Generating PDF with:`, {
+        templateName: template.name,
+        hasSidebar: template.hasSidebar,
+        headerStyle: template.headerStyle,
+        sidebarPosition: template.sidebarPosition
+    });
     // Route to appropriate layout generator
     if (template.hasSidebar) {
         if (template.sidebarPosition === 'right') {
+            console.log('  → Using generateSidebarRightPDF');
             return generateSidebarRightPDF(data, template);
         }
+        console.log('  → Using generateSidebarLeftPDF');
         return generateSidebarLeftPDF(data, template);
     }
     switch (template.headerStyle) {
         case 'banner':
+            console.log('  → Using generateBannerPDF');
             return generateBannerPDF(data, template);
         case 'centered':
+            console.log('  → Using generateCenteredPDF');
             return generateCenteredPDF(data, template);
         default:
+            console.log('  → Using generateLeftAlignedPDF');
             return generateLeftAlignedPDF(data, template);
     }
 }
@@ -192,11 +249,12 @@ async function generateLeftAlignedPDF(data, template) {
             if (data.experience.length > 0) {
                 renderSection('Experience');
                 for (const exp of data.experience) {
+                    const title = exp.title || exp.position || 'Position';
                     doc
                         .font('Helvetica-Bold')
                         .fontSize(fontSize.body + 0.5)
                         .fillColor(textColor)
-                        .text(exp.title);
+                        .text(title);
                     const company = exp.company + (exp.location ? `, ${exp.location}` : '');
                     const dates = [exp.startDate, exp.current ? 'Present' : exp.endDate].filter(Boolean).join(' – ');
                     doc
@@ -205,7 +263,8 @@ async function generateLeftAlignedPDF(data, template) {
                         .fillColor(mutedColor)
                         .text(`${company}  |  ${dates}`);
                     doc.moveDown(0.25);
-                    for (const desc of exp.description || []) {
+                    const descriptions = exp.description || exp.highlights || [];
+                    for (const desc of descriptions) {
                         doc
                             .font('Helvetica')
                             .fontSize(fontSize.body)
@@ -240,11 +299,12 @@ async function generateLeftAlignedPDF(data, template) {
             // Skills
             if (data.skills.length > 0) {
                 renderSection('Skills');
+                const normalizedSkills = normalizeSkills(data.skills);
                 if (template.skillsStyle === 'pills') {
                     doc.font('Helvetica').fontSize(fontSize.body - 1);
                     let x = margins.left;
                     let y = doc.y;
-                    for (const skill of data.skills) {
+                    for (const skill of normalizedSkills) {
                         const width = doc.widthOfString(skill) + 14;
                         if (x + width > margins.left + pageWidth) {
                             x = margins.left;
@@ -397,11 +457,12 @@ async function generateCenteredPDF(data, template) {
             if (data.experience.length > 0) {
                 renderSection('Experience');
                 for (const exp of data.experience) {
+                    const title = exp.title || exp.position || 'Position';
                     doc
                         .font('Helvetica-Bold')
                         .fontSize(fontSize.body + 0.5)
                         .fillColor(textColor)
-                        .text(exp.title);
+                        .text(title);
                     const info = [exp.company, exp.location].filter(Boolean).join(', ');
                     const dates = [exp.startDate, exp.current ? 'Present' : exp.endDate].filter(Boolean).join(' – ');
                     doc
@@ -410,7 +471,8 @@ async function generateCenteredPDF(data, template) {
                         .fillColor(mutedColor)
                         .text(`${info}  |  ${dates}`);
                     doc.moveDown(0.25);
-                    for (const desc of exp.description || []) {
+                    const descriptions = exp.description || exp.highlights || [];
+                    for (const desc of descriptions) {
                         doc
                             .font('Helvetica')
                             .fontSize(fontSize.body)
@@ -557,7 +619,8 @@ async function generateBannerPDF(data, template) {
                         .fillColor(primaryColor)
                         .text(`${info}  |  ${dates}`, 40, y);
                     y = doc.y + 6;
-                    for (const desc of exp.description || []) {
+                    const descriptions = exp.description || exp.highlights || [];
+                    for (const desc of descriptions) {
                         doc
                             .font('Helvetica')
                             .fontSize(fontSize.body)
@@ -571,12 +634,13 @@ async function generateBannerPDF(data, template) {
             // Skills
             if (data.skills.length > 0) {
                 renderSection('Skills');
+                const normalizedSkills2 = normalizeSkills(data.skills);
                 if (template.skillsStyle === 'grid') {
                     const cols = 3;
                     const colWidth = (pageWidth - 100) / cols;
                     let col = 0;
                     let startY = y;
-                    for (const skill of data.skills) {
+                    for (const skill of normalizedSkills2) {
                         doc
                             .font('Helvetica')
                             .fontSize(fontSize.body)
@@ -594,7 +658,7 @@ async function generateBannerPDF(data, template) {
                     doc.font('Helvetica').fontSize(fontSize.body - 1);
                     let x = 40;
                     let pillY = y;
-                    for (const skill of data.skills) {
+                    for (const skill of normalizedSkills2) {
                         const width = doc.widthOfString(skill) + 16;
                         if (x + width > pageWidth - 40) {
                             x = 40;
@@ -708,11 +772,12 @@ async function generateSidebarLeftPDF(data, template) {
                     .fillColor(primaryColor)
                     .text('SKILLS', 18, sideY);
                 sideY = doc.y + 10;
+                const normalizedSkills3 = normalizeSkills(data.skills);
                 if (template.skillsStyle === 'pills') {
                     doc.font('Helvetica').fontSize(8);
                     let x = 18;
                     let pillY = sideY;
-                    for (const skill of data.skills) {
+                    for (const skill of normalizedSkills3) {
                         const width = doc.widthOfString(skill) + 12;
                         if (x + width > sidebarWidth - 18) {
                             x = 18;
@@ -726,7 +791,7 @@ async function generateSidebarLeftPDF(data, template) {
                 }
                 else {
                     doc.font('Helvetica').fontSize(8.5);
-                    for (const skill of data.skills) {
+                    for (const skill of normalizedSkills3) {
                         doc.fillColor('rgba(255,255,255,0.85)').text(`•  ${skill}`, 18, sideY, { width: sidebarWidth - 36 });
                         sideY = doc.y + 3;
                     }
@@ -808,7 +873,8 @@ async function generateSidebarLeftPDF(data, template) {
                         .fillColor(primaryColor)
                         .text(`${info}  |  ${dates}`, mainX, mainY, { width: contentWidth });
                     mainY = doc.y + 6;
-                    for (const desc of exp.description || []) {
+                    const descriptions = exp.description || exp.highlights || [];
+                    for (const desc of descriptions) {
                         doc
                             .font('Helvetica')
                             .fontSize(fontSize.body)
@@ -945,7 +1011,8 @@ async function generateSidebarRightPDF(data, template) {
                         .fillColor(primaryColor)
                         .text(`${info}  |  ${dates}`, mainX, mainY);
                     mainY = doc.y + 5;
-                    for (const desc of exp.description || []) {
+                    const descriptions = exp.description || exp.highlights || [];
+                    for (const desc of descriptions) {
                         doc
                             .font('Helvetica')
                             .fontSize(fontSize.body)
@@ -1028,8 +1095,9 @@ async function generateSidebarRightPDF(data, template) {
                     .fillColor(primaryColor)
                     .text('SKILLS', sideX, sideY);
                 sideY = doc.y + 8;
+                const normalizedSkills4 = normalizeSkills(data.skills);
                 doc.font('Helvetica').fontSize(8.5);
-                for (const skill of data.skills) {
+                for (const skill of normalizedSkills4) {
                     doc.fillColor(textColor).text(`•  ${skill}`, sideX, sideY, { width: sideWidth });
                     sideY = doc.y + 3;
                 }
@@ -1165,7 +1233,8 @@ async function generateDOCX(data, template) {
                 children: [new docx_1.TextRun({ text: `${line}  |  ${dates}`, size: 20, color: '555555' })],
                 spacing: { after: 50 },
             }));
-            for (const desc of exp.description || []) {
+            const descList = exp.description || exp.highlights || [];
+            for (const desc of descList) {
                 children.push(new docx_1.Paragraph({
                     children: [new docx_1.TextRun({ text: `• ${cleanBullet(desc)}`, size: 22 })],
                     indent: { left: 200 },
@@ -1253,6 +1322,184 @@ async function generateDOCXEnhanced(data, templateId, template) {
     // Fallback to legacy DOCX generation
     const templateConfig = template || (0, templates_1.getTemplateConfig)(templateId);
     return generateDOCX(data, templateConfig);
+}
+// ============================================================================
+// TEMPLATE REGISTRY INTEGRATION (Module 6)
+// ============================================================================
+/**
+ * Generate PDF using template from registry
+ * Loads template dynamically and uses React template if available
+ */
+async function generatePDFFromRegistry(data, templateId) {
+    // Use HTML-to-PDF approach (same as preview) for consistency
+    const { generateTemplateHTML } = await Promise.resolve().then(() => __importStar(require('./template-html-generator')));
+    const { incrementTemplateUsage } = await Promise.resolve().then(() => __importStar(require('./template-registry')));
+    const puppeteer = await Promise.resolve().then(() => __importStar(require('puppeteer')));
+    // Increment usage count
+    await incrementTemplateUsage(templateId);
+    // Generate HTML using the same method as preview
+    const html = await generateTemplateHTML(templateId, data);
+    // Convert HTML to PDF using Puppeteer
+    console.log(`Starting PDF generation for template: ${templateId}`);
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    try {
+        const page = await browser.newPage();
+        // Set viewport for A4 size
+        await page.setViewport({
+            width: 794, // A4 width in pixels at 96 DPI
+            height: 1123, // A4 height in pixels at 96 DPI
+            deviceScaleFactor: 2,
+        });
+        // Set HTML content
+        await page.setContent(html, {
+            waitUntil: 'networkidle0',
+            timeout: 30000,
+        });
+        // Generate PDF
+        const pdfData = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: 0, right: 0, bottom: 0, left: 0 },
+        });
+        // Ensure it's a proper Buffer (Puppeteer returns Uint8Array)
+        const pdfBuffer = Buffer.from(pdfData);
+        console.log(`PDF generated successfully, size: ${pdfBuffer.length} bytes`);
+        return pdfBuffer;
+    }
+    finally {
+        await browser.close();
+    }
+}
+/**
+ * Generate DOCX using template from registry
+ * Loads template dynamically and uses React DOCX if available
+ */
+async function generateDOCXFromRegistry(data, templateId) {
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await Promise.resolve().then(() => __importStar(require('docx')));
+    const { incrementTemplateUsage, getTemplateById } = await Promise.resolve().then(() => __importStar(require('./template-registry')));
+    // Increment usage count
+    try {
+        await incrementTemplateUsage(templateId);
+    }
+    catch (err) {
+        console.warn('Failed to increment template usage:', err);
+    }
+    // Generate a simple DOCX document from resume data
+    console.log(`Generating DOCX for template: ${templateId}`);
+    const sections = [];
+    // Header with name
+    sections.push(new Paragraph({
+        text: data.contact?.name || 'Resume',
+        heading: HeadingLevel.TITLE,
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 },
+    }));
+    // Contact info
+    if (data.contact) {
+        const contactParts = [];
+        if (data.contact.email)
+            contactParts.push(data.contact.email);
+        if (data.contact.phone)
+            contactParts.push(data.contact.phone);
+        if (data.contact.location)
+            contactParts.push(data.contact.location);
+        if (data.contact.linkedin)
+            contactParts.push(data.contact.linkedin);
+        sections.push(new Paragraph({
+            text: contactParts.join(' | '),
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+        }));
+    }
+    // Summary
+    if (data.summary) {
+        sections.push(new Paragraph({
+            text: 'PROFESSIONAL SUMMARY',
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 200, after: 100 },
+        }), new Paragraph({
+            text: data.summary,
+            spacing: { after: 400 },
+        }));
+    }
+    // Experience
+    if (data.experience && data.experience.length > 0) {
+        sections.push(new Paragraph({
+            text: 'EXPERIENCE',
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 200, after: 100 },
+        }));
+        data.experience.forEach((exp) => {
+            sections.push(new Paragraph({
+                children: [
+                    new TextRun({ text: exp.title || '', bold: true }),
+                    new TextRun({ text: exp.company ? ` - ${exp.company}` : '', bold: true }),
+                ],
+                spacing: { before: 200, after: 50 },
+            }), new Paragraph({
+                text: `${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`,
+                italics: true,
+                spacing: { after: 100 },
+            }));
+            if (exp.description && Array.isArray(exp.description)) {
+                exp.description.forEach((bullet) => {
+                    sections.push(new Paragraph({
+                        text: `• ${bullet}`,
+                        spacing: { after: 50 },
+                    }));
+                });
+            }
+            sections.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+        });
+    }
+    // Education
+    if (data.education && data.education.length > 0) {
+        sections.push(new Paragraph({
+            text: 'EDUCATION',
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 200, after: 100 },
+        }));
+        data.education.forEach((edu) => {
+            sections.push(new Paragraph({
+                children: [
+                    new TextRun({ text: edu.degree || '', bold: true }),
+                    new TextRun({ text: edu.institution ? ` - ${edu.institution}` : '' }),
+                ],
+                spacing: { before: 100, after: 50 },
+            }), new Paragraph({
+                text: edu.graduationDate || '',
+                italics: true,
+                spacing: { after: 200 },
+            }));
+        });
+    }
+    // Skills
+    if (data.skills && data.skills.length > 0) {
+        sections.push(new Paragraph({
+            text: 'SKILLS',
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 200, after: 100 },
+        }), new Paragraph({
+            text: data.skills.join(', '),
+            spacing: { after: 200 },
+        }));
+    }
+    // Create document
+    const doc = new Document({
+        sections: [
+            {
+                properties: {},
+                children: sections,
+            },
+        ],
+    });
+    // Convert to buffer
+    const buffer = await Packer.toBuffer(doc);
+    console.log(`DOCX generated successfully, size: ${buffer.length} bytes`);
+    return buffer;
 }
 // ============================================================================
 // COVER LETTER GENERATION

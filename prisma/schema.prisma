@@ -193,6 +193,9 @@ model Resume {
   title             String            @default("My Resume")
   isBase            Boolean           @default(true)
 
+  // Photo
+  photoUrl          String?           @db.Text
+
   // Processing status
   parseStatus       String            @default("pending") // pending, processing, completed, failed
   parseError        String?
@@ -364,6 +367,9 @@ model ResumeTemplate {
   supportedFormats  String[]          @default(["pdf", "docx"])
   usageCount        Int               @default(0)
 
+  // Photo support
+  photoSupport      Boolean           @default(false)
+
   // Timestamps
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -374,6 +380,7 @@ model ResumeTemplate {
   @@index([atsCompatibility])
   @@index([popularityScore])
   @@index([isFeatured])
+  @@index([photoSupport])
 }
 
 // AI Usage Log (for cost tracking)

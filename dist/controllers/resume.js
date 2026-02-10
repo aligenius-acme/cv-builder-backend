@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.previewResume = exports.downloadResume = exports.updateResumeContent = exports.createBlankResume = exports.scrapeJobUrl = exports.simulateATS = exports.downloadVersion = exports.compareVersions = exports.getVersion = exports.customizeResume = exports.deleteResume = exports.updateResume = exports.getResume = exports.getResumes = exports.uploadResume = void 0;
 const prisma_1 = require("../utils/prisma");
@@ -7,7 +40,7 @@ const storage_1 = require("../services/storage");
 const parser_1 = require("../services/parser");
 const ai_1 = require("../services/ai");
 const documents_1 = require("../services/documents");
-const templates_1 = require("../services/templates");
+const template_registry_1 = require("../services/template-registry");
 const subscription_1 = require("../middleware/subscription");
 const jobScraper_1 = require("../services/jobScraper");
 const client_1 = require("@prisma/client");
@@ -128,6 +161,7 @@ const getResumes = async (req, res, next) => {
                 title: resume.title,
                 fileName: resume.originalFileName,
                 parseStatus: resume.parseStatus,
+                photoUrl: resume.photoUrl,
                 versionCount: resume._count.versions,
                 createdAt: resume.createdAt,
                 updatedAt: resume.updatedAt,
@@ -169,6 +203,7 @@ const getResume = async (req, res, next) => {
                 parseStatus: resume.parseStatus,
                 parseError: resume.parseError,
                 parsedData: parsedData,
+                photoUrl: resume.photoUrl,
                 rawText: resume.rawText,
                 versions: resume.versions.map((v) => ({
                     id: v.id,
@@ -443,12 +478,12 @@ const downloadVersion = async (req, res, next) => {
         if (!version) {
             throw new errors_1.NotFoundError('Version not found');
         }
-        // Validate and get template
+        // Validate template exists in database
         const templateId = template;
-        if (!(0, templates_1.isValidTemplate)(templateId)) {
+        const dbTemplate = await (0, template_registry_1.getTemplateById)(templateId);
+        if (!dbTemplate) {
             throw new errors_1.ValidationError(`Invalid template: ${templateId}`);
         }
-        const templateConfig = (0, templates_1.getTemplate)(templateId);
         let resumeData = version.tailoredData;
         // Apply anonymization if requested and allowed
         if (anonymize === 'true' && version.user.organization?.anonymizationEnabled) {
@@ -464,18 +499,19 @@ const downloadVersion = async (req, res, next) => {
         let contentType;
         let fileName;
         if (format === 'docx') {
-            buffer = await (0, documents_1.generateDOCX)(resumeData, templateConfig);
+            buffer = await (0, documents_1.generateDOCXFromRegistry)(resumeData, templateId);
             contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
             fileName = `resume-v${version.versionNumber}-${version.companyName}.docx`;
         }
         else {
-            buffer = await (0, documents_1.generatePDF)(resumeData, templateConfig);
+            buffer = await (0, documents_1.generatePDFFromRegistry)(resumeData, templateId);
             contentType = 'application/pdf';
             fileName = `resume-v${version.versionNumber}-${version.companyName}.pdf`;
         }
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-        res.send(buffer);
+        res.setHeader('Content-Length', buffer.length.toString());
+        res.end(buffer, 'binary');
     }
     catch (error) {
         next(error);
@@ -645,11 +681,12 @@ const updateResumeContent = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const { id } = req.params;
-        const { parsedData, title } = req.body;
+        const { parsedData, title, photoUrl } = req.body;
         console.log('=== UPDATE RESUME CONTENT DEBUG ===');
         console.log('Resume ID:', id);
         console.log('Received parsedData:', JSON.stringify(parsedData, null, 2));
         console.log('Title:', title);
+        console.log('PhotoUrl:', photoUrl);
         const resume = await prisma_1.prisma.resume.findFirst({
             where: { id, userId },
         });
@@ -661,7 +698,7 @@ const updateResumeContent = async (req, res, next) => {
         if (parsedData) {
             const validSections = [
                 'contact', 'summary', 'experience', 'education',
-                'skills', 'certifications', 'projects', 'languages', 'awards'
+                'skills', 'certifications', 'projects', 'languages', 'awards', 'photoUrl'
             ];
             for (const key of Object.keys(parsedData)) {
                 if (!validSections.includes(key)) {
@@ -672,6 +709,14 @@ const updateResumeContent = async (req, res, next) => {
         // Merge with existing data
         const currentData = resume.parsedData;
         const updatedData = parsedData ? { ...currentData, ...parsedData } : currentData;
+        // Add photoUrl to parsedData if provided
+        if (photoUrl !== undefined) {
+            updatedData.photoUrl = photoUrl;
+            // Also add to contact info
+            if (updatedData.contact) {
+                updatedData.contact.photoUrl = photoUrl;
+            }
+        }
         console.log('Merged updatedData:', JSON.stringify(updatedData, null, 2));
         // Generate raw text from parsed data for search/ATS purposes
         const rawText = generateRawTextFromParsedData(updatedData);
@@ -683,6 +728,7 @@ const updateResumeContent = async (req, res, next) => {
                 parsedData: updatedData,
                 rawText,
                 ...(title && { title }),
+                ...(photoUrl !== undefined && { photoUrl }),
                 updatedAt: new Date(),
             },
         });
@@ -692,6 +738,7 @@ const updateResumeContent = async (req, res, next) => {
                 id: updated.id,
                 title: updated.title,
                 parsedData: updatedData,
+                photoUrl: updated.photoUrl,
                 updatedAt: updated.updatedAt,
             },
         });
@@ -780,29 +827,30 @@ const downloadResume = async (req, res, next) => {
         if (!resume) {
             throw new errors_1.NotFoundError('Resume not found');
         }
-        // Validate and get template
+        // Validate template exists in database
         const templateId = template;
-        if (!(0, templates_1.isValidTemplate)(templateId)) {
+        const templateMetadata = await (0, template_registry_1.getTemplateById)(templateId);
+        if (!templateMetadata) {
             throw new errors_1.ValidationError(`Invalid template: ${templateId}`);
         }
-        const templateConfig = (0, templates_1.getTemplate)(templateId);
         const resumeData = resume.parsedData;
         let buffer;
         let contentType;
         let fileName;
         if (format === 'docx') {
-            buffer = await (0, documents_1.generateDOCX)(resumeData, templateConfig);
+            buffer = await (0, documents_1.generateDOCXFromRegistry)(resumeData, templateId);
             contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
             fileName = `${resume.title || 'resume'}.docx`;
         }
         else {
-            buffer = await (0, documents_1.generatePDF)(resumeData, templateConfig);
+            buffer = await (0, documents_1.generatePDFFromRegistry)(resumeData, templateId);
             contentType = 'application/pdf';
             fileName = `${resume.title || 'resume'}.pdf`;
         }
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-        res.send(buffer);
+        res.setHeader('Content-Length', buffer.length.toString());
+        res.end(buffer, 'binary');
     }
     catch (error) {
         next(error);
@@ -814,22 +862,24 @@ const previewResume = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const { id } = req.params;
-        const { template = 'london-navy' } = req.query;
+        const { template = 'corporate-standard' } = req.query;
         const resume = await prisma_1.prisma.resume.findFirst({
             where: { id, userId },
         });
         if (!resume) {
             throw new errors_1.NotFoundError('Resume not found');
         }
-        // Validate and get template
+        // Validate and get template from database
         const templateId = template;
-        if (!(0, templates_1.isValidTemplate)(templateId)) {
+        const templateMetadata = await (0, template_registry_1.getTemplateById)(templateId);
+        if (!templateMetadata) {
             throw new errors_1.ValidationError(`Invalid template: ${templateId}`);
         }
-        const templateConfig = (0, templates_1.getTemplate)(templateId);
         const resumeData = resume.parsedData;
-        // Generate preview HTML/image
-        const buffer = await (0, documents_1.generatePDF)(resumeData, templateConfig);
+        // Generate preview using HTML templates (matches preview images)
+        console.log(`🎯 Generating preview for template: ${templateId}`);
+        const { generateTemplatePDF } = await Promise.resolve().then(() => __importStar(require('../services/template-html-generator')));
+        const buffer = await generateTemplatePDF(templateId, resumeData);
         res.setHeader('Content-Type', 'application/pdf');
         res.send(buffer);
     }

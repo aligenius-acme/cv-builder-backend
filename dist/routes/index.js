@@ -23,6 +23,7 @@ const oauth_1 = __importDefault(require("./oauth"));
 const grammar_1 = __importDefault(require("./grammar"));
 const companyLogo_1 = __importDefault(require("./companyLogo"));
 const aiFeatures_1 = __importDefault(require("./aiFeatures"));
+const upload_1 = __importDefault(require("./upload"));
 const router = (0, express_1.Router)();
 // API routes
 router.use('/auth', auth_1.default);
@@ -44,6 +45,7 @@ router.use('/oauth', oauth_1.default);
 router.use('/grammar', grammar_1.default);
 router.use('/company-logos', companyLogo_1.default);
 router.use('/ai-features', aiFeatures_1.default);
+router.use('/upload', upload_1.default);
 // Health check
 router.get('/health', (req, res) => {
     res.json({

@@ -282,19 +282,5 @@ export function validateTemplateData(data: ParsedResumeData): TemplateValidation
 /**
  * Export all shared components and utilities
  */
-export * from './shared/components/Header';
-export * from './shared/components/ContactInfo';
-export * from './shared/components/SectionHeader';
-export * from './shared/components/ExperienceSection';
-export * from './shared/components/EducationSection';
-export * from './shared/components/SkillsSection';
-export * from './shared/components/ProjectsSection';
-export * from './shared/components/CertificationsSection';
-
+export * from './shared/components/BaseTemplate';
 export * from './shared/styles/colors';
-export * from './shared/styles/typography';
-export * from './shared/styles/spacing';
-
-export * from './shared/utils/formatters';
-export * from './shared/utils/layoutHelpers';
-export * from './shared/utils/atsOptimization';

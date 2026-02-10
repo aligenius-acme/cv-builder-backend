@@ -151,7 +151,15 @@ export async function getAllTemplates(filters?: TemplateFilters): Promise<Templa
     take: filters?.limit || 1000, // High default limit to show all templates
   });
 
-  return templates as TemplateMetadata[];
+  // Add thumbnail URLs for templates without preview images
+  // Use full URL to ensure frontend can access backend endpoint
+  const apiUrl = process.env.API_URL || 'http://localhost:3001/api';
+  const templatesWithThumbnails = templates.map(template => ({
+    ...template,
+    previewImageUrl: template.previewImageUrl || `${apiUrl}/templates/${template.id}/thumbnail`,
+  }));
+
+  return templatesWithThumbnails as TemplateMetadata[];
 }
 
 /**
@@ -162,7 +170,15 @@ export async function getTemplateById(id: string): Promise<TemplateMetadata | nu
     where: { id },
   });
 
-  return template as TemplateMetadata | null;
+  if (!template) return null;
+
+  // Add thumbnail URL if not present
+  // Use full URL to ensure frontend can access backend endpoint
+  const apiUrl = process.env.API_URL || 'http://localhost:3001/api';
+  return {
+    ...template,
+    previewImageUrl: template.previewImageUrl || `${apiUrl}/templates/${template.id}/thumbnail`,
+  } as TemplateMetadata;
 }
 
 /**

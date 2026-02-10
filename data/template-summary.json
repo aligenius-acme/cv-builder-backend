@@ -1,0 +1,74 @@
+{
+  "totalTemplates": 210,
+  "generatedAt": "2026-02-09T13:52:04.144Z",
+  "distribution": {
+    "byCategory": {
+      "ats-professional": 84,
+      "tech-startup": 63,
+      "creative-design": 42,
+      "entry-student": 21
+    },
+    "byLayout": {
+      "single-column": 126,
+      "two-column-left": 63,
+      "two-column-right": 21
+    },
+    "byDesignStyle": {
+      "formal": 42,
+      "minimalist": 21,
+      "modern": 63,
+      "technical": 42,
+      "creative": 42
+    },
+    "byExperienceLevel": {
+      "all": 126,
+      "executive": 21,
+      "mid": 42,
+      "entry": 21
+    },
+    "photoSupport": 210,
+    "averageATS": 92
+  },
+  "sampleTemplates": [
+    {
+      "id": "template-0001",
+      "name": "Professional Classic - Navy",
+      "category": "ats-professional",
+      "layout": "single-column",
+      "atsScore": 100,
+      "photoSupport": true
+    },
+    {
+      "id": "template-0002",
+      "name": "Professional Classic - Navy",
+      "category": "ats-professional",
+      "layout": "single-column",
+      "atsScore": 100,
+      "photoSupport": true
+    },
+    {
+      "id": "template-0003",
+      "name": "Professional Classic - Navy",
+      "category": "ats-professional",
+      "layout": "single-column",
+      "atsScore": 100,
+      "photoSupport": true
+    },
+    {
+      "id": "template-0004",
+      "name": "Professional Classic - Emerald",
+      "category": "ats-professional",
+      "layout": "single-column",
+      "atsScore": 100,
+      "photoSupport": true
+    },
+    {
+      "id": "template-0005",
+      "name": "Professional Classic - Emerald",
+      "category": "ats-professional",
+      "layout": "single-column",
+      "atsScore": 100,
+      "photoSupport": true
+    }
+  ]
+}

@@ -48,6 +48,7 @@ export interface ParsedResumeData {
   languages?: string[];
   awards?: AwardEntry[] | string[]; // Can be objects or simple strings
   contact: ContactInfo;
+  photoUrl?: string; // Profile photo URL
   // Optional extended fields for academic/executive templates
   publications?: (string | PublicationEntry)[];
   leadership?: (string | LeadershipEntry)[];
@@ -116,6 +117,7 @@ export interface ContactInfo {
   github?: string;
   website?: string;
   portfolio?: string; // For creative templates
+  photoUrl?: string; // Profile photo URL
 }
 
 // Job description extracted data

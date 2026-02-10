@@ -2,7 +2,6 @@ import PDFDocument from 'pdfkit';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from 'docx';
 import { ParsedResumeData, AnonymizationConfig, SkillCategory } from '../types';
 import { ExtendedTemplateConfig, getTemplateConfig, BASE_LAYOUTS, COLOR_PALETTES } from './templates';
-import { generateDOCXFromReact, templateSupportsDOCX } from './react-docx-generator';
 
 // Bullet character map
 const BULLETS: Record<string, string> = {
@@ -1452,16 +1451,7 @@ export async function generateDOCXEnhanced(
   templateId: string,
   template?: ExtendedTemplateConfig
 ): Promise<Buffer> {
-  // Use template-specific DOCX generator if available
-  if (templateSupportsDOCX(templateId)) {
-    try {
-      return await generateDOCXFromReact(templateId, data);
-    } catch (error) {
-      console.warn(`Failed to use template-specific DOCX generator, falling back to legacy:`, error);
-    }
-  }
-
-  // Fallback to legacy DOCX generation
+  // Use legacy DOCX generation (template-specific generators removed)
   const templateConfig = template || getTemplateConfig(templateId);
   return generateDOCX(data, templateConfig);
 }

@@ -8,8 +8,11 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// Security middleware with relaxed CSP for images
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // Disable CSP to allow cross-origin images
+}));
 
 // CORS configuration
 app.use(cors({

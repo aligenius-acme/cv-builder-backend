@@ -11,8 +11,11 @@ const config_1 = __importDefault(require("./config"));
 const routes_1 = __importDefault(require("./routes"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const app = (0, express_1.default)();
-// Security middleware
-app.use((0, helmet_1.default)());
+// Security middleware with relaxed CSP for images
+app.use((0, helmet_1.default)({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false, // Disable CSP to allow cross-origin images
+}));
 // CORS configuration
 app.use((0, cors_1.default)({
     origin: config_1.default.frontendUrl,

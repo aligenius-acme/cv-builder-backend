@@ -9,25 +9,54 @@ export interface AuthenticatedRequest extends Request {
         planType: PlanType;
     };
 }
+export interface SkillCategory {
+    category: string;
+    items: string[];
+}
+export interface PublicationEntry {
+    title: string;
+    authors?: string[];
+    venue: string;
+    year: string;
+    citations?: number;
+    awards?: string[];
+    type?: string;
+}
+export interface LeadershipEntry {
+    role: string;
+    organization: string;
+    period: string;
+    highlights?: string[];
+}
 export interface ParsedResumeData {
     summary?: string;
     experience: ExperienceEntry[];
     education: EducationEntry[];
-    skills: string[];
+    skills: string[] | SkillCategory[];
     certifications?: CertificationEntry[];
     projects?: ProjectEntry[];
     languages?: string[];
-    awards?: AwardEntry[];
+    awards?: AwardEntry[] | string[];
     contact: ContactInfo;
+    photoUrl?: string;
+    publications?: (string | PublicationEntry)[];
+    leadership?: (string | LeadershipEntry)[];
+    achievements?: string[];
+    professionalAffiliations?: string[];
+    grants?: string[];
+    speaking?: string[];
+    volunteerWork?: string[];
 }
 export interface ExperienceEntry {
-    title: string;
+    title?: string;
     company: string;
     location?: string;
     startDate?: string;
     endDate?: string;
     current?: boolean;
-    description: string[];
+    description?: string[];
+    position?: string;
+    highlights?: string[];
 }
 export interface EducationEntry {
     degree: string;
@@ -36,6 +65,10 @@ export interface EducationEntry {
     graduationDate?: string;
     gpa?: string;
     achievements?: string[];
+    honors?: string | string[];
+    thesis?: string;
+    advisor?: string;
+    relevantCoursework?: string[];
 }
 export interface ProjectEntry {
     name: string;
@@ -45,11 +78,13 @@ export interface ProjectEntry {
     link?: string;
     company?: string;
     dates?: string;
+    highlights?: string[];
 }
 export interface CertificationEntry {
     name: string;
     issuer?: string;
     date?: string;
+    status?: string;
 }
 export interface AwardEntry {
     name: string;
@@ -64,6 +99,8 @@ export interface ContactInfo {
     linkedin?: string;
     github?: string;
     website?: string;
+    portfolio?: string;
+    photoUrl?: string;
 }
 export interface JobData {
     requiredSkills: string[];
@@ -72,6 +109,50 @@ export interface JobData {
     keywords: string[];
     qualifications: string[];
     companyInfo?: string;
+}
+export interface DetailedRecommendation {
+    issue: string;
+    location: string;
+    currentText: string;
+    suggestedText: string;
+    reasoning: string;
+    estimatedScoreImpact: string;
+    priority: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+    keywords: string[];
+    implementation: string;
+}
+export interface MissingKeywordDetail {
+    keyword: string;
+    importance: string;
+    suggestedLocation: string;
+    exampleUsage: string;
+    relatedKeywords: string[];
+    currentGap: string;
+}
+export interface SectionImprovement {
+    change: string;
+    before: string;
+    after: string;
+    impact: string;
+}
+export interface BulletImprovement {
+    bulletPoint: string;
+    weaknesses: string[];
+    enhanced: string;
+    impact: string;
+    keywordsAdded: string[];
+}
+export interface SectionAnalysis {
+    currentScore: number;
+    issues: string[];
+    improvements: SectionImprovement[] | BulletImprovement[];
+}
+export interface SkillsAnalysis {
+    currentScore: number;
+    matched: string[];
+    missing: string[];
+    irrelevant: string[];
+    reorder: string;
 }
 export interface ATSAnalysis {
     score: number;
@@ -90,6 +171,24 @@ export interface ATSAnalysis {
     atsExtractedView: string;
     riskyElements: string[];
     honestAssessment?: string;
+    competitorComparison?: string;
+    detailedRecommendations?: {
+        criticalIssues: DetailedRecommendation[];
+        missingKeywordDetails: MissingKeywordDetail[];
+        sectionBySection: {
+            summary?: SectionAnalysis;
+            experience?: SectionAnalysis;
+            skills?: SkillsAnalysis;
+            education?: SectionAnalysis;
+        };
+    };
+    quickWins?: string[];
+    actionPlan?: {
+        step1: string;
+        step2: string;
+        step3: string;
+        estimatedScoreAfterFixes: string;
+    };
 }
 export interface BeforeAfterComparison {
     section: string;

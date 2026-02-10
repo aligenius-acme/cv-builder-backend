@@ -4,6 +4,7 @@
  */
 
 export interface ColorPalette {
+  name?: string;           // Color scheme name
   primary: string;
   secondary: string;
   accent: string;
@@ -103,7 +104,120 @@ export const colorPalettes: Record<string, ColorPalette> = {
     warning: '#d97706',      // Dark amber
     error: '#dc2626',        // Dark red
   },
+  // ============================================================================
+  // VARIATION PALETTES - For Template Expansion (500+ Templates)
+  // ============================================================================
+  navy: {
+    primary: '#1e3a8a',      // Navy blue
+    secondary: '#3b82f6',    // Blue
+    accent: '#60a5fa',       // Light blue
+    text: '#1e293b',         // Slate
+    textLight: '#475569',    // Medium slate
+    textMuted: '#64748b',    // Light slate
+    background: '#ffffff',   // White
+    backgroundAlt: '#f0f9ff', // Very light blue
+    border: '#bfdbfe',       // Light blue
+    borderLight: '#dbeafe',  // Very light blue
+    success: '#10b981',      // Green
+    warning: '#f59e0b',      // Amber
+    error: '#ef4444',        // Red
+  },
+  emerald: {
+    primary: '#047857',      // Emerald
+    secondary: '#10b981',    // Green
+    accent: '#6ee7b7',       // Light green
+    text: '#1e293b',         // Slate
+    textLight: '#475569',    // Medium slate
+    textMuted: '#64748b',    // Light slate
+    background: '#ffffff',   // White
+    backgroundAlt: '#f0fdf4', // Very light green
+    border: '#a7f3d0',       // Light green
+    borderLight: '#d1fae5',  // Very light green
+    success: '#059669',      // Dark green
+    warning: '#f59e0b',      // Amber
+    error: '#ef4444',        // Red
+  },
+  burgundy: {
+    primary: '#881337',      // Burgundy
+    secondary: '#be123c',    // Rose
+    accent: '#fb7185',       // Pink
+    text: '#1e293b',         // Slate
+    textLight: '#475569',    // Medium slate
+    textMuted: '#64748b',    // Light slate
+    background: '#ffffff',   // White
+    backgroundAlt: '#fff1f2', // Very light rose
+    border: '#fda4af',       // Light pink
+    borderLight: '#fecdd3',  // Very light pink
+    success: '#10b981',      // Green
+    warning: '#f59e0b',      // Amber
+    error: '#dc2626',        // Dark red
+  },
+  slate: {
+    primary: '#334155',      // Slate
+    secondary: '#64748b',    // Medium slate
+    accent: '#94a3b8',       // Light slate
+    text: '#1e293b',         // Dark slate
+    textLight: '#475569',    // Medium slate
+    textMuted: '#64748b',    // Light slate
+    background: '#ffffff',   // White
+    backgroundAlt: '#f8fafc', // Very light gray
+    border: '#cbd5e1',       // Light gray
+    borderLight: '#e2e8f0',  // Very light gray
+    success: '#10b981',      // Green
+    warning: '#f59e0b',      // Amber
+    error: '#ef4444',        // Red
+  },
+  purple: {
+    primary: '#6b21a8',      // Purple
+    secondary: '#a855f7',    // Violet
+    accent: '#c084fc',       // Light violet
+    text: '#1e293b',         // Slate
+    textLight: '#475569',    // Medium slate
+    textMuted: '#64748b',    // Light slate
+    background: '#ffffff',   // White
+    backgroundAlt: '#faf5ff', // Very light purple
+    border: '#d8b4fe',       // Light purple
+    borderLight: '#e9d5ff',  // Very light purple
+    success: '#10b981',      // Green
+    warning: '#f59e0b',      // Amber
+    error: '#ef4444',        // Red
+  },
+  teal: {
+    primary: '#0f766e',      // Teal
+    secondary: '#14b8a6',    // Cyan
+    accent: '#5eead4',       // Light cyan
+    text: '#1e293b',         // Slate
+    textLight: '#475569',    // Medium slate
+    textMuted: '#64748b',    // Light slate
+    background: '#ffffff',   // White
+    backgroundAlt: '#f0fdfa', // Very light teal
+    border: '#99f6e4',       // Light teal
+    borderLight: '#ccfbf1',  // Very light teal
+    success: '#059669',      // Dark green
+    warning: '#f59e0b',      // Amber
+    error: '#ef4444',        // Red
+  },
+  orange: {
+    primary: '#c2410c',      // Orange
+    secondary: '#f97316',    // Bright orange
+    accent: '#fb923c',       // Light orange
+    text: '#1e293b',         // Slate
+    textLight: '#475569',    // Medium slate
+    textMuted: '#64748b',    // Light slate
+    background: '#ffffff',   // White
+    backgroundAlt: '#fff7ed', // Very light orange
+    border: '#fdba74',       // Light orange
+    borderLight: '#fed7aa',  // Very light orange
+    success: '#10b981',      // Green
+    warning: '#d97706',      // Dark amber
+    error: '#ef4444',        // Red
+  },
 };
+
+/**
+ * Export COLOR_SCHEMES as alias for template generation
+ */
+export const COLOR_SCHEMES = colorPalettes;
 
 /**
  * Get color palette by name
