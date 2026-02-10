@@ -413,6 +413,58 @@ export const customizeResume = async (
   }
 };
 
+// Transform experience objects from DB format to frontend format
+const transformExperienceForFrontend = (exp: any) => {
+  if (!exp) return exp;
+
+  // Ensure description array only contains strings
+  let description: string[] = [];
+  if (Array.isArray(exp.description)) {
+    description = exp.description.map((item: any) =>
+      typeof item === 'string' ? item : String(item)
+    );
+  }
+
+  // Convert database format {id, startDate, endDate, current} to frontend format {dates, description[]}
+  const transformed: any = {
+    title: exp.title || '',
+    company: exp.company || '',
+    location: exp.location || '',
+    description
+  };
+
+  // Convert date fields to dates string
+  if (exp.dates) {
+    transformed.dates = exp.dates;
+  } else if (exp.startDate && exp.endDate) {
+    transformed.dates = `${exp.startDate} - ${exp.current ? 'Present' : exp.endDate}`;
+  } else if (exp.startDate) {
+    transformed.dates = exp.startDate;
+  }
+
+  // Remove any database-specific fields that might have been added
+  delete transformed.id;
+  delete transformed.startDate;
+  delete transformed.endDate;
+  delete transformed.current;
+
+  return transformed;
+};
+
+// Transform resume data to ensure frontend compatibility
+const transformResumeDataForFrontend = (data: any) => {
+  if (!data) return data;
+
+  const transformed = { ...data };
+
+  // Transform experience array
+  if (Array.isArray(data.experience)) {
+    transformed.experience = data.experience.map(transformExperienceForFrontend);
+  }
+
+  return transformed;
+};
+
 // Get resume version details
 export const getVersion = async (
   req: AuthenticatedRequest,
@@ -439,6 +491,18 @@ export const getVersion = async (
       throw new NotFoundError('Version not found');
     }
 
+    // Transform data to frontend format
+    const originalData = transformResumeDataForFrontend(version.resume.parsedData);
+    const tailoredData = transformResumeDataForFrontend(version.tailoredData);
+
+    // Debug: Log transformed experience data
+    if (tailoredData?.experience && tailoredData.experience.length > 0) {
+      console.log('=== TRANSFORMED EXPERIENCE DEBUG ===');
+      console.log('First experience object keys:', Object.keys(tailoredData.experience[0]));
+      console.log('First experience object:', JSON.stringify(tailoredData.experience[0], null, 2));
+      console.log('===================================');
+    }
+
     res.json({
       success: true,
       data: {
@@ -447,8 +511,8 @@ export const getVersion = async (
         jobTitle: version.jobTitle,
         companyName: version.companyName,
         jobDescription: version.jobDescription,
-        originalData: version.resume.parsedData,
-        tailoredData: version.tailoredData,
+        originalData,
+        tailoredData,
         tailoredText: version.tailoredText,
         changesExplanation: version.changesExplanation,
         matchedKeywords: version.matchedKeywords,
@@ -575,7 +639,9 @@ export const downloadVersion = async (
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       fileName = `resume-v${version.versionNumber}-${version.companyName}.docx`;
     } else {
-      buffer = await generatePDFFromRegistry(resumeData, templateId);
+      // Use React-based PDF generator for modular template system
+      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+      buffer = await generatePDFFromReact(templateId, resumeData);
       contentType = 'application/pdf';
       fileName = `resume-v${version.versionNumber}-${version.companyName}.pdf`;
     }
@@ -963,6 +1029,11 @@ export const downloadResume = async (
 
     const resumeData = resume.parsedData as unknown as ParsedResumeData;
 
+    // Add photo URL if available
+    if (resume.photoUrl && !resumeData.contact.photoUrl) {
+      resumeData.contact.photoUrl = resume.photoUrl;
+    }
+
     let buffer: Buffer;
     let contentType: string;
     let fileName: string;
@@ -972,7 +1043,9 @@ export const downloadResume = async (
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       fileName = `${resume.title || 'resume'}.docx`;
     } else {
-      buffer = await generatePDFFromRegistry(resumeData, templateId);
+      // Use React-based PDF generator for modular template system
+      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+      buffer = await generatePDFFromReact(templateId, resumeData);
       contentType = 'application/pdf';
       fileName = `${resume.title || 'resume'}.pdf`;
     }
@@ -1015,10 +1088,15 @@ export const previewResume = async (
 
     const resumeData = resume.parsedData as unknown as ParsedResumeData;
 
-    // Generate preview using HTML templates (matches preview images)
+    // Add photo from resume if available
+    if (resume.photoUrl && !resumeData.contact.photoUrl) {
+      resumeData.contact.photoUrl = resume.photoUrl;
+    }
+
+    // Generate preview using React components (modular system)
     console.log(`🎯 Generating preview for template: ${templateId}`);
-    const { generateTemplatePDF } = await import('../services/template-html-generator');
-    const buffer = await generateTemplatePDF(templateId, resumeData);
+    const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+    const buffer = await generatePDFFromReact(templateId, resumeData);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.send(buffer);

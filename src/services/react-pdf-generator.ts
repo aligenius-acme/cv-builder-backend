@@ -4,6 +4,9 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { ParsedResumeData } from '../types';
 import { getTemplateConfig, ExtendedTemplateConfig } from './templates';
 import { BaseTemplate } from '../templates/shared/components/BaseTemplate';
+import { TemplateAssembler } from '../templates/shared/services/TemplateAssembler';
+import { TemplateConfig } from '../templates/shared/types/templateConfig';
+import { prisma } from '../utils/prisma';
 
 // Browser instance singleton for reuse
 let browserInstance: Browser | null = null;
@@ -178,22 +181,75 @@ export async function generatePDFFromReact(
   try {
     console.log(`Starting PDF generation for template: ${templateId}`);
 
-    // 1. Get template configuration
-    let config = getTemplateConfig(templateId);
+    // 1. Try to get modular template configuration from database
+    const dbTemplate = await prisma.resumeTemplate.findUnique({
+      where: { id: templateId },
+      select: { templateConfig: true },
+    });
 
-    // 2. Apply custom colors if provided
+    let templateComponent: React.ReactElement;
+    let config: ExtendedTemplateConfig;
+
+    // 2. Use modular template system if config exists
+    if (dbTemplate?.templateConfig && typeof dbTemplate.templateConfig === 'object') {
+      const modularConfig = dbTemplate.templateConfig as any;
+
+      // Check if it has the modular structure (components property)
+      if (modularConfig.components) {
+        console.log(`Using modular template system for: ${templateId}`);
+
+        try {
+          // Assemble template using TemplateAssembler
+          templateComponent = await TemplateAssembler.assembleTemplate(
+            modularConfig as TemplateConfig,
+            resumeData
+          );
+
+          // Use colors from modular config for HTML wrapper
+          config = {
+            ...getTemplateConfig(templateId),
+            primaryColor: modularConfig.colorScheme?.primary || '#1e3a8a',
+            secondaryColor: modularConfig.colorScheme?.secondary || '#3b82f6',
+            accentColor: modularConfig.colorScheme?.accent || '#60a5fa',
+            textColor: modularConfig.colorScheme?.text || '#1e293b',
+            mutedColor: modularConfig.colorScheme?.muted || '#64748b',
+            backgroundColor: modularConfig.colorScheme?.background || '#ffffff',
+          };
+        } catch (assemblerError) {
+          console.warn(`TemplateAssembler failed, falling back to BaseTemplate:`, assemblerError);
+          // Fall back to BaseTemplate
+          config = getTemplateConfig(templateId);
+          templateComponent = React.createElement(BaseTemplate, {
+            data: resumeData,
+            config,
+          });
+        }
+      } else {
+        // No modular components, use BaseTemplate
+        console.log(`Using BaseTemplate for: ${templateId}`);
+        config = getTemplateConfig(templateId);
+        templateComponent = React.createElement(BaseTemplate, {
+          data: resumeData,
+          config,
+        });
+      }
+    } else {
+      // Template not in database or no config, use BaseTemplate
+      console.log(`Using BaseTemplate (no DB config) for: ${templateId}`);
+      config = getTemplateConfig(templateId);
+      templateComponent = React.createElement(BaseTemplate, {
+        data: resumeData,
+        config,
+      });
+    }
+
+    // 3. Apply custom colors if provided
     if (customColors) {
       config = {
         ...config,
         ...customColors,
       };
     }
-
-    // 3. Create React component
-    const templateComponent = React.createElement(BaseTemplate, {
-      data: resumeData,
-      config,
-    });
 
     // 4. Render React to HTML
     const html = renderReactToHTML(templateComponent, config);

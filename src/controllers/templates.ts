@@ -227,17 +227,23 @@ export const previewTemplate = async (
       }
 
       resumeData = resume.parsedData as unknown as ParsedResumeData;
+
+      // Add photo from resume if available
+      if (resume.photoUrl && !resumeData.contact.photoUrl) {
+        resumeData.contact.photoUrl = resume.photoUrl;
+      }
     } else {
       // Use sample data for preview
       resumeData = getSampleResumeData();
     }
 
-    // Generate HTML preview for iframe rendering
-    const html = await generateTemplateHTML(templateId, resumeData);
+    // Generate PDF preview using React components (modular system)
+    const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+    const pdfBuffer = await generatePDFFromReact(templateId, resumeData);
 
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.send(html);
+    res.send(pdfBuffer);
   } catch (error) {
     next(error);
   }
@@ -247,25 +253,30 @@ export const previewTemplate = async (
 function getSampleResumeData(): ParsedResumeData {
   return {
     contact: {
-      name: 'John Smith',
-      email: 'john.smith@email.com',
-      phone: '(555) 123-4567',
+      name: 'Sarah Johnson',
+      email: 'sarah.johnson@email.com',
+      phone: '(555) 987-6543',
       location: 'San Francisco, CA',
-      linkedin: 'linkedin.com/in/johnsmith',
+      linkedin: 'linkedin.com/in/sarahjohnson',
+      github: 'github.com/sarahjohnson',
+      website: 'sarahjohnson.dev',
+      photoUrl: 'https://ui-avatars.com/api/?name=Sarah+Johnson&size=300&background=3b82f6&color=fff&bold=true',
     },
-    summary: 'Experienced software engineer with 8+ years of expertise in full-stack development, cloud architecture, and team leadership. Proven track record of delivering scalable solutions and mentoring junior developers.',
+    summary: 'Results-driven Software Engineer with 8+ years of experience in full-stack development, cloud architecture, and agile team leadership. Proven expertise in building scalable applications serving millions of users. Passionate about mentoring junior developers and implementing best practices for code quality and system reliability.',
     experience: [
       {
         title: 'Senior Software Engineer',
-        company: 'Tech Company Inc.',
+        company: 'Tech Innovations Inc.',
         location: 'San Francisco, CA',
         startDate: 'Jan 2020',
         endDate: '',
         current: true,
         description: [
-          'Led development of microservices architecture serving 2M+ daily active users',
-          'Reduced API response times by 40% through database optimization',
-          'Mentored team of 5 junior developers, improving code quality by 25%',
+          'Led development of microservices architecture serving 2.5M+ daily active users, improving system reliability to 99.95% uptime',
+          'Reduced API response times by 40% through database query optimization and implementing Redis caching strategy',
+          'Mentored team of 5 junior developers, conducting code reviews and improving code quality metrics by 35%',
+          'Architected and deployed containerized applications using Docker and Kubernetes on AWS EKS',
+          'Implemented comprehensive monitoring and alerting system using Datadog, reducing incident response time by 50%',
         ],
       },
       {
@@ -276,17 +287,38 @@ function getSampleResumeData(): ParsedResumeData {
         endDate: 'Dec 2019',
         current: false,
         description: [
-          'Built real-time analytics dashboard using React and Node.js',
-          'Implemented CI/CD pipelines reducing deployment time by 60%',
-          'Collaborated with product team to define technical requirements',
+          'Built real-time analytics dashboard using React, TypeScript, and Node.js, processing 100K+ events per minute',
+          'Implemented CI/CD pipelines with GitHub Actions and AWS CodeDeploy, reducing deployment time from 2 hours to 15 minutes',
+          'Developed RESTful APIs and GraphQL endpoints serving web and mobile applications',
+          'Collaborated with product team to define technical requirements and deliver features on aggressive timelines',
+          'Reduced production bugs by 60% through comprehensive unit and integration testing',
+        ],
+      },
+      {
+        title: 'Junior Software Developer',
+        company: 'Digital Solutions Co.',
+        location: 'Palo Alto, CA',
+        startDate: 'Aug 2015',
+        endDate: 'May 2017',
+        current: false,
+        description: [
+          'Developed responsive web applications using React, Redux, and Material-UI',
+          'Participated in agile development process including daily standups, sprint planning, and retrospectives',
+          'Fixed bugs and implemented new features based on user feedback and requirements',
         ],
       },
     ],
     education: [
       {
-        degree: 'B.S. Computer Science',
+        degree: 'Bachelor of Science in Computer Science',
         institution: 'University of California, Berkeley',
-        graduationDate: 'May 2017',
+        graduationDate: 'May 2015',
+        gpa: '3.8',
+        achievements: [
+          'Dean\'s Honor List (4 semesters)',
+          'President of Computer Science Student Association',
+          'First place in UC Berkeley Hackathon 2014',
+        ],
       },
     ],
     skills: [
@@ -297,20 +329,37 @@ function getSampleResumeData(): ParsedResumeData {
       'Python',
       'AWS',
       'Docker',
+      'Kubernetes',
       'PostgreSQL',
       'MongoDB',
+      'Redis',
       'GraphQL',
+      'Git',
+      'CI/CD',
+      'Microservices',
     ],
     certifications: [
-      { name: 'AWS Solutions Architect - Professional' },
-      { name: 'Google Cloud Professional Developer' },
+      { name: 'AWS Solutions Architect - Professional', date: 'Dec 2022', issuer: 'Amazon Web Services' },
+      { name: 'Google Cloud Professional Developer', date: 'Aug 2021', issuer: 'Google Cloud' },
+      { name: 'Certified Kubernetes Administrator (CKA)', date: 'Mar 2023', issuer: 'Cloud Native Computing Foundation' },
     ],
     projects: [
       {
         name: 'Open Source Analytics Platform',
-        description: 'Built an open-source analytics platform with 500+ GitHub stars',
-        technologies: ['React', 'Node.js', 'PostgreSQL', 'Docker'],
+        description: 'Built a comprehensive open-source analytics platform with real-time data processing, custom dashboards, and alerting. Featured on Product Hunt and gained 1,200+ GitHub stars.',
+        technologies: ['React', 'Node.js', 'PostgreSQL', 'Docker', 'Redis'],
+        url: 'github.com/analytics-platform',
       },
+      {
+        name: 'Machine Learning Model Deployment Tool',
+        description: 'Created a CLI tool for streamlining ML model deployment to cloud platforms, reducing deployment time by 70%.',
+        technologies: ['Python', 'TensorFlow', 'AWS SageMaker', 'Docker'],
+      },
+    ],
+    languages: [
+      { name: 'English', proficiency: 'Native' },
+      { name: 'Spanish', proficiency: 'Fluent' },
+      { name: 'Mandarin', proficiency: 'Conversational' },
     ],
   };
 }
