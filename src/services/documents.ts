@@ -1435,6 +1435,74 @@ export async function generateDOCX(
     }
   }
 
+  // Languages
+  if (data.languages && data.languages.length > 0) {
+    addSectionHeader('Languages');
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: data.languages.join('  •  '), size: 22 })],
+        spacing: { after: 200 },
+      })
+    );
+  }
+
+  // Awards
+  if (data.awards && data.awards.length > 0) {
+    addSectionHeader('Awards & Honors');
+    for (const award of data.awards) {
+      const awardText = typeof award === 'string' ? award : award.name;
+      children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `• ${cleanBullet(awardText)}`, size: 22 })],
+          spacing: { after: 40 },
+        })
+      );
+    }
+  }
+
+  // Volunteer Work
+  if (data.volunteerWork && data.volunteerWork.length > 0) {
+    addSectionHeader('Volunteer Work');
+    for (const vol of data.volunteerWork) {
+      // Handle both string and object formats
+      if (typeof vol === 'string') {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: `• ${cleanBullet(vol)}`, size: 22 })],
+            spacing: { after: 40 },
+          })
+        );
+      } else {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: vol.role, bold: true, size: 24 })],
+            spacing: { before: 100 },
+          })
+        );
+        const volLine = [vol.organization, vol.location].filter(Boolean).join(', ');
+        const dates = [vol.startDate, vol.current ? 'Present' : vol.endDate].filter(Boolean).join(' – ');
+        if (volLine || dates) {
+          children.push(
+            new Paragraph({
+              children: [new TextRun({ text: `${volLine}${volLine && dates ? '  |  ' : ''}${dates}`, size: 20, color: '555555' })],
+              spacing: { after: 50 },
+            })
+          );
+        }
+        const descList = vol.description || [];
+        for (const desc of descList) {
+          children.push(
+            new Paragraph({
+              children: [new TextRun({ text: `• ${cleanBullet(desc)}`, size: 22 })],
+              indent: { left: 200 },
+              spacing: { after: 40 },
+            })
+          );
+        }
+      }
+    }
+  }
+
   const doc = new Document({
     sections: [{ children }],
   });

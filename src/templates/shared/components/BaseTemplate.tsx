@@ -8,7 +8,7 @@ export interface TemplateProps {
 }
 
 export const BaseTemplate: React.FC<TemplateProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications, projects } = data;
+  const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -183,7 +183,7 @@ export const BaseTemplate: React.FC<TemplateProps> = ({ data, config }) => {
                 fontWeight: 500,
               }}
             >
-              {skill}
+              {typeof skill === 'string' ? skill : skill.category}
             </span>
           ))}
         </div>
@@ -205,7 +205,7 @@ export const BaseTemplate: React.FC<TemplateProps> = ({ data, config }) => {
                 color: textColor,
               }}
             >
-              {renderBullet()} {skill}
+              {renderBullet()} {typeof skill === 'string' ? skill : skill.category}
             </div>
           ))}
         </div>
@@ -273,7 +273,7 @@ export const BaseTemplate: React.FC<TemplateProps> = ({ data, config }) => {
                 {exp.company}{exp.location && ` • ${exp.location}`}
               </div>
               <ul style={{ margin: 0, paddingLeft: bulletStyle === 'none' ? 0 : '20px', listStyle: 'none' }}>
-                {exp.description.map((desc, i) => (
+                {exp.description?.map((desc, i) => (
                   <li key={i} style={{
                     fontSize: `${fontSize.body}px`,
                     color: textColor,
@@ -401,15 +401,15 @@ export const BaseTemplate: React.FC<TemplateProps> = ({ data, config }) => {
                   color: textColor,
                   fontWeight: 500,
                 }}>
-                  {cert.name}
+                  {typeof cert === 'string' ? cert : cert.name}
                 </span>
-                {cert.date && (
+                {typeof cert === 'object' && cert.date && (
                   <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
                     {cert.date}
                   </span>
                 )}
               </div>
-              {cert.issuer && (
+              {typeof cert === 'object' && cert.issuer && (
                 <div style={{
                   fontSize: `${fontSize.body - 1}px`,
                   color: mutedColor,
@@ -420,6 +420,113 @@ export const BaseTemplate: React.FC<TemplateProps> = ({ data, config }) => {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Languages Section */}
+      {languages && languages.length > 0 && (
+        <div>
+          {renderSectionTitle('Languages')}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '12px',
+            fontSize: `${fontSize.body}px`,
+            color: textColor,
+          }}>
+            {languages.map((language, index) => (
+              <span key={index}>
+                {language}{index < languages.length - 1 && ' •'}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Awards Section */}
+      {awards && awards.length > 0 && (
+        <div>
+          {renderSectionTitle('Awards & Honors')}
+          <ul style={{ margin: 0, paddingLeft: bulletStyle === 'none' ? 0 : '20px', listStyle: 'none' }}>
+            {awards.map((award, index) => (
+              <li key={index} style={{
+                fontSize: `${fontSize.body}px`,
+                color: textColor,
+                lineHeight: 1.6,
+                marginBottom: '6px',
+              }}>
+                {bulletStyle !== 'none' && <span style={{ marginRight: '8px' }}>{renderBullet()}</span>}
+                {typeof award === 'string' ? award : award.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Volunteer Work Section */}
+      {volunteerWork && volunteerWork.length > 0 && (
+        <div>
+          {renderSectionTitle('Volunteer Work')}
+          {volunteerWork.map((vol, index) => {
+            // Handle both string and object formats
+            if (typeof vol === 'string') {
+              return (
+                <div key={index} style={{
+                  fontSize: `${fontSize.body}px`,
+                  color: textColor,
+                  lineHeight: 1.6,
+                  marginBottom: '6px',
+                }}>
+                  {bulletStyle !== 'none' && <span style={{ marginRight: '8px' }}>{renderBullet()}</span>}
+                  {vol}
+                </div>
+              );
+            }
+
+            // Render structured volunteer work entry
+            return (
+              <div key={index} style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <h3 style={{
+                    fontSize: `${fontSize.subheader}px`,
+                    color: textColor,
+                    fontWeight: 600,
+                    margin: 0,
+                  }}>
+                    {vol.role}
+                  </h3>
+                  {vol.startDate && (
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, whiteSpace: 'nowrap' }}>
+                      {vol.startDate} - {vol.current ? 'Present' : vol.endDate}
+                    </span>
+                  )}
+                </div>
+                <div style={{
+                  fontSize: `${fontSize.body}px`,
+                  color: mutedColor,
+                  marginTop: '4px',
+                  marginBottom: '8px',
+                }}>
+                  {vol.organization}{vol.location && ` • ${vol.location}`}
+                </div>
+                {vol.description && vol.description.length > 0 && (
+                  <ul style={{ margin: 0, paddingLeft: bulletStyle === 'none' ? 0 : '20px', listStyle: 'none' }}>
+                    {vol.description.map((desc, i) => (
+                      <li key={i} style={{
+                        fontSize: `${fontSize.body}px`,
+                        color: textColor,
+                        lineHeight: 1.6,
+                        marginBottom: '4px',
+                      }}>
+                        {bulletStyle !== 'none' && <span style={{ marginRight: '8px' }}>{renderBullet()}</span>}
+                        {desc}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

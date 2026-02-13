@@ -250,7 +250,7 @@ export const previewTemplate = async (
 };
 
 // Sample data for template preview
-function getSampleResumeData(): ParsedResumeData {
+export function getSampleResumeData(): ParsedResumeData {
   return {
     contact: {
       name: 'Sarah Johnson',
@@ -357,9 +357,42 @@ function getSampleResumeData(): ParsedResumeData {
       },
     ],
     languages: [
-      { name: 'English', proficiency: 'Native' },
-      { name: 'Spanish', proficiency: 'Fluent' },
-      { name: 'Mandarin', proficiency: 'Conversational' },
+      'English (Native)',
+      'Spanish (Fluent)',
+      'Mandarin (Conversational)',
+    ],
+    awards: [
+      'AWS Partner of the Year 2023',
+      'Top Contributor Award - Open Source Community',
+      'Best Technical Innovation - Tech Innovations Inc.',
+      'UC Berkeley Hackathon Winner 2014',
+    ],
+    volunteerWork: [
+      {
+        role: 'Coding Mentor',
+        organization: 'Code for Good',
+        location: 'San Francisco, CA',
+        startDate: 'Jan 2021',
+        endDate: '',
+        current: true,
+        description: [
+          'Mentored 20+ students in web development fundamentals including HTML, CSS, JavaScript, and React',
+          'Organized monthly coding workshops for underrepresented communities, reaching 100+ participants',
+          'Developed curriculum for beginner-friendly web development bootcamp',
+        ],
+      },
+      {
+        role: 'Technology Consultant',
+        organization: 'Local Non-Profit Alliance',
+        location: 'San Francisco, CA',
+        startDate: 'Jun 2019',
+        endDate: 'Dec 2020',
+        current: false,
+        description: [
+          'Provided pro-bono technical consulting to 5 local non-profit organizations',
+          'Built custom web applications to help organizations streamline operations and increase donor engagement',
+        ],
+      },
     ],
   };
 }

@@ -37,6 +37,17 @@ export interface LeadershipEntry {
   highlights?: string[];
 }
 
+// Volunteer work entry type
+export interface VolunteerWorkEntry {
+  role: string;
+  organization: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  current?: boolean;
+  description?: string[];
+}
+
 // Resume parsed data structure
 export interface ParsedResumeData {
   summary?: string;
@@ -56,7 +67,7 @@ export interface ParsedResumeData {
   professionalAffiliations?: string[];
   grants?: string[]; // Research grants (academic)
   speaking?: string[]; // Speaking engagements (creative/executive)
-  volunteerWork?: string[]; // Volunteer work (entry-level)
+  volunteerWork?: (string | VolunteerWorkEntry)[]; // Volunteer work (entry-level) - can be simple strings or detailed entries
 }
 
 export interface ExperienceEntry {

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
 import config from './config';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -37,6 +38,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // API routes
 app.use('/api', routes);
