@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { ParsedResumeData } from '../../../types';
 import { ExtendedTemplateConfig } from '../../../services/templates';
+import { PhotoCircle } from './PhotoCircle';
 
 export interface TemplateProps {
   data: ParsedResumeData;
@@ -29,31 +30,47 @@ export const BaseTemplate: React.FC<TemplateProps> = ({ data, config }) => {
   // Render header based on style
   const renderHeader = () => {
     const headerContent = (
-      <div>
-        <h1 style={{
-          fontSize: `${fontSize.header}px`,
-          color: headerStyle === 'banner' ? '#ffffff' : primaryColor,
-          margin: 0,
-          fontWeight: 700,
-          letterSpacing: '-0.5px'
-        }}>
-          {contact.name || 'Your Name'}
-        </h1>
-        <div style={{
-          fontSize: `${fontSize.body}px`,
-          color: headerStyle === 'banner' ? '#ffffff' : mutedColor,
-          marginTop: '8px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          {contact.email && <span>{contact.email}</span>}
-          {contact.phone && <span>{contact.phone}</span>}
-          {contact.location && <span>{contact.location}</span>}
-          {contact.linkedin && <span>{contact.linkedin}</span>}
-          {contact.github && <span>{contact.github}</span>}
-          {contact.website && <span>{contact.website}</span>}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '24px',
+        justifyContent: 'space-between'
+      }}>
+        <div style={{ flex: 1 }}>
+          <h1 style={{
+            fontSize: `${fontSize.header}px`,
+            color: headerStyle === 'banner' ? '#ffffff' : primaryColor,
+            margin: 0,
+            fontWeight: 700,
+            letterSpacing: '-0.5px'
+          }}>
+            {contact.name || 'Your Name'}
+          </h1>
+          <div style={{
+            fontSize: `${fontSize.body}px`,
+            color: headerStyle === 'banner' ? '#ffffff' : mutedColor,
+            marginTop: '8px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            {contact.email && <span>{contact.email}</span>}
+            {contact.phone && <span>{contact.phone}</span>}
+            {contact.location && <span>{contact.location}</span>}
+            {contact.linkedin && <span>{contact.linkedin}</span>}
+            {contact.github && <span>{contact.github}</span>}
+            {contact.website && <span>{contact.website}</span>}
+          </div>
         </div>
+        {contact.photoUrl && (
+          <PhotoCircle
+            photoUrl={contact.photoUrl}
+            name={contact.name || 'User'}
+            size="large"
+            position="right"
+            primaryColor={primaryColor}
+          />
+        )}
       </div>
     );
 

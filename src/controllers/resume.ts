@@ -598,6 +598,7 @@ export const downloadVersion = async (
     const version = await prisma.resumeVersion.findFirst({
       where: { id: versionId, resumeId: id, userId },
       include: {
+        resume: true,
         user: {
           include: {
             organization: true,
@@ -618,6 +619,11 @@ export const downloadVersion = async (
     }
 
     let resumeData = version.tailoredData as unknown as ParsedResumeData;
+
+    // Add photo from resume if available
+    if (version.resume.photoUrl && !resumeData.contact.photoUrl) {
+      resumeData.contact.photoUrl = version.resume.photoUrl;
+    }
 
     // Apply anonymization if requested and allowed
     if (anonymize === 'true' && version.user.organization?.anonymizationEnabled) {

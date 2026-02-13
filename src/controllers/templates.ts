@@ -209,6 +209,7 @@ export const previewTemplate = async (
       // Use user's actual version data
       const version = await prisma.resumeVersion.findFirst({
         where: { id: versionId as string, resumeId: resumeId as string, userId },
+        include: { resume: true },
       });
 
       if (!version) {
@@ -216,6 +217,11 @@ export const previewTemplate = async (
       }
 
       resumeData = version.tailoredData as unknown as ParsedResumeData;
+
+      // Add photo from resume if available
+      if (version.resume.photoUrl && !resumeData.contact.photoUrl) {
+        resumeData.contact.photoUrl = version.resume.photoUrl;
+      }
     } else if (resumeId) {
       // Use user's original resume data
       const resume = await prisma.resume.findFirst({
