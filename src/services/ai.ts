@@ -223,6 +223,15 @@ Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
   }
 }
 
+HARD SCORE CEILING BASED ON MISSING KEYWORDS (NON-NEGOTIABLE):
+- Count total required job keywords provided
+- Count how many are GENUINELY ABSENT from the resume
+- If >70% of required keywords missing → score CANNOT exceed 40, regardless of writing quality
+- If >50% of required keywords missing → score CANNOT exceed 55
+- If >30% of required keywords missing → score CANNOT exceed 70
+- Good formatting or writing quality does NOT override this ceiling
+- A well-written resume that lacks critical skills is still a poor match
+
 MANDATORY REQUIREMENTS - FAILURE TO INCLUDE THESE WILL RESULT IN REJECTION:
 1. quickWins array: MINIMUM 3 items with exact before/after examples
 2. actionPlan object: ALL 4 fields required (step1, step2, step3, estimatedScoreAfterFixes)
@@ -585,12 +594,27 @@ export async function analyzeATS(
   resumeText: string,
   jobKeywords: string[],
   userId: string,
-  organizationId?: string | null
+  organizationId?: string | null,
+  missingKeywords?: string[]
 ): Promise<ATSAnalysis> {
   const promptTemplate = await getPrompt('ats_analysis');
-  const prompt = promptTemplate
+  let prompt = promptTemplate
     .replace('{resume_text}', resumeText)
     .replace('{job_keywords}', JSON.stringify(jobKeywords));
+
+  // Fix 3: Inject confirmed missing keywords so scorer cannot ignore real gaps
+  if (missingKeywords && missingKeywords.length > 0) {
+    const missingPct = Math.round((missingKeywords.length / Math.max(jobKeywords.length, 1)) * 100);
+    prompt += `\n\nCRITICAL VERIFIED DATA — DO NOT IGNORE:
+The following ${missingKeywords.length} required keywords are CONFIRMED ABSENT from this resume (${missingPct}% of total required keywords missing):
+${missingKeywords.join(', ')}
+
+This is a HARD FACT verified before scoring. Each missing required keyword is a mandatory deduction.
+Apply the keyword ceiling rule: ${missingPct}% missing → score ceiling is ${
+  missingPct > 70 ? '40' : missingPct > 50 ? '55' : missingPct > 30 ? '70' : '100'
+} maximum.
+Do NOT award points for keywords that appear in the confirmed-missing list above.`;
+  }
 
   const { content } = await callAI(prompt, userId, organizationId, 'ats_analysis');
 
@@ -857,13 +881,54 @@ export async function fullCustomizationPipeline(
     organizationId
   );
 
-  // Step 3: Run ATS analysis
+  // Step 3: Run ATS analysis — pass confirmed missing keywords so scorer cannot ignore real gaps
+  const jobKeywords = [...jobData.requiredSkills, ...jobData.keywords];
   const atsDetails = await analyzeATS(
     customization.tailoredText,
-    [...jobData.requiredSkills, ...jobData.keywords],
+    jobKeywords,
     userId,
-    organizationId
+    organizationId,
+    customization.missingKeywords  // Fix 3: inject verified missing keywords
   );
+
+  // Fix 4: Enforce hard score ceiling based on match strength
+  // The LLM optimizes the resume text first, which inflates ATS scores — correct for this
+  const aiScore = atsDetails.score; // save original before any capping
+
+  const matchStrengthCeiling: Record<string, number> = {
+    strong: 100,
+    moderate: 78,
+    weak: 58,
+    poor: 38,
+  };
+  const ceiling = matchStrengthCeiling[customization.matchStrength as string] ?? 100;
+  if (atsDetails.score > ceiling) {
+    atsDetails.score = ceiling;
+  }
+
+  // Also enforce keyword-based ceiling independently
+  const totalKeywords = jobKeywords.length;
+  const missingCount = customization.missingKeywords.length;
+  if (totalKeywords > 0) {
+    const missingPct = missingCount / totalKeywords;
+    const keywordCeiling =
+      missingPct > 0.7 ? 40 :
+      missingPct > 0.5 ? 55 :
+      missingPct > 0.3 ? 70 : 100;
+    if (atsDetails.score > keywordCeiling) {
+      atsDetails.score = keywordCeiling;
+    }
+  }
+
+  // Proportionally scale section scores to match the capped overall score
+  // Prevents confusion where overall is 38 but sections all show 65-75
+  if (atsDetails.score < aiScore && aiScore > 0 && atsDetails.sectionScores) {
+    const scaleFactor = atsDetails.score / aiScore;
+    const sectionKeys = Object.keys(atsDetails.sectionScores) as Array<keyof typeof atsDetails.sectionScores>;
+    sectionKeys.forEach(key => {
+      atsDetails.sectionScores[key] = Math.round(atsDetails.sectionScores[key] * scaleFactor);
+    });
+  }
 
   // Step 4: Run Truth Guard
   const truthGuardWarnings = await runTruthGuard(
