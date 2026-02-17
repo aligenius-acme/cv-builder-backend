@@ -558,6 +558,13 @@ IMPORTANT:
     };
   }>(content);
 
+  // CRITICAL FIX: Preserve original contact information
+  // AI sometimes returns placeholder data like "John Doe" - override with actual user data
+  result.tailoredData.contact = {
+    ...result.tailoredData.contact,
+    ...resumeData.contact, // Override with original contact info
+  };
+
   // Generate tailored text from data
   const tailoredText = generateResumeText(result.tailoredData);
 

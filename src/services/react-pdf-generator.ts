@@ -4,6 +4,7 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { ParsedResumeData } from '../types';
 import { getTemplateConfig, ExtendedTemplateConfig } from './templates';
 import { BaseTemplate } from '../templates/shared/components/BaseTemplate';
+import { getLayoutComponent, LayoutType } from '../templates/layouts';
 import { TemplateAssembler } from '../templates/shared/services/TemplateAssembler';
 import { TemplateConfig } from '../templates/shared/types/templateConfig';
 import { prisma } from '../utils/prisma';
@@ -190,12 +191,26 @@ export async function generatePDFFromReact(
     let templateComponent: React.ReactElement;
     let config: ExtendedTemplateConfig;
 
-    // 2. Use modular template system if config exists
+    // 2. Check for template config
     if (dbTemplate?.templateConfig && typeof dbTemplate.templateConfig === 'object') {
       const modularConfig = dbTemplate.templateConfig as any;
 
-      // Check if it has the modular structure (components property)
-      if (modularConfig.components) {
+      // PRIORITY 1: Check for layoutComponent (new system)
+      if (modularConfig.layoutComponent) {
+        console.log(`Using layout component system for: ${templateId}`);
+        config = getTemplateConfig(templateId);
+
+        const layoutType = (modularConfig.layoutComponent as LayoutType);
+        const LayoutComponent = getLayoutComponent(layoutType);
+
+        console.log(`Using layout: ${layoutType}`);
+        templateComponent = React.createElement(LayoutComponent, {
+          data: resumeData,
+          config,
+        });
+      }
+      // PRIORITY 2: Check for modular components (old system)
+      else if (modularConfig.components) {
         console.log(`Using modular template system for: ${templateId}`);
 
         try {
@@ -216,28 +231,33 @@ export async function generatePDFFromReact(
             backgroundColor: modularConfig.colorScheme?.background || '#ffffff',
           };
         } catch (assemblerError) {
-          console.warn(`TemplateAssembler failed, falling back to BaseTemplate:`, assemblerError);
-          // Fall back to BaseTemplate
+          console.warn(`TemplateAssembler failed, falling back to BaseLayout:`, assemblerError);
+          // Fall back to BaseLayout
           config = getTemplateConfig(templateId);
-          templateComponent = React.createElement(BaseTemplate, {
+          const LayoutComponent = getLayoutComponent();
+          console.log(`Using fallback layout: BaseLayout`);
+          templateComponent = React.createElement(LayoutComponent, {
             data: resumeData,
             config,
           });
         }
-      } else {
-        // No modular components, use BaseTemplate
-        console.log(`Using BaseTemplate for: ${templateId}`);
+      }
+      // PRIORITY 3: No special config, use BaseLayout
+      else {
+        console.log(`Using BaseLayout (no layout/components specified) for: ${templateId}`);
         config = getTemplateConfig(templateId);
-        templateComponent = React.createElement(BaseTemplate, {
+        const LayoutComponent = getLayoutComponent();
+        templateComponent = React.createElement(LayoutComponent, {
           data: resumeData,
           config,
         });
       }
     } else {
-      // Template not in database or no config, use BaseTemplate
-      console.log(`Using BaseTemplate (no DB config) for: ${templateId}`);
+      // Template not in database or no config, use BaseLayout
+      console.log(`Using BaseLayout (no DB config) for: ${templateId}`);
       config = getTemplateConfig(templateId);
-      templateComponent = React.createElement(BaseTemplate, {
+      const LayoutComponent = getLayoutComponent();
+      templateComponent = React.createElement(LayoutComponent, {
         data: resumeData,
         config,
       });
