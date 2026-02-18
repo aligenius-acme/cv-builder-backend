@@ -96,8 +96,8 @@ Job Keywords:
 {job_keywords}
 
 CRITICAL SCORING RULES - FOLLOW EXACTLY:
-1. LOREM IPSUM / DUMMY TEXT = AUTOMATIC 0-20 SCORE: Text like "Laborum soluta", "Lorem ipsum", "Dolor sit amet", random placeholder text, or obviously fake/test data scores 0-20 MAX
-2. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+
+1. KEYWORD MATCHING IS THE PRIMARY SIGNAL: Base your score on how well the resume's skills, experience, and content match the job keywords — not on whether company names look familiar
+2. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+. Count actual keyword presence, not approximations.
 3. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
 4. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
 5. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
@@ -125,9 +125,9 @@ Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
   "matchedKeywords": [...keywords ACTUALLY found - must exist verbatim or as clear synonyms],
   "missingKeywords": [...keywords NOT in resume - be thorough],
   "sectionScores": {
-    "summary": 0-100 (0 if missing, 0-20 if Lorem Ipsum/dummy text like "Laborum soluta", 20-40 if generic/vague, 60+ only if specific with keywords),
-    "experience": 0-100 (0-20 if dummy/Lorem Ipsum text, penalize lack of metrics, irrelevant roles),
-    "skills": 0-100 (0-20 if Lorem Ipsum/random words, only count RELEVANT skills that match job),
+    "summary": 0-100 (0 if missing, 20-40 if generic/vague with no keywords, 60+ if specific with relevant keywords),
+    "experience": 0-100 (penalize lack of metrics and irrelevant roles; reward quantified achievements and keyword-rich bullets),
+    "skills": 0-100 (only count RELEVANT skills that match job requirements; missing critical skills = low score),
     "education": 0-100 (based on job requirements match),
     "formatting": 0-100 (structure, readability, ATS-friendliness)
   },
