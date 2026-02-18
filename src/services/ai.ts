@@ -52,19 +52,22 @@ Return a JSON object:
 
 Return only valid JSON, no markdown.`,
 
-    resume_customize: `You are an expert resume customizer. Tailor this resume for a specific job while maintaining 100% factual accuracy.
+    resume_customize: `You are a world-class resume strategist and ATS optimization expert. Tailor this resume to maximise its match for a specific job while maintaining 100% factual accuracy.
 
-ABSOLUTE RULES - VIOLATION MEANS FAILURE:
+ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 1. NEVER fabricate skills, experience, or qualifications not in the original
 2. NEVER add fake projects, achievements, or metrics
-3. NEVER claim expertise in tools/technologies not demonstrated
-4. Only rephrase, reorder, and highlight EXISTING content
-5. If the candidate lacks a required skill, put it in missingKeywords - do NOT add it
+3. NEVER claim expertise in tools not demonstrated in the original
+4. PRESERVE ALL CONTENT — do not remove, shorten, or omit any section or bullet point
+5. If the candidate lacks a required skill, put it in missingKeywords — do NOT invent it
+6. matchStrength MUST be honest — do not inflate a weak match
 
-HONEST ASSESSMENT REQUIRED:
-- If this resume is a poor match for the job, SAY SO in changesExplanation
-- If critical requirements are missing, list them ALL in missingKeywords
-- Do not oversell transferable skills - be realistic about the match
+WHAT YOU MUST DO:
+- Reorder bullet points so the most job-relevant achievements come first
+- Rephrase descriptions to incorporate exact job keywords naturally and truthfully
+- Write a sharper summary targeting this exact role and company
+- Surface transferable skills only where genuinely applicable
+- List EVERY missing required keyword so the candidate knows their real gaps
 
 Original Resume Data:
 {resume_data}
@@ -75,19 +78,14 @@ Target Job Information:
 Job Title: {job_title}
 Company: {company_name}
 
-Return a JSON object with:
-- tailoredData: the modified resume data (same structure as input)
-- changesExplanation: HONEST explanation including how strong/weak this match is
-- matchedKeywords: array of job keywords genuinely found in the resume
-- missingKeywords: array of ALL job keywords the candidate lacks (be thorough)
-- matchStrength: "strong" | "moderate" | "weak" | "poor" - honest assessment
+Return a JSON object with ALL fields:
+- tailoredData: complete modified resume (same structure, ALL sections preserved)
+- changesExplanation: honest explanation of what changed and how strong the match is
+- matchStrength: "strong" | "moderate" | "weak" | "poor" — honest, no inflation
+- matchedKeywords: job keywords genuinely found in the original resume
+- missingKeywords: ALL required/preferred keywords the candidate lacks — be exhaustive
 
-Focus on:
-1. Reordering bullet points to highlight most relevant experience first
-2. Rephrasing descriptions to match job language while staying truthful
-3. Being HONEST about gaps - a candidate with 2 years experience applying for a senior role should have that noted
-
-Return only valid JSON.`,
+Return only valid JSON, no markdown.`,
 
     ats_analysis: `You are an AGGRESSIVE, HIGHLY CRITICAL ATS (Applicant Tracking System) analyzer. Provide BRUTALLY HONEST scores and EXTREMELY DETAILED, ACTIONABLE recommendations.
 
@@ -105,6 +103,8 @@ CRITICAL SCORING RULES - FOLLOW EXACTLY:
 5. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
 6. IRRELEVANT EXPERIENCE = DOES NOT COUNT: Don't give credit for unrelated skills
 7. SHORT/THIN RESUMES score LOW: A resume with minimal content cannot score high
+8. EVALUATE ALL SECTIONS: Score must account for experience, education, skills, certifications, projects, volunteer work, awards, AND languages — do not ignore sections that appear after skills
+9. LABELLED URLS ARE NOT RISKY: Lines like "LinkedIn: linkedin.com/in/user" or "GitHub: github.com/user" are correctly formatted for ATS. Do NOT flag these as special character issues. Only flag URLs embedded inside pipe-separated strings or inside bullet points without labels
 
 SCORE GUIDELINES (BE STRICT):
 - 90-100: Near-perfect keyword match, quantified achievements, directly relevant experience (RARE)
@@ -450,81 +450,102 @@ export async function customizeResume(
   userId: string,
   organizationId?: string | null
 ): Promise<Omit<CustomizationResult, 'atsScore' | 'atsDetails' | 'truthGuardWarnings'>> {
-  // Use full resume text for better context
-  const prompt = `You are an expert resume customizer. Your task is to tailor this resume for a specific job application.
+  // Build the inline prompt directly (mirrors getDefaultPrompt('resume_customize') pattern
+  // but includes the runtime variables and the full schema for all resume sections)
+  const prompt = `You are a world-class resume strategist and ATS optimization expert. Your task is to tailor this resume to maximise its match for a specific job posting while maintaining 100% factual accuracy.
 
-CRITICAL RULES - READ CAREFULLY:
-1. PRESERVE ALL CONTENT - Do NOT remove or shorten any experience, education, projects, or skills
-2. Include EVERY job position with ALL bullet points from the original
-3. Include ALL skills, certifications, and projects
-4. You may REORDER items to put most relevant first
-5. You may REPHRASE bullet points to use job keywords naturally
-6. You may enhance the summary to target this specific role
-7. NEVER fabricate, exaggerate, or add anything not in the original
+ABSOLUTE RULES — VIOLATION MEANS FAILURE:
+1. PRESERVE ALL CONTENT — Do NOT remove, shorten, or omit any section, role, or bullet point
+2. Include EVERY job position with ALL original bullet points (rephrase only, never delete)
+3. Include ALL skills, certifications, projects, volunteer work, awards, and languages
+4. REORDER items to surface the most relevant experience first within each section
+5. REPHRASE bullet points to incorporate job keywords naturally and truthfully
+6. Write a sharper, keyword-rich summary targeting this exact role and company
+7. NEVER fabricate, exaggerate, or add anything not present in the original resume
+8. If a required skill is genuinely absent, put it in missingKeywords — do NOT invent it
+9. Be brutally honest about the match quality in matchStrength and changesExplanation
 
-ORIGINAL RESUME TEXT:
+ORIGINAL RESUME (full text):
 ${resumeText}
 
 TARGET JOB:
 - Position: ${jobTitle}
 - Company: ${companyName}
 - Required Skills: ${jobData.requiredSkills?.join(', ') || 'Not specified'}
-- Key Responsibilities: ${jobData.responsibilities?.slice(0, 5).join('; ') || 'Not specified'}
-- Important Keywords: ${jobData.keywords?.join(', ') || 'Not specified'}
+- Preferred Skills: ${jobData.preferredSkills?.join(', ') || 'Not specified'}
+- Key Responsibilities: ${jobData.responsibilities?.slice(0, 6).join('; ') || 'Not specified'}
+- Critical Keywords: ${jobData.keywords?.join(', ') || 'Not specified'}
+- Qualifications: ${jobData.qualifications?.join(', ') || 'Not specified'}
 
-OUTPUT REQUIREMENTS:
-Return a complete JSON object. The tailoredData MUST contain ALL original content, just optimized for this job.
+Return a JSON object with ALL fields below — do NOT omit any section:
 
 {
   "tailoredData": {
     "contact": {
-      "name": "Full name from resume",
-      "email": "email from resume",
-      "phone": "phone from resume",
-      "location": "location from resume",
+      "name": "exact name from resume",
+      "email": "exact email from resume",
+      "phone": "exact phone from resume",
+      "location": "exact location from resume",
       "linkedin": "linkedin if present",
-      "github": "github if present"
+      "github": "github if present",
+      "website": "website if present"
     },
-    "summary": "A compelling 2-3 sentence summary tailored for ${jobTitle} role, highlighting most relevant experience",
+    "summary": "2-3 sentence summary tailored for ${jobTitle} at ${companyName}, using job keywords, highlighting strongest matching experience and concrete impact numbers",
     "experience": [
       {
-        "title": "Job Title",
-        "company": "Company Name",
-        "location": "Location if available",
-        "startDate": "Start Date",
-        "endDate": "End Date or empty if current",
-        "current": true/false,
-        "description": ["INCLUDE ALL original bullet points, rephrased with relevant keywords"]
+        "title": "exact title from resume",
+        "company": "exact company",
+        "location": "location",
+        "startDate": "start date",
+        "endDate": "end date or empty if current",
+        "current": true,
+        "description": ["ALL original bullets rephrased to include job keywords naturally. Do not drop any bullet."]
       }
     ],
     "education": [
       {
-        "degree": "Degree name",
-        "institution": "School name",
-        "graduationDate": "Date",
-        "gpa": "GPA if mentioned",
-        "achievements": ["Any honors or achievements"]
+        "degree": "degree",
+        "institution": "institution",
+        "location": "location if present",
+        "graduationDate": "date",
+        "gpa": "gpa if present",
+        "achievements": ["honours, thesis, TA roles, competitions"]
       }
     ],
-    "skills": ["ALL skills from resume, reordered with most relevant to ${jobTitle} first"],
+    "skills": ["ALL skills from resume, reordered — most relevant to ${jobTitle} first"],
     "certifications": ["ALL certifications from resume"],
     "projects": [
       {
-        "name": "Project name",
-        "description": "Project description",
-        "technologies": ["tech used"]
+        "name": "project name",
+        "description": "description rephrased to highlight relevance to ${jobTitle}",
+        "technologies": ["tech stack"],
+        "url": "url if present"
       }
-    ]
+    ],
+    "volunteerWork": [
+      {
+        "role": "role",
+        "organization": "org",
+        "location": "location if present",
+        "startDate": "start",
+        "endDate": "end or empty",
+        "current": false,
+        "description": ["all bullets"]
+      }
+    ],
+    "awards": ["ALL awards from resume as strings"],
+    "languages": ["ALL languages from resume"]
   },
-  "changesExplanation": "Explain what was reordered or rephrased to optimize for this role",
-  "matchedKeywords": ["job keywords found in resume"],
-  "missingKeywords": ["important job keywords NOT in the original resume"],
+  "changesExplanation": "Honest explanation: what was reordered/rephrased, how strong the match is, and what the biggest gaps are",
+  "matchStrength": "strong|moderate|weak|poor — HONEST assessment based on keyword coverage and experience alignment",
+  "matchedKeywords": ["job keywords genuinely present in the original resume"],
+  "missingKeywords": ["required/preferred job keywords NOT present in the original — be exhaustive"],
   "beforeAfterComparisons": [
     {
       "section": "Summary|Experience - Company Name|Skills",
-      "before": "The original text before optimization",
-      "after": "The optimized text after changes",
-      "improvement": "Brief explanation of why this change improves ATS/recruiter appeal",
+      "before": "original text",
+      "after": "optimised text with keywords",
+      "improvement": "why this change improves ATS score and recruiter appeal",
       "impactLevel": "High|Medium|Low"
     }
   ],
@@ -541,9 +562,13 @@ Return a complete JSON object. The tailoredData MUST contain ALL original conten
   }
 }
 
-IMPORTANT:
-- The experience array must include EVERY position from the original resume with ALL bullet points. Do not summarize or truncate.
-- Include at least 3-5 beforeAfterComparisons showing the most impactful changes made.`;
+REQUIREMENTS:
+- experience must include EVERY position with ALL bullet points — no truncation
+- missingKeywords must be exhaustive — list every required skill the candidate lacks
+- matchStrength must be honest — do not inflate if the match is weak or poor
+- Include at least 5 beforeAfterComparisons for the highest-impact changes
+
+Return only valid JSON, no markdown.`;
 
   // Use higher token limit for comprehensive resume output
   const { content } = await callAI(prompt, userId, organizationId, 'resume_customize', 8192);
@@ -551,6 +576,7 @@ IMPORTANT:
   const result = parseAIJSON<{
     tailoredData: ParsedResumeData;
     changesExplanation: string;
+    matchStrength: 'strong' | 'moderate' | 'weak' | 'poor';
     matchedKeywords: string[];
     missingKeywords: string[];
     beforeAfterComparisons?: BeforeAfterComparison[];
@@ -581,6 +607,7 @@ IMPORTANT:
     tailoredData: result.tailoredData,
     tailoredText,
     changesExplanation: result.changesExplanation,
+    matchStrength: result.matchStrength,
     matchedKeywords: result.matchedKeywords,
     missingKeywords: result.missingKeywords,
     beforeAfterComparisons: result.beforeAfterComparisons || [],
@@ -781,15 +808,18 @@ Return only valid JSON.`;
 function generateResumeText(data: ParsedResumeData): string {
   const lines: string[] = [];
 
-  // Contact
+  // Contact — keep URLs on labelled separate lines so ATS parsers don't
+  // choke on slash characters embedded in pipe-separated contact strings
   if (data.contact.name) lines.push(data.contact.name);
-  const contactDetails = [
+  const coreContact = [
     data.contact.email,
     data.contact.phone,
     data.contact.location,
-    data.contact.linkedin,
   ].filter(Boolean);
-  if (contactDetails.length > 0) lines.push(contactDetails.join(' | '));
+  if (coreContact.length > 0) lines.push(coreContact.join(' | '));
+  if (data.contact.linkedin) lines.push(`LinkedIn: ${data.contact.linkedin}`);
+  if (data.contact.github)   lines.push(`GitHub: ${data.contact.github}`);
+  if (data.contact.website)  lines.push(`Website: ${data.contact.website}`);
   lines.push('');
 
   // Summary
@@ -800,11 +830,11 @@ function generateResumeText(data: ParsedResumeData): string {
   }
 
   // Experience
-  if (data.experience.length > 0) {
+  if (data.experience && data.experience.length > 0) {
     lines.push('EXPERIENCE');
     for (const exp of data.experience) {
       const title = exp.title || exp.position || 'Position';
-      lines.push(`${title} at ${exp.company}`);
+      lines.push(`${title} at ${exp.company}${exp.location ? `, ${exp.location}` : ''}`);
       if (exp.startDate || exp.endDate) {
         lines.push(`${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`);
       }
@@ -817,18 +847,23 @@ function generateResumeText(data: ParsedResumeData): string {
   }
 
   // Education
-  if (data.education.length > 0) {
+  if (data.education && data.education.length > 0) {
     lines.push('EDUCATION');
     for (const edu of data.education) {
       lines.push(edu.degree);
       if (edu.institution) lines.push(edu.institution);
+      if (edu.location) lines.push(edu.location);
       if (edu.graduationDate) lines.push(edu.graduationDate);
+      if (edu.gpa) lines.push(`GPA: ${edu.gpa}`);
+      if (edu.achievements && edu.achievements.length > 0) {
+        for (const ach of edu.achievements) lines.push(`• ${ach}`);
+      }
       lines.push('');
     }
   }
 
   // Skills
-  if (data.skills.length > 0) {
+  if (data.skills && data.skills.length > 0) {
     lines.push('SKILLS');
     lines.push(data.skills.join(', '));
     lines.push('');
@@ -838,7 +873,7 @@ function generateResumeText(data: ParsedResumeData): string {
   if (data.certifications && data.certifications.length > 0) {
     lines.push('CERTIFICATIONS');
     for (const cert of data.certifications) {
-      lines.push(`• ${cert}`);
+      lines.push(`• ${typeof cert === 'string' ? cert : (cert as any).name}`);
     }
     lines.push('');
   }
@@ -849,9 +884,49 @@ function generateResumeText(data: ParsedResumeData): string {
     for (const project of data.projects) {
       lines.push(project.name);
       if (project.description) lines.push(project.description);
-      if (project.technologies) lines.push(`Technologies: ${project.technologies.join(', ')}`);
+      if (project.technologies && project.technologies.length > 0) {
+        lines.push(`Technologies: ${project.technologies.join(', ')}`);
+      }
       lines.push('');
     }
+  }
+
+  // Volunteer Work — was previously invisible to the ATS analyzer
+  if (data.volunteerWork && data.volunteerWork.length > 0) {
+    lines.push('VOLUNTEER WORK');
+    for (const vol of data.volunteerWork as any[]) {
+      if (typeof vol === 'string') { lines.push(`• ${vol}`); continue; }
+      lines.push(`${vol.role} at ${vol.organization}${vol.location ? `, ${vol.location}` : ''}`);
+      if (vol.startDate) {
+        lines.push(`${vol.startDate} - ${vol.current ? 'Present' : vol.endDate || ''}`);
+      }
+      if (vol.description && vol.description.length > 0) {
+        for (const desc of vol.description) lines.push(`• ${desc}`);
+      }
+      lines.push('');
+    }
+  }
+
+  // Awards — was previously invisible to the ATS analyzer
+  if (data.awards && data.awards.length > 0) {
+    lines.push('AWARDS & HONORS');
+    for (const award of data.awards as any[]) {
+      if (typeof award === 'string') {
+        lines.push(`• ${award}`);
+      } else {
+        const awardLine = [award.title, award.issuer, award.date].filter(Boolean).join(' — ');
+        lines.push(`• ${awardLine}`);
+        if (award.description) lines.push(`  ${award.description}`);
+      }
+    }
+    lines.push('');
+  }
+
+  // Languages — was previously invisible to the ATS analyzer
+  if (data.languages && data.languages.length > 0) {
+    lines.push('LANGUAGES');
+    lines.push(data.languages.join(', '));
+    lines.push('');
   }
 
   return lines.join('\n');

@@ -265,12 +265,12 @@ export interface CustomizationResult {
   tailoredData: ParsedResumeData;
   tailoredText: string;
   changesExplanation: string;
+  matchStrength: 'strong' | 'moderate' | 'weak' | 'poor';
   matchedKeywords: string[];
   missingKeywords: string[];
   atsScore: number;
   atsDetails: ATSAnalysis;
   truthGuardWarnings: TruthGuardWarning[];
-  // New enhanced fields
   beforeAfterComparisons?: BeforeAfterComparison[];
   keywordDensity?: KeywordDensity;
   optimizationSummary?: OptimizationSummary;
