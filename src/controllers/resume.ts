@@ -882,7 +882,7 @@ export const updateResumeContent = async (
     if (parsedData) {
       const validSections = [
         'contact', 'summary', 'experience', 'education',
-        'skills', 'certifications', 'projects', 'languages', 'awards', 'photoUrl'
+        'skills', 'certifications', 'projects', 'languages', 'awards', 'photoUrl', 'volunteerWork'
       ];
 
       for (const key of Object.keys(parsedData)) {
