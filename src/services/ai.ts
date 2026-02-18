@@ -114,7 +114,6 @@ SCORE GUIDELINES (BE STRICT):
 - 20-39: Poor match, mostly irrelevant content, major gaps
 - 0-19: Essentially no match to job requirements
 
-A DUMMY/FAKE RESUME with generic info should score 20-40 MAX.
 A resume missing 50%+ of required skills should score BELOW 50.
 
 CRITICAL: You MUST provide ALL fields below. Do NOT skip quickWins, actionPlan, or detailedRecommendations - they are REQUIRED.
@@ -995,14 +994,19 @@ export async function fullCustomizationPipeline(
     }
   }
 
-  // Proportionally scale section scores to match the capped overall score
-  // Prevents confusion where overall is 38 but sections all show 65-75
-  if (atsDetails.score < aiScore && aiScore > 0 && atsDetails.sectionScores) {
-    const scaleFactor = atsDetails.score / aiScore;
+  // Always reconcile section scores with the overall score.
+  // The AI sometimes gives inconsistent results (sections 80/80/60 but overall 20).
+  // Compute the implied section average and rescale so they match the overall.
+  if (atsDetails.sectionScores) {
     const sectionKeys = Object.keys(atsDetails.sectionScores) as Array<keyof typeof atsDetails.sectionScores>;
-    sectionKeys.forEach(key => {
-      atsDetails.sectionScores[key] = Math.round(atsDetails.sectionScores[key] * scaleFactor);
-    });
+    const sectionAvg = sectionKeys.reduce((sum, k) => sum + atsDetails.sectionScores[k], 0) / sectionKeys.length;
+    // Only rescale if there is a meaningful gap (>10 pts) between section avg and overall
+    if (sectionAvg > 0 && Math.abs(sectionAvg - atsDetails.score) > 10) {
+      const scaleFactor = atsDetails.score / sectionAvg;
+      sectionKeys.forEach(key => {
+        atsDetails.sectionScores[key] = Math.min(100, Math.round(atsDetails.sectionScores[key] * scaleFactor));
+      });
+    }
   }
 
   // Step 4: Run Truth Guard
