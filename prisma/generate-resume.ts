@@ -1,9 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import { fullCustomizationPipeline } from '../src/services/ai';
+import { ParsedResumeData } from '../src/types';
 
 const prisma = new PrismaClient();
 
 const TARGET_EMAIL = 'aligenius@gmail.com';
-const OLD_RESUME_ID = '7d645aa4-d5e9-4f21-a44c-a756b785573a';
+const OLD_RESUME_ID = 'a80fa520-339a-44ab-abb5-ae7947445e92';
 
 // Public placeholder photo (no upload needed)
 const DUMMY_PHOTO = 'https://randomuser.me/api/portraits/men/32.jpg';
@@ -380,6 +382,104 @@ async function main() {
   console.log(`    • Awards         : ${pd.awards.length} (flat array)`);
   console.log(`    • Languages      : ${pd.languages.length} (flat array)`);
   console.log(`\n   Log in as ${TARGET_EMAIL} at http://localhost:3000 to view.`);
+
+  // ── Step 4: Tailor using the first saved job in the DB ──────────────────
+  const savedJob = await prisma.savedJob.findFirst({ where: { userId: user.id } });
+  if (!savedJob) {
+    console.log('\nℹ️   No saved jobs found — skipping tailoring step.');
+    return;
+  }
+
+  console.log(`\n🎯  Tailoring resume for saved job:`);
+  console.log(`    Title   : ${savedJob.title}`);
+  console.log(`    Company : ${savedJob.company}`);
+  console.log(`    Location: ${savedJob.location}`);
+  console.log(`    Salary  : ${savedJob.salary ?? 'Not specified'}`);
+  console.log(`\n    Running AI pipeline (job analysis → customise → ATS → truth guard)...`);
+
+  const result = await fullCustomizationPipeline(
+    parsedData as unknown as ParsedResumeData,
+    rawText,
+    savedJob.description,
+    savedJob.title,
+    savedJob.company,
+    user.id,
+    null
+  );
+
+  // Determine next version number
+  const versionCount = await prisma.resumeVersion.count({ where: { resumeId: resume.id } });
+
+  const version = await prisma.resumeVersion.create({
+    data: {
+      resumeId: resume.id,
+      userId: user.id,
+      versionNumber: versionCount + 1,
+      jobTitle: savedJob.title,
+      companyName: savedJob.company,
+      jobDescription: savedJob.description,
+      jobData: {},
+      tailoredData: result.tailoredData as any,
+      tailoredText: result.tailoredText,
+      changesExplanation: result.changesExplanation,
+      matchedKeywords: result.matchedKeywords,
+      missingKeywords: result.missingKeywords,
+      atsScore: result.atsScore,
+      atsDetails: result.atsDetails as any,
+      truthGuardWarnings: result.truthGuardWarnings as any,
+    },
+  });
+
+  // ── Analysis output ──────────────────────────────────────────────────────
+  const matchStrength = (result as any).matchStrength ?? 'n/a';
+  const ats = result.atsDetails as any;
+
+  console.log(`\n✅  Tailored version created:`);
+  console.log(`    Version ID    : ${version.id}`);
+  console.log(`    ATS Score     : ${result.atsScore}/100`);
+  console.log(`    Match Strength: ${matchStrength}`);
+  console.log(`    Matched KWs   : ${result.matchedKeywords.length} — ${result.matchedKeywords.slice(0, 8).join(', ')}${result.matchedKeywords.length > 8 ? '...' : ''}`);
+  console.log(`    Missing KWs   : ${result.missingKeywords.length} — ${result.missingKeywords.slice(0, 8).join(', ')}${result.missingKeywords.length > 8 ? '...' : ''}`);
+
+  if (ats?.sectionScores) {
+    console.log(`\n    Section Scores:`);
+    Object.entries(ats.sectionScores).forEach(([k, v]) => console.log(`      ${k.padEnd(12)}: ${v}/100`));
+  }
+
+  if (ats?.formattingIssues?.length) {
+    console.log(`\n    Formatting Issues (${ats.formattingIssues.length}):`);
+    ats.formattingIssues.slice(0, 5).forEach((i: string) => console.log(`      ⚠️  ${i}`));
+  }
+
+  if (ats?.riskyElements?.length) {
+    console.log(`\n    Risky Elements (${ats.riskyElements.length}):`);
+    ats.riskyElements.slice(0, 5).forEach((r: string) => console.log(`      🔴 ${r}`));
+  } else {
+    console.log(`\n    Risky Elements : ✅ None detected`);
+  }
+
+  if (result.truthGuardWarnings?.length) {
+    console.log(`\n    Truth Guard Warnings (${result.truthGuardWarnings.length}):`);
+    result.truthGuardWarnings.slice(0, 5).forEach((w: any) =>
+      console.log(`      [${(w.severity ?? '').toUpperCase()}] ${w.type} — ${w.section}: ${w.concern}`)
+    );
+  } else {
+    console.log(`\n    Truth Guard   : ✅ No warnings — no fabrication detected`);
+  }
+
+  if (ats?.honestAssessment) {
+    console.log(`\n    Honest Assessment:\n      "${ats.honestAssessment}"`);
+  }
+
+  if (ats?.actionPlan) {
+    console.log(`\n    Action Plan:`);
+    if (ats.actionPlan.step1) console.log(`      Step 1: ${ats.actionPlan.step1}`);
+    if (ats.actionPlan.step2) console.log(`      Step 2: ${ats.actionPlan.step2}`);
+    if (ats.actionPlan.step3) console.log(`      Step 3: ${ats.actionPlan.step3}`);
+    if (ats.actionPlan.estimatedScoreAfterFixes) console.log(`      Projected: ${ats.actionPlan.estimatedScoreAfterFixes}`);
+  }
+
+  console.log(`\n   View at: http://localhost:3000/resumes/${resume.id}/versions/${version.id}`);
 }
 
 main()
