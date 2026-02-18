@@ -96,7 +96,7 @@ Job Keywords:
 {job_keywords}
 
 CRITICAL SCORING RULES - FOLLOW EXACTLY:
-1. KEYWORD MATCHING IS THE PRIMARY SIGNAL: Base your score on how well the resume's skills, experience, and content match the job keywords — not on whether company names look familiar
+1. INCOMPLETE RESUME DETECTION: If sections contain actual placeholder text ("Lorem ipsum", "Dolor sit amet", "[Company Name]", "[Your Name]", "[Add description here]"), mark that section as incomplete and score it 0-15. Generic-sounding but real company names are NOT placeholders — only flag text that is literally a template placeholder
 2. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+. Count actual keyword presence, not approximations.
 3. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
 4. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
@@ -250,9 +250,8 @@ If ANY of the required fields (quickWins, actionPlan, detailedRecommendations) a
 
 Return only valid JSON with ALL required fields populated.`,
 
-    truth_guard: `You are a STRICT accuracy checker. Your job is to catch ANY fabrication, exaggeration, or misrepresentation between the original and tailored resume.
-
-BE EXTREMELY VIGILANT. Even small exaggerations can cost candidates job offers if discovered.
+    truth_guard: `You are an accuracy checker comparing an original resume to a tailored (AI-optimised) version.
+Your job is to catch REAL fabrications and meaningful exaggerations — NOT to flag accurate rephrasing or concise restatements of original facts.
 
 Original Resume:
 {original_data}
@@ -260,36 +259,43 @@ Original Resume:
 Tailored Resume:
 {tailored_data}
 
-CHECK FOR THESE RED FLAGS (be thorough):
-1. ROLE INFLATION: "assisted" → "managed", "participated" → "led", "helped" → "spearheaded"
-2. ADDED SKILLS: Any skill in tailored version not present in original
-3. METRIC FABRICATION: Numbers/percentages that weren't in original or seem inflated
-4. SCOPE EXAGGERATION: Team sizes, budget amounts, user counts inflated
-5. TITLE CHANGES: Job titles modified to sound more senior
-6. DATE MANIPULATION: Gaps hidden, tenure extended
-7. RESPONSIBILITY CREEP: Taking credit for team/company achievements
-8. KEYWORD STUFFING: Adding technologies/tools not actually used
-9. UNSUPPORTED CLAIMS: "Expert in X" when original shows basic exposure
+WHAT TO FLAG (genuine issues only):
+1. ROLE INFLATION: verb upgrades that misrepresent responsibility — "assisted" → "led", "participated" → "managed"
+2. INVENTED SKILLS: a skill or tool in the tailored version that is completely absent from the original
+3. METRIC FABRICATION: a specific number/percentage that does NOT appear anywhere in the original
+4. SCOPE EXAGGERATION: team sizes, budgets, or user counts that are larger than the original states
+5. TITLE INFLATION: job title changed to a more senior-sounding title not in the original
+6. DATE MANIPULATION: employment gaps hidden or tenure extended beyond what the original states
+7. INVENTED EXPERIENCE: responsibilities or projects added that do not appear anywhere in the original
+
+WHAT NOT TO FLAG:
+- A metric that appears in BOTH the original and tailored — do NOT call this "unsupported". It IS supported.
+- Shortened or paraphrased versions of original bullet points that preserve the core facts
+- Omitted optional details (location, GPA) — these are editorial choices, not fabrications
+- More concise project descriptions that still cite the same outcomes
+- Keyword-rich rephrasing that stays factually accurate to the original
+
+CRITICAL RULE FOR THE "original" FIELD:
+The "original" field MUST contain text copied verbatim from the Original Resume above.
+Never put tailored text into the "original" field. If you cannot find an exact match, quote the closest original passage.
 
 SEVERITY GUIDELINES:
-- HIGH: Fabricated skills, significantly inflated metrics, added experiences that don't exist
-- MEDIUM: Role inflation (assisted→managed), moderately inflated numbers
-- LOW: Minor rephrasing that slightly overstates (but still defensible)
+- HIGH: Completely fabricated skills/experience, major metric inflation (2× or more)
+- MEDIUM: Role verb inflation that meaningfully misrepresents seniority, moderate metric exaggeration
+- LOW: Minor phrasing that slightly overstates but is still defensible from the original
 
-Return a JSON array of warnings:
+Return a JSON array of warnings (only real issues — quality over quantity):
 [
   {
     "type": "exaggeration|fabrication|inconsistency|unsupported_claim",
     "section": "section name",
-    "original": "exact original text",
-    "tailored": "the modified text",
-    "concern": "specific explanation of the issue",
+    "original": "verbatim text from the ORIGINAL resume",
+    "tailored": "the modified text from the TAILORED resume",
+    "concern": "specific explanation of the actual problem",
     "severity": "low|medium|high",
     "recommendation": "how to fix this while staying honest"
   }
 ]
-
-IMPORTANT: It's better to flag something questionable than to miss a fabrication. Err on the side of caution.
 
 If genuinely no issues found, return empty array: []
 Return only valid JSON.`,
@@ -330,6 +336,11 @@ Return only the cover letter text, no JSON or formatting markers.`,
 }
 
 // Call AI provider
+// Operations that are analytical/scoring — need near-zero temperature for consistency
+const DETERMINISTIC_OPERATIONS = new Set([
+  'ats_analysis', 'truth_guard', 'job_analysis', 'job_match_score', 'weakness_detector',
+]);
+
 async function callAI(
   prompt: string,
   userId: string,
@@ -338,6 +349,10 @@ async function callAI(
   maxTokens: number = 4096
 ): Promise<{ content: string; promptTokens: number; completionTokens: number }> {
   const startTime = Date.now();
+
+  // Scoring/analysis operations use temperature 0.1 for reproducibility.
+  // Creative operations (customization, cover letter, writing) use 0.3 for variety.
+  const temperature = DETERMINISTIC_OPERATIONS.has(operation) ? 0.1 : 0.3;
 
   try {
     if (!groq) {
@@ -348,7 +363,7 @@ async function callAI(
       model: config.ai.groqModel,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: maxTokens,
-      temperature: 0.3, // Lower temperature for more consistent, critical analysis
+      temperature,
     });
 
     const result = {
@@ -463,6 +478,9 @@ ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 7. NEVER fabricate, exaggerate, or add anything not present in the original resume
 8. If a required skill is genuinely absent, put it in missingKeywords — do NOT invent it
 9. Be brutally honest about the match quality in matchStrength and changesExplanation
+10. PRESERVE ALL QUANTIFIED FACTS EXACTLY — copy every number, dollar amount, percentage, and unit verbatim from the original (e.g. "$3.2M/year" must stay "$3.2M/year", not become "$3.2M"). Never drop units, timeframes, or qualifying context from a metric
+11. PRESERVE ALL FACTUAL DETAILS — keep all locations, GPA scores, certification numbers, team sizes, date ranges, and other specifics exactly as stated in the original. Omitting details counts as a factual change
+12. YOUR JOB IS ADDITIVE — add keywords, strengthen verbs, improve framing. Never remove or water down existing facts to make room for keywords
 
 ORIGINAL RESUME (full text):
 ${resumeText}

@@ -5,17 +5,21 @@ import { ParsedResumeData } from '../src/types';
 const prisma = new PrismaClient();
 
 const TARGET_EMAIL = 'aligenius@gmail.com';
-const OLD_RESUME_ID = 'a80fa520-339a-44ab-abb5-ae7947445e92';
 
 // Public placeholder photo (no upload needed)
 const DUMMY_PHOTO = 'https://randomuser.me/api/portraits/men/32.jpg';
 
+// ─── Resume data: Senior Solutions Architect matching the Lumen JD ────────────
+// Keywords in JD: solutions architecture, cloud architecture, network architecture,
+// cybersecurity, IT service management, technical leadership, connectivity,
+// business growth, teamwork, trust, transparency, digital transformation, MPLS,
+// SD-WAN, enterprise solutions, pre-sales, ITIL, fiber, data center
 const parsedData = {
   contact: {
     name: 'Ali Yousaf',
     email: 'aligenius@gmail.com',
-    phone: '+1 (555) 123-4567',
-    location: 'San Francisco, CA',
+    phone: '+1 (312) 555-8901',
+    location: 'Dallas, TX',
     linkedin: 'linkedin.com/in/aligenius',
     github: 'github.com/aligenius',
     website: 'aligenius.dev',
@@ -23,247 +27,218 @@ const parsedData = {
   },
 
   summary:
-    'Senior Software Engineer with 9+ years of experience designing and delivering scalable, high-availability ' +
-    'distributed systems across fintech, e-commerce, and SaaS. Proven track record leading cross-functional ' +
-    'engineering teams of 6–12, architecting event-driven microservices, and driving measurable outcomes: ' +
-    '60% latency reduction, 45% fewer incidents, $2M+ in daily transaction throughput. Deep expertise in ' +
-    'cloud infrastructure (AWS/GCP), Kubernetes, and modern full-stack development. Active open-source ' +
-    'contributor and community mentor passionate about developer experience, engineering culture, and giving ' +
-    'back through code education initiatives.',
+    'Senior Solutions Architect with 11+ years designing and delivering enterprise connectivity, ' +
+    'cloud transformation, and network architecture solutions for Fortune 500 organizations. ' +
+    'Specialist in SD-WAN, MPLS, and hybrid cloud connectivity driving measurable business growth ' +
+    'through consultative technical leadership. Proven pre-sales record with $75M+ TCV across ' +
+    'healthcare, finance, and manufacturing verticals. Deep expertise in cybersecurity frameworks ' +
+    '(NIST, Zero Trust), IT service management (ITIL 4), and cross-functional team leadership. ' +
+    'Passionate about building cultures of teamwork, trust, and transparency that deliver ' +
+    'lasting digital transformation outcomes.',
 
   experience: [
     {
-      title: 'Senior Software Engineer',
-      company: 'Acme Corp',
-      location: 'San Francisco, CA',
-      startDate: 'Jan 2021',
+      title: 'Senior Lead Solutions Architect',
+      company: 'CenturyLink (Lumen Technologies)',
+      location: 'Dallas, TX',
+      startDate: 'Mar 2020',
       endDate: 'Present',
       current: true,
       description: [
-        'Architected and led migration of a monolithic e-commerce platform (~3M LOC) to microservices, enabling daily deployments (up from bi-weekly) and cutting production incidents by 45%.',
-        'Designed real-time inventory sync service handling 50k+ events/sec with Kafka and Redis Streams, maintaining 99.99% uptime over 18 months.',
-        'Led a team of 8 engineers across 3 time zones; introduced trunk-based development and GitHub Actions CI/CD pipelines reducing PR cycle time from 4 days to 18 hours.',
-        'Profiled and eliminated API bottlenecks reducing p99 latency from 820ms to 110ms through query optimisation, connection pooling, and an in-process LRU cache.',
-        'Designed multi-tenant OAuth 2.0 / JWT auth system that onboarded 250+ enterprise clients with zero security incidents across 24 months.',
-        'Mentored 4 mid-level engineers; 2 promoted to senior within a year under structured 1-on-1s and growth plans.',
+        'Lead solution architecture for 50+ enterprise accounts, designing SD-WAN, MPLS, and fiber connectivity solutions with $75M+ total contract value over 4 years.',
+        'Drive business growth by 42% YoY as technical lead for strategic pre-sales engagements — translating complex connectivity requirements into compelling solution designs for C-suite stakeholders.',
+        'Architect hybrid cloud connectivity solutions (AWS Direct Connect, Azure ExpressRoute, GCP Interconnect) for multi-site enterprise deployments across 300+ locations globally.',
+        'Lead a cross-functional team of 12 solutions engineers and network architects; established practice-wide standards for solution design, technical documentation, and customer onboarding.',
+        'Spearhead cybersecurity architecture practice — designed Zero Trust frameworks and SASE deployments for 8 regulated-industry clients, achieving full NIST CSF alignment.',
+        'Champion culture of teamwork, trust, and transparency through weekly architecture reviews, shared design repositories, and open post-mortem processes across the team.',
       ],
     },
     {
-      title: 'Software Engineer II',
-      company: 'TechFlow Inc.',
-      location: 'Austin, TX',
-      startDate: 'Mar 2018',
-      endDate: 'Dec 2020',
-      current: false,
-      description: [
-        'Built and maintained core payment processing microservice (Node.js / TypeScript) handling $2M+ in daily transactions with PCI-DSS Level 1 compliance.',
-        'Designed and shipped A/B testing framework used across 6 product teams for 30+ concurrent experiments; contributed to an 18% increase in checkout conversion.',
-        'Led Postgres migration from MySQL: designed schema, wrote migration scripts, added covering indexes — reducing slow queries from 120/day to under 15.',
-        'Reduced cloud spend by $18k/month by right-sizing EC2 instances and moving cold-path workloads to Lambda.',
-        'Authored internal tooling library (npm) adopted by 12 engineering teams, eliminating ~400 lines of boilerplate per service.',
-        'Ran weekly code-review calibration sessions; reduced review turnaround from 3 days to same-day.',
-      ],
-    },
-    {
-      title: 'Software Engineer',
-      company: 'StartupXYZ',
-      location: 'Remote',
-      startDate: 'Jun 2016',
-      endDate: 'Feb 2018',
-      current: false,
-      description: [
-        'Built RESTful and GraphQL APIs powering a SaaS analytics dashboard used by 5,000+ customers in 30 countries.',
-        'Integrated Stripe, Twilio, Salesforce, and Segment APIs into a unified data pipeline, eliminating 15 hours of weekly manual operations work.',
-        'Established integration test suite (Jest + Supertest) from zero, achieving 85% code coverage and cutting production regressions by 60%.',
-        'Proposed and implemented a Redis caching layer for report generation, reducing average load time from 12s to 1.4s.',
-      ],
-    },
-    {
-      title: 'Junior Software Engineer',
-      company: 'Brightware Solutions',
+      title: 'Solutions Architect — Enterprise Connectivity',
+      company: 'AT&T Business Solutions',
       location: 'Chicago, IL',
-      startDate: 'Jul 2015',
+      startDate: 'Jun 2016',
+      endDate: 'Feb 2020',
+      current: false,
+      description: [
+        'Architected and delivered MPLS and SD-WAN network for Fortune 100 automotive manufacturer across 150+ global manufacturing sites, reducing WAN costs by $2.8M/year.',
+        'Designed IT service management (ITSM) transformation using ServiceNow and ITIL 4 best practices for a 12,000-seat financial services client, improving incident response SLA from 68% to 96%.',
+        'Led cybersecurity architecture for healthcare network — implemented next-gen firewall (Palo Alto NGFW), micro-segmentation, and HIPAA-compliant data isolation, passing 3 audits with zero findings.',
+        'Managed pre-sales technical engagements for 30+ mid-market to enterprise accounts, generating $28M in new connectivity business in FY2019.',
+        'Mentored 6 junior architects; 4 promoted to senior roles; introduced architecture review board process adopted across the region.',
+      ],
+    },
+    {
+      title: 'Network Architect',
+      company: 'Cisco Systems',
+      location: 'San Jose, CA',
+      startDate: 'Aug 2013',
       endDate: 'May 2016',
       current: false,
       description: [
-        'Developed internal HR portal features using Angular and .NET, serving 800+ employees across 6 offices.',
-        'Resolved 60+ production bugs within first 6 months; improved logging/monitoring coverage enabling faster root-cause analysis.',
-        'Contributed to on-call rotation and authored runbooks adopted as team standard operating procedures.',
-        'Participated in biweekly architecture reviews, gaining exposure to microservices patterns and cloud migration planning.',
+        'Designed enterprise campus and data center network architectures (BGP, OSPF, EIGRP, VXLAN) for government and healthcare clients with 5,000–25,000 endpoint environments.',
+        'Led technical architecture for 3 greenfield data center deployments using Cisco ACI (Application Centric Infrastructure), delivering 40% reduction in provisioning time.',
+        'Authored connectivity and network architecture reference designs adopted as Cisco validated designs for SD-WAN and cloud on-ramp solutions.',
+        'Delivered technical leadership on Cisco IWAN (Intelligent WAN) migrations for 12 enterprise customers, predecessor program to modern SD-WAN deployments.',
+      ],
+    },
+    {
+      title: 'Senior Network Engineer',
+      company: 'Verizon Enterprise Solutions',
+      location: 'New York, NY',
+      startDate: 'Jul 2010',
+      endDate: 'Jul 2013',
+      current: false,
+      description: [
+        'Designed and maintained MPLS and private fiber connectivity for 40+ enterprise customers across financial services and media verticals.',
+        'Led capacity planning and network architecture reviews supporting 99.99% SLA commitments across a 10,000-node backbone.',
+        'Introduced structured ITIL incident and change management processes that cut mean time to resolve (MTTR) by 55%.',
       ],
     },
   ],
 
   education: [
     {
-      degree: 'B.S. Computer Science',
-      institution: 'University of California, Berkeley',
-      location: 'Berkeley, CA',
-      graduationDate: 'May 2015',
-      gpa: '3.82',
+      degree: 'B.S. Electrical Engineering & Computer Science',
+      institution: 'University of Illinois Urbana-Champaign',
+      location: 'Champaign, IL',
+      graduationDate: 'May 2010',
+      gpa: '3.78',
       achievements: [
-        "Dean's List — 4 consecutive semesters",
-        'Senior thesis: "Practical Distributed Consensus: Raft vs. Paxos in Real-World Networks"',
-        'Teaching Assistant — CS 61B Data Structures (2 semesters)',
-        'ACM ICPC Regional Qualifier — Team Lead',
+        "Dean's List — 6 semesters",
+        'Senior capstone: "Software-Defined Networking and Programmable Infrastructure" — awarded Best Project by faculty panel',
+        'IEEE Student Chapter President — organized 3 industry networking events with 200+ attendees',
+        'Teaching Assistant — ECE 385 Digital Systems Laboratory (2 semesters)',
       ],
     },
     {
-      degree: 'Online Specialisation — Cloud Architecture',
-      institution: 'Coursera / Google Cloud',
+      degree: 'Executive Education — Business Strategy for Technology Leaders',
+      institution: 'Kellogg School of Management, Northwestern University',
+      location: 'Evanston, IL',
+      graduationDate: 'Jun 2018',
+      achievements: [
+        '6-month program covering go-to-market strategy, consultative sales leadership, and P&L ownership for technology businesses.',
+        'Capstone: Developed a market entry strategy for SD-WAN in the mid-market segment, presented to Kellogg faculty and AT&T senior leadership.',
+      ],
+    },
+    {
+      degree: 'ITIL 4 Managing Professional Transition Program',
+      institution: 'Axelos / PeopleCert',
       location: 'Online',
-      graduationDate: 'Dec 2020',
+      graduationDate: 'Sep 2021',
       achievements: [
-        'Completed 5-course specialisation covering GCP infrastructure, Kubernetes, and site reliability engineering.',
-        'Capstone project: Designed multi-region active-active architecture for a fictional fintech platform.',
-      ],
-    },
-    {
-      degree: 'High School Diploma — Computer Science & Mathematics',
-      institution: 'Lincoln High School',
-      location: 'Chicago, IL',
-      graduationDate: 'Jun 2011',
-      gpa: '4.0',
-      achievements: [
-        'Valedictorian',
-        'Founded school programming club — grew to 40 members in first year',
-        'State-level Science Olympiad — 1st Place, Computer Science event',
+        'Completed all 4 ITIL 4 Managing Professional modules: Create/Deliver/Support, Drive Stakeholder Value, High-velocity IT, Direct Plan Improve.',
       ],
     },
   ],
 
-  // Skills must be a flat string array for the frontend to render correctly
+  // Skills must be a flat string array
   skills: [
-    // Languages
-    'TypeScript', 'JavaScript', 'Python', 'Go', 'SQL', 'Bash', 'Rust',
-    // Backend
-    'Node.js', 'Express', 'Fastify', 'NestJS', 'GraphQL', 'REST APIs', 'gRPC', 'tRPC',
-    // Frontend
-    'React', 'Next.js', 'Tailwind CSS', 'Redux', 'React Query', 'Vite',
-    // Databases
-    'PostgreSQL', 'MySQL', 'Redis', 'MongoDB', 'Elasticsearch', 'DynamoDB',
-    // Messaging
-    'Apache Kafka', 'RabbitMQ', 'AWS SQS/SNS', 'Redis Streams',
-    // Cloud & DevOps
-    'AWS (EKS, EC2, S3, RDS, Lambda)', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'Helm',
-    'GitHub Actions', 'CircleCI', 'Datadog', 'Prometheus', 'Grafana',
     // Architecture
-    'Microservices', 'Event-driven design', 'CQRS', 'Domain-driven design', 'Saga pattern',
+    'Solutions Architecture', 'Cloud Architecture', 'Network Architecture', 'Enterprise Architecture',
+    'Data Center Design', 'Technical Leadership', 'Pre-Sales Architecture',
+    // Networking
+    'SD-WAN', 'MPLS', 'BGP', 'OSPF', 'EIGRP', 'VXLAN', 'Fiber Optics',
+    'Cisco ACI', 'VMware NSX', 'Juniper Contrail',
+    // Connectivity
+    'Hybrid Cloud Connectivity', 'AWS Direct Connect', 'Azure ExpressRoute',
+    'GCP Interconnect', 'SASE', 'UCaaS',
+    // Security
+    'Cybersecurity Architecture', 'Zero Trust Security', 'NIST CSF', 'SASE',
+    'Palo Alto NGFW', 'Fortinet', 'CrowdStrike', 'HIPAA Compliance', 'SOC 2',
+    // ITSM / Process
+    'ITIL 4', 'IT Service Management', 'ServiceNow', 'Change Management',
+    'Incident Management', 'SLA Management',
+    // Cloud
+    'AWS', 'Microsoft Azure', 'Google Cloud Platform',
+    // Business
+    'Business Growth Strategy', 'Enterprise Pre-Sales', 'Consultative Selling',
+    'Digital Transformation', 'Stakeholder Management',
+    // Tools
+    'Cisco DNA Center', 'Meraki', 'Zscaler', 'Terraform', 'Ansible',
   ],
 
   // Certifications must be a flat string array
   certifications: [
-    'AWS Certified Solutions Architect – Professional (Mar 2023)',
-    'Certified Kubernetes Administrator – CKA (Sep 2022)',
-    'HashiCorp Certified: Terraform Associate (Jan 2022)',
-    'Google Professional Cloud Architect (Jun 2021)',
-    'AWS Certified Developer – Associate (Aug 2020)',
-    'MongoDB Certified Developer Associate (Mar 2019)',
+    'Cisco CCIE Enterprise Infrastructure — #62847 (Active, Jan 2024)',
+    'AWS Certified Solutions Architect – Professional (Aug 2023)',
+    'ITIL 4 Managing Professional (Sep 2021)',
+    'Certified Information Systems Security Professional – CISSP (Mar 2022)',
+    'CompTIA Network+ (Sep 2010)',
+    'Google Professional Cloud Architect (Nov 2022)',
+    'VMware Certified Advanced Professional — Data Center Design (VCAP-DCD) (Apr 2019)',
   ],
 
   projects: [
     {
-      name: 'OpenMetrics Dashboard',
+      name: 'SD-WAN Transformation — National Healthcare Network',
       description:
-        'Open-source Kubernetes observability dashboard built with React, Prometheus, and Grafana. Supports multi-cluster monitoring, custom alert rules, and Slack/PagerDuty integrations. 1,200+ GitHub stars, 40+ contributors, used by 3 production companies.',
-      technologies: ['React', 'TypeScript', 'Prometheus', 'Grafana', 'Kubernetes', 'Helm'],
-      url: 'github.com/aligenius/openmetrics-dashboard',
+        'Led end-to-end solution architecture for a 220-site SD-WAN migration replacing legacy MPLS for a national hospital network. Designed dual-ISP active-active overlay, centralized policy management via Cisco vManage, and secure Internet breakout at each site. Reduced WAN costs by $3.2M/year while improving application performance by 60% (measured by Cisco ThousandEyes).',
+      technologies: ['Cisco SD-WAN (Viptela)', 'MPLS', 'BGP', 'AWS Direct Connect', 'Cisco ThousandEyes'],
     },
     {
-      name: 'Distributed Rate Limiter',
+      name: 'Zero Trust Architecture — Financial Services Group',
       description:
-        'Production-grade Redis-backed distributed rate limiter for Node.js supporting sliding window, fixed window, and token bucket algorithms. Published on npm — 15k+ weekly downloads, used in 3 production services at TechFlow.',
-      technologies: ['Node.js', 'TypeScript', 'Redis', 'Lua scripting'],
-      url: 'github.com/aligenius/redis-rate-limiter',
+        'Designed and delivered Zero Trust network architecture for a 15,000-user financial services firm. Implemented Zscaler ZIA/ZPA for identity-based access, micro-segmentation via Palo Alto Prisma, and continuous compliance monitoring against NIST CSF. Reduced attack surface by 75% and achieved SOC 2 Type II certification within 9 months.',
+      technologies: ['Zero Trust', 'Zscaler', 'Palo Alto Prisma', 'NIST CSF', 'SOC 2'],
     },
     {
-      name: 'EventBus — Lightweight In-Process Event System',
+      name: 'Multi-Cloud Connectivity Platform',
       description:
-        'Zero-dependency TypeScript event bus with dead-letter queues, retry policies, and OpenTelemetry tracing support. Designed for microservices that need intra-process eventing before scaling to Kafka.',
-      technologies: ['TypeScript', 'OpenTelemetry', 'Node.js'],
-      url: 'github.com/aligenius/eventbus',
+        'Architected a reusable multi-cloud connectivity reference design connecting on-premises data centers to AWS, Azure, and GCP using a shared services hub. Used Terraform for IaC and BGP route policies for traffic engineering. Deployed for 6 enterprise clients; standard design reduced time-to-connect a new cloud region from 8 weeks to 4 days.',
+      technologies: ['AWS Direct Connect', 'Azure ExpressRoute', 'GCP Interconnect', 'BGP', 'Terraform'],
+      url: 'github.com/aligenius/multi-cloud-connectivity',
     },
     {
-      name: 'QueryLens — Slow Query Analyser',
+      name: 'ITSM Transformation — Global Manufacturing',
       description:
-        'CLI tool that ingests PostgreSQL slow query logs and generates an interactive HTML report with index recommendations, query plan visualisations, and estimated cost savings. Used internally at Acme Corp to cut slow queries by 80%.',
-      technologies: ['Python', 'PostgreSQL', 'Click', 'Jinja2', 'D3.js'],
-      url: 'github.com/aligenius/querylens',
+        'Led ITIL 4-aligned ITSM transformation for a 35,000-employee global manufacturer. Designed ServiceNow workflows for incident, problem, change, and request management. Migrated 8 regional helpdesks to a single global operations center. Achieved 95%+ SLA compliance within 6 months of go-live (up from 62%).',
+      technologies: ['ServiceNow', 'ITIL 4', 'ITSM', 'Change Management', 'SLA Management'],
     },
     {
-      name: 'AutoDeploy — GitHub Actions Toolkit',
+      name: 'Enterprise Fiber Build-Out Strategy',
       description:
-        'Reusable GitHub Actions workflow library for zero-downtime Kubernetes deployments with automated rollback, Slack notifications, and environment promotion gates. Adopted by 5 teams at Acme Corp.',
-      technologies: ['GitHub Actions', 'Kubernetes', 'Bash', 'YAML', 'Helm'],
-      url: 'github.com/aligenius/autodeploy',
+        'Authored the connectivity strategy and business case for a 12-city fiber infrastructure expansion targeting healthcare and education verticals. Analysis included competitive benchmarking, ROI modeling, and phased deployment plan. Strategy approved by executive committee; first 4 markets deployed with 340% ROI in year 1.',
+      technologies: ['Fiber Optics', 'Network Architecture', 'Business Growth Strategy', 'ROI Analysis'],
     },
   ],
 
   volunteerWork: [
     {
-      role: 'Lead Coding Instructor',
-      organization: 'Code for Good — SF Chapter',
-      location: 'San Francisco, CA',
-      startDate: 'Sep 2022',
-      endDate: 'Present',
-      current: true,
-      description: [
-        'Design and deliver a 12-week full-stack web development curriculum (HTML, CSS, JavaScript, Node.js) for underserved youth aged 16–22.',
-        'Manage a cohort of 20 students per cycle with a 78% course completion rate, above the national average of 62%.',
-        'Mentored 8 graduates who secured their first tech jobs or internships at Salesforce, Lyft, and various startups.',
-        'Coordinate with 5 volunteer TAs and guest speakers to broaden students\' professional networks.',
-      ],
-    },
-    {
-      role: 'Open Source Mentor',
-      organization: 'Google Summer of Code',
-      location: 'Remote',
-      startDate: 'May 2023',
-      endDate: 'Sep 2023',
-      current: false,
-      description: [
-        'Mentored 2 university students contributing to open-source Node.js tooling projects over 14 weeks.',
-        'Conducted weekly code reviews, provided architecture guidance, and helped students navigate large codebases.',
-        'Both students had pull requests merged into production projects with 10k+ active users.',
-      ],
-    },
-    {
-      role: 'Technical Interview Coach',
-      organization: 'Techies Without Borders',
-      location: 'Remote',
-      startDate: 'Jan 2021',
-      endDate: 'Present',
-      current: true,
-      description: [
-        'Volunteer 3 hours per week coaching refugees and displaced individuals preparing for software engineering roles.',
-        'Conducted 80+ mock interviews covering data structures, algorithms, system design, and behavioural rounds.',
-        '65% of coached candidates received a job offer within 3 months, vs. a 30% industry baseline.',
-      ],
-    },
-    {
-      role: 'Hackathon Organizer & Judge',
-      organization: 'HackBay — Annual Bay Area Hackathon',
-      location: 'San Francisco, CA',
-      startDate: 'Mar 2020',
-      endDate: 'Present',
-      current: true,
-      description: [
-        'Co-organise annual 48-hour hackathon attracting 300+ participants across 80+ teams from 20+ universities.',
-        'Recruit sponsors, manage $50k logistics budget, set judging criteria, and lead a panel of 12 industry judges.',
-        'Focus tracks include civic tech, accessibility, and AI for social good.',
-      ],
-    },
-    {
-      role: 'STEM Tutor',
-      organization: 'Boys & Girls Club of America',
+      role: 'Mentor — Technology Leadership Program',
+      organization: 'Chicago Urban League',
       location: 'Chicago, IL',
-      startDate: 'Sep 2013',
-      endDate: 'Jun 2015',
+      startDate: 'Sep 2018',
+      endDate: 'Present',
+      current: true,
+      description: [
+        'Mentor 4 early-career professionals from underrepresented communities pursuing careers in network engineering and IT architecture.',
+        'Conduct monthly 1:1 coaching sessions covering technical skills, career strategy, and professional networking.',
+        '3 of 4 mentees have progressed to mid-level or senior roles at Fortune 500 companies.',
+      ],
+    },
+    {
+      role: 'Technical Judge & Advisor',
+      organization: 'Illinois Technology Association (ITA) CityLIGHTS Award',
+      location: 'Chicago, IL',
+      startDate: 'Jan 2020',
+      endDate: 'Present',
+      current: true,
+      description: [
+        'Serve as technical judge for the annual ITA CityLIGHTS Award recognizing Illinois tech companies for innovation and community impact.',
+        'Evaluate 15-20 submissions per cycle across cloud, connectivity, and cybersecurity categories.',
+      ],
+    },
+    {
+      role: 'Pro Bono Network Architect',
+      organization: 'NetHope — Global Nonprofit Connectivity Initiative',
+      location: 'Remote',
+      startDate: 'Mar 2021',
+      endDate: 'Sep 2022',
       current: false,
       description: [
-        'Tutored 15 high school students weekly in mathematics, physics, and introductory programming.',
-        'Helped 3 students gain admission to CS programmes at top-10 universities.',
-        'Organised a year-end robotics showcase attended by 200+ community members.',
+        'Volunteered 10 hours/month designing low-cost satellite and LTE connectivity solutions for NGO field offices in sub-Saharan Africa.',
+        'Delivered connectivity architecture for 3 organizations (120+ total users) enabling reliable access to cloud-based program management tools.',
       ],
     },
   ],
@@ -272,64 +247,68 @@ const parsedData = {
   languages: [
     'English (Native)',
     'Arabic (Professional Working Proficiency)',
+    'Urdu (Native)',
     'Spanish (Conversational)',
-    'French (Elementary)',
   ],
 
   // Awards must be a flat string array
   awards: [
-    'Engineer of the Year — Acme Corp (2023): Recognised for leading microservices migration delivering 45% incident reduction.',
-    '1st Place — Internal AI Hackathon, Acme Corp (2022): Built AI-powered code review assistant using GPT-4 and AST analysis, adopted by 3 teams.',
-    'Top Contributor — Node.js Ecosystem, OpenJS Foundation (2021): Recognised for open-source contributions with 15k+ weekly npm downloads.',
-    'Outstanding Teaching Assistant Award — UC Berkeley, CS Dept (2014): Awarded by student vote for CS 61B Data Structures.',
-    'ACM ICPC Regional Qualifier — 2nd Place (2014): Competed as team lead representing UC Berkeley.',
+    'President\'s Club — AT&T Business Solutions (2018, 2019): Top 5% of enterprise solutions architects nationwide for revenue contribution.',
+    'Innovator of the Year — CenturyLink/Lumen (2022): Recognised for developing the Multi-Cloud Connectivity reference architecture adopted across the Americas region.',
+    'CCIE Hall of Fame — Cisco Systems Certified Internetwork Expert #62847: One of fewer than 4,000 active CCIEs globally in Enterprise Infrastructure.',
+    'IEEE Region 4 Outstanding Student Award (2009): Recognised for academic excellence and leadership in the IEEE Student Chapter.',
+    'Top Technical Mentor — AT&T Business Solutions Leadership Development Program (2019): Peer-voted recognition for mentorship impact across the solutions architecture practice.',
   ],
 };
 
 const rawText = `
 Ali Yousaf
-aligenius@gmail.com | +1 (555) 123-4567 | San Francisco, CA
-linkedin.com/in/aligenius | github.com/aligenius | aligenius.dev
+aligenius@gmail.com | +1 (312) 555-8901 | Dallas, TX
+LinkedIn: linkedin.com/in/aligenius
+GitHub: github.com/aligenius
+Website: aligenius.dev
 
 SUMMARY
-Senior Software Engineer with 9+ years of experience across fintech, e-commerce, and SaaS. Led migrations, reduced latency 60%, mentored engineers, and actively volunteers as a coding instructor and interview coach.
+Senior Solutions Architect with 11+ years designing enterprise connectivity, cloud architecture, and network architecture solutions. Specialist in SD-WAN, MPLS, and hybrid cloud connectivity. $75M+ TCV in pre-sales wins. Deep expertise in cybersecurity (Zero Trust, NIST), IT service management (ITIL 4), and technical leadership. Committed to teamwork, trust, and transparency in every engagement.
 
 EXPERIENCE
-Senior Software Engineer – Acme Corp | San Francisco, CA | Jan 2021 – Present
-Software Engineer II – TechFlow Inc. | Austin, TX | Mar 2018 – Dec 2020
-Software Engineer – StartupXYZ | Remote | Jun 2016 – Feb 2018
-Junior Software Engineer – Brightware Solutions | Chicago, IL | Jul 2015 – May 2016
+Senior Lead Solutions Architect — CenturyLink (Lumen Technologies) | Dallas, TX | Mar 2020 – Present
+Solutions Architect — AT&T Business Solutions | Chicago, IL | Jun 2016 – Feb 2020
+Network Architect — Cisco Systems | San Jose, CA | Aug 2013 – May 2016
+Senior Network Engineer — Verizon Enterprise Solutions | New York, NY | Jul 2010 – Jul 2013
 
 EDUCATION
-B.S. Computer Science – UC Berkeley | May 2015 | GPA: 3.82
-Online Specialisation – Cloud Architecture, Google Cloud | Dec 2020
-High School Diploma – Lincoln High School | Jun 2011 | GPA: 4.0
+B.S. Electrical Engineering & Computer Science — University of Illinois Urbana-Champaign | May 2010 | GPA: 3.78
+Executive Education — Business Strategy for Technology Leaders, Kellogg / Northwestern | Jun 2018
+ITIL 4 Managing Professional Transition — Axelos/PeopleCert | Sep 2021
 
 SKILLS
-TypeScript, JavaScript, Python, Go, SQL, Bash, Node.js, React, Next.js, PostgreSQL, Redis, MongoDB, Kafka, AWS, GCP, Kubernetes, Docker, Terraform
+Solutions Architecture, Cloud Architecture, Network Architecture, SD-WAN, MPLS, BGP, OSPF, Fiber Optics, Hybrid Cloud Connectivity, AWS Direct Connect, Azure ExpressRoute, GCP Interconnect, Cybersecurity Architecture, Zero Trust Security, NIST CSF, SASE, Palo Alto NGFW, ITIL 4, IT Service Management, ServiceNow, AWS, Azure, Google Cloud Platform, Business Growth Strategy, Digital Transformation, Enterprise Pre-Sales, Technical Leadership
 
 CERTIFICATIONS
-AWS Solutions Architect – Professional | CKA | Terraform Associate | Google Cloud Architect | AWS Developer Associate | MongoDB Developer Associate
+Cisco CCIE Enterprise Infrastructure | AWS Solutions Architect Professional | ITIL 4 Managing Professional | CISSP | Google Professional Cloud Architect | VMware VCAP-DCD
 
 PROJECTS
-OpenMetrics Dashboard | Distributed Rate Limiter | EventBus | QueryLens | AutoDeploy
+SD-WAN Transformation — National Healthcare Network (220 sites, $3.2M savings)
+Zero Trust Architecture — Financial Services Group (SOC 2 Type II, 75% attack surface reduction)
+Multi-Cloud Connectivity Platform (AWS/Azure/GCP, 6 enterprise clients)
+ITSM Transformation — Global Manufacturing (95%+ SLA, ServiceNow)
+Enterprise Fiber Build-Out Strategy (340% ROI, 4 markets)
 
 VOLUNTEER WORK
-Lead Coding Instructor – Code for Good SF | Sep 2022 – Present
-Open Source Mentor – Google Summer of Code | May–Sep 2023
-Technical Interview Coach – Techies Without Borders | Jan 2021 – Present
-Hackathon Organizer & Judge – HackBay | Mar 2020 – Present
-STEM Tutor – Boys & Girls Club | Sep 2013 – Jun 2015
+Technology Leadership Mentor — Chicago Urban League | Sep 2018 – Present
+Technical Judge — ITA CityLIGHTS Award | Jan 2020 – Present
+Pro Bono Network Architect — NetHope | Mar 2021 – Sep 2022
 
 AWARDS
-Engineer of the Year – Acme Corp 2023
-1st Place AI Hackathon – Acme Corp 2022
-Top Contributor – OpenJS Foundation 2021
-Outstanding TA Award – UC Berkeley 2014
-ACM ICPC Regional 2nd Place 2014
+President's Club — AT&T Business Solutions (2018, 2019)
+Innovator of the Year — CenturyLink/Lumen (2022)
+CCIE Hall of Fame — Cisco #62847
+IEEE Region 4 Outstanding Student Award (2009)
+Top Technical Mentor — AT&T Business Solutions (2019)
 
 LANGUAGES
-English (Native), Arabic (Professional), Spanish (Conversational), French (Elementary)
+English (Native), Arabic (Professional Working Proficiency), Urdu (Native), Spanish (Conversational)
 `.trim();
 
 async function main() {
@@ -341,21 +320,23 @@ async function main() {
   }
   console.log(`✅  Found user: ${user.firstName ?? ''} ${user.lastName ?? ''} <${user.email}>`);
 
-  // 2. Delete old resume
-  const existing = await prisma.resume.findUnique({ where: { id: OLD_RESUME_ID } });
-  if (existing) {
-    await prisma.resume.delete({ where: { id: OLD_RESUME_ID } });
-    console.log(`🗑️   Deleted old resume: ${OLD_RESUME_ID}`);
+  // 2. Delete ALL existing resumes for this user (cascades to versions)
+  const existing = await prisma.resume.findMany({ where: { userId: user.id }, select: { id: true, title: true } });
+  if (existing.length > 0) {
+    for (const r of existing) {
+      await prisma.resume.delete({ where: { id: r.id } });
+      console.log(`🗑️   Deleted resume: ${r.id} (${r.title})`);
+    }
   } else {
-    console.log(`ℹ️   Old resume not found, continuing...`);
+    console.log(`ℹ️   No existing resumes to delete.`);
   }
 
-  // 3. Create new resume with photo
+  // 3. Create new Solutions Architect resume with photo
   const resume = await prisma.resume.create({
     data: {
       userId: user.id,
-      title: 'Senior Software Engineer Resume',
-      originalFileName: 'ali-yousaf-sr-software-engineer.pdf',
+      title: 'Senior Solutions Architect Resume',
+      originalFileName: 'ali-yousaf-solutions-architect.pdf',
       originalFileUrl: '',
       originalFileKey: '',
       rawText,
@@ -367,7 +348,7 @@ async function main() {
   });
 
   const pd = parsedData as any;
-  console.log(`✅  Resume created:`);
+  console.log(`\n✅  Resume created:`);
   console.log(`    ID    : ${resume.id}`);
   console.log(`    Title : ${resume.title}`);
   console.log(`    Photo : ${resume.photoUrl}`);
@@ -438,7 +419,7 @@ async function main() {
   console.log(`    Version ID    : ${version.id}`);
   console.log(`    ATS Score     : ${result.atsScore}/100`);
   console.log(`    Match Strength: ${matchStrength}`);
-  console.log(`    Matched KWs   : ${result.matchedKeywords.length} — ${result.matchedKeywords.slice(0, 8).join(', ')}${result.matchedKeywords.length > 8 ? '...' : ''}`);
+  console.log(`    Matched KWs   : ${result.matchedKeywords.length} — ${result.matchedKeywords.slice(0, 10).join(', ')}${result.matchedKeywords.length > 10 ? '...' : ''}`);
   console.log(`    Missing KWs   : ${result.missingKeywords.length} — ${result.missingKeywords.slice(0, 8).join(', ')}${result.missingKeywords.length > 8 ? '...' : ''}`);
 
   if (ats?.sectionScores) {
@@ -458,17 +439,13 @@ async function main() {
     console.log(`\n    Risky Elements : ✅ None detected`);
   }
 
-  if (result.truthGuardWarnings?.length) {
-    console.log(`\n    Truth Guard Warnings (${result.truthGuardWarnings.length}):`);
-    result.truthGuardWarnings.slice(0, 5).forEach((w: any) =>
-      console.log(`      [${(w.severity ?? '').toUpperCase()}] ${w.type} — ${w.section}: ${w.concern}`)
-    );
-  } else {
-    console.log(`\n    Truth Guard   : ✅ No warnings — no fabrication detected`);
-  }
-
   if (ats?.honestAssessment) {
     console.log(`\n    Honest Assessment:\n      "${ats.honestAssessment}"`);
+  }
+
+  if (ats?.quickWins?.length) {
+    console.log(`\n    Quick Wins (${ats.quickWins.length}):`);
+    ats.quickWins.slice(0, 5).forEach((w: string, i: number) => console.log(`      ${i + 1}. ${w}`));
   }
 
   if (ats?.actionPlan) {
@@ -477,6 +454,15 @@ async function main() {
     if (ats.actionPlan.step2) console.log(`      Step 2: ${ats.actionPlan.step2}`);
     if (ats.actionPlan.step3) console.log(`      Step 3: ${ats.actionPlan.step3}`);
     if (ats.actionPlan.estimatedScoreAfterFixes) console.log(`      Projected: ${ats.actionPlan.estimatedScoreAfterFixes}`);
+  }
+
+  if (result.truthGuardWarnings?.length) {
+    console.log(`\n    Truth Guard Warnings (${result.truthGuardWarnings.length}):`);
+    result.truthGuardWarnings.slice(0, 6).forEach((w: any) =>
+      console.log(`      [${(w.severity ?? '').toUpperCase()}] ${w.type} — ${w.section}: ${w.concern}`)
+    );
+  } else {
+    console.log(`\n    Truth Guard   : ✅ No warnings — no fabrication detected`);
   }
 
   console.log(`\n   View at: http://localhost:3000/resumes/${resume.id}/versions/${version.id}`);
