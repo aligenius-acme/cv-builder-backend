@@ -133,6 +133,7 @@ export interface ContactInfo {
 
 // Job description extracted data
 export interface JobData {
+  jobField?: string;
   requiredSkills: string[];
   preferredSkills: string[];
   responsibilities: string[];

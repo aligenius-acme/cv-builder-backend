@@ -36,16 +36,23 @@ CRITICAL RULES:
 3. Extract EXACT keywords as written - these matter for ATS matching
 4. If something is unclear or not mentioned, leave the array empty rather than guessing
 5. Pay attention to years of experience requirements - this is often a hard filter
+6. SEPARATE domain-specific hard skills from generic soft skills — this is critical for accurate scoring
+
+KEYWORD CLASSIFICATION:
+- "keywords" = domain-specific technical skills, tools, platforms, methodologies that are unique to this field (e.g. for marketing: SEO, PPC, Google Analytics, Mailchimp; for engineering: React, Kubernetes, CI/CD; for finance: DCF, GAAP, Bloomberg)
+- Generic soft skills like "communication", "teamwork", "analytical thinking", "project management", "problem solving" are NOT domain keywords — do NOT include them in keywords array
+- The "keywords" array is used for ATS keyword matching — only include skills where the absence would immediately disqualify a candidate
 
 Job Description:
 {job_description}
 
 Return a JSON object:
 {
+  "jobField": "The primary field/industry of this role (e.g. 'digital marketing', 'software engineering', 'data science', 'healthcare', 'finance', 'sales')",
   "requiredSkills": ["ONLY skills explicitly marked as required or must-have"],
   "preferredSkills": ["Skills marked as preferred, nice-to-have, or bonus"],
   "responsibilities": ["Key job duties - be specific, not generic"],
-  "keywords": ["Exact technical terms, tools, methodologies mentioned"],
+  "keywords": ["Domain-specific hard skills and tools ONLY — no generic soft skills"],
   "qualifications": ["Degree requirements, certifications, years of experience"],
   "companyInfo": "Brief company/role context if mentioned"
 }
@@ -107,23 +114,25 @@ Job Keywords:
 CRITICAL SCORING RULES - FOLLOW EXACTLY:
 1. INCOMPLETE RESUME DETECTION: If sections contain actual placeholder text ("Lorem ipsum", "Dolor sit amet", "[Company Name]", "[Your Name]", "[Add description here]"), mark that section as incomplete and score it 0-15. Generic-sounding but real company names are NOT placeholders — only flag text that is literally a template placeholder
 2. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+. Count actual keyword presence, not approximations.
-3. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
-4. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
-5. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
-6. IRRELEVANT EXPERIENCE = DOES NOT COUNT: Don't give credit for unrelated skills
-7. SHORT/THIN RESUMES score LOW: A resume with minimal content cannot score high
-8. EVALUATE ALL SECTIONS: Score must account for experience, education, skills, certifications, projects, volunteer work, awards, AND languages — do not ignore sections that appear after skills
-9. LABELLED URLS ARE NOT RISKY: Lines like "LinkedIn: linkedin.com/in/user" or "GitHub: github.com/user" are correctly formatted for ATS. Do NOT flag these as special character issues. Only flag URLs embedded inside pipe-separated strings or inside bullet points without labels
+3. DOMAIN/FIELD MISMATCH = SEVERE PENALTY: First, identify the primary field of the job (e.g. digital marketing, software engineering, healthcare, finance, sales). Then identify the primary field of the resume. If they are fundamentally different fields with no meaningful overlap, the score CANNOT exceed 30, regardless of any soft-skill matches. A software engineer applying to a marketing role, a nurse applying to an accounting role, a designer applying to a data science role — these are domain mismatches. Shared soft skills like "communication", "analytics", "project management", or "data-driven thinking" do NOT count as keyword matches when there is a domain mismatch.
+4. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
+5. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
+6. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
+7. IRRELEVANT EXPERIENCE = DOES NOT COUNT: Don't give credit for unrelated skills
+8. SHORT/THIN RESUMES score LOW: A resume with minimal content cannot score high
+9. EVALUATE ALL SECTIONS: Score must account for experience, education, skills, certifications, projects, volunteer work, awards, AND languages — do not ignore sections that appear after skills
+10. LABELLED URLS ARE NOT RISKY: Lines like "LinkedIn: linkedin.com/in/user" or "GitHub: github.com/user" are correctly formatted for ATS. Do NOT flag these as special character issues. Only flag URLs embedded inside pipe-separated strings or inside bullet points without labels
 
 SCORE GUIDELINES (BE STRICT):
 - 90-100: Near-perfect keyword match, quantified achievements, directly relevant experience (RARE)
 - 75-89: Strong match with most keywords, good metrics, relevant background
 - 60-74: Moderate match, some relevant keywords, lacks quantification
 - 40-59: Weak match, missing many keywords, vague descriptions
-- 20-39: Poor match, mostly irrelevant content, major gaps
-- 0-19: Essentially no match to job requirements
+- 20-39: Poor match, mostly irrelevant content or domain mismatch
+- 0-19: Essentially no match — different field entirely
 
 A resume missing 50%+ of required skills should score BELOW 50.
+A resume from a completely different field/domain should score BELOW 30.
 
 CRITICAL: You MUST provide ALL fields below. Do NOT skip quickWins, actionPlan, or detailedRecommendations - they are REQUIRED.
 
@@ -456,11 +465,15 @@ export async function customizeResume(
   jobTitle: string,
   companyName: string,
   userId: string,
-  organizationId?: string | null
+  organizationId?: string | null,
+  jobDescription?: string
 ): Promise<Omit<CustomizationResult, 'atsScore' | 'atsDetails' | 'truthGuardWarnings'>> {
   // Build the inline prompt directly (mirrors getDefaultPrompt('resume_customize') pattern
   // but includes the runtime variables and the full schema for all resume sections)
   const prompt = `You are a world-class resume strategist and ATS optimization expert. Your task is to tailor this resume to maximise its match for a specific job posting while maintaining 100% factual accuracy.
+
+BEFORE YOU BEGIN — EXTRACT ALL METRICS:
+Scan the original resume and list every number, percentage, dollar amount, ratio, headcount, and count you find. You must include every single one verbatim in the tailored version. If a metric does not fit in a rephrased sentence, keep the original sentence unchanged.
 
 ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 1. PRESERVE ALL CONTENT — Do NOT remove, shorten, or omit any section, role, or bullet point
@@ -473,6 +486,7 @@ ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 8. If a required skill is genuinely absent, put it in missingKeywords — do NOT invent it
 9. Be brutally honest about the match quality in matchStrength and changesExplanation
 10. YOUR JOB IS ADDITIVE — add keywords, strengthen verbs, improve framing. Never remove or water down existing facts to make room for keywords
+11. DOMAIN MISMATCH DETECTION — If the resume is from a completely different field than the job (e.g. software engineer applying to a marketing role, nurse applying to a finance role), set matchStrength to "poor" and clearly explain the domain mismatch in changesExplanation. Generic skills like "communication" or "analytics" do NOT bridge a domain gap.
 
 METRIC PRESERVATION — NON-NEGOTIABLE:
 Before writing the tailored version, identify every number, percentage, dollar amount, ratio, headcount, and team size in the original resume. Every single one MUST appear verbatim in the tailored version.
@@ -495,7 +509,10 @@ TARGET JOB:
 - Key Responsibilities: ${jobData.responsibilities?.slice(0, 6).join('; ') || 'Not specified'}
 - Critical Keywords: ${jobData.keywords?.join(', ') || 'Not specified'}
 - Qualifications: ${jobData.qualifications?.join(', ') || 'Not specified'}
-
+${jobDescription ? `
+FULL JOB DESCRIPTION (use this for context, tone, company culture, and any details not captured above):
+${jobDescription}
+` : ''}
 Return a JSON object with ALL fields below — do NOT omit any section:
 
 {
@@ -641,12 +658,19 @@ export async function analyzeATS(
   jobKeywords: string[],
   userId: string,
   organizationId?: string | null,
-  missingKeywords?: string[]
+  missingKeywords?: string[],
+  jobField?: string
 ): Promise<ATSAnalysis> {
   const promptTemplate = await getPrompt('ats_analysis');
   let prompt = promptTemplate
     .replace('{resume_text}', resumeText)
     .replace('{job_keywords}', JSON.stringify(jobKeywords));
+
+  // Inject job field so ATS can detect domain mismatch
+  if (jobField) {
+    prompt += `\n\nJOB FIELD: ${jobField}
+Apply the DOMAIN/FIELD MISMATCH rule (Rule 3): if the resume's primary field is fundamentally different from "${jobField}", cap the score at 30 and explain the domain mismatch in honestAssessment.`;
+  }
 
   // Fix 3: Inject confirmed missing keywords so scorer cannot ignore real gaps
   if (missingKeywords && missingKeywords.length > 0) {
@@ -686,13 +710,30 @@ export async function runTruthGuard(
   // Filter out omission-based warnings — the AI was trained to flag "missing details"
   // but our Truth Guard should only surface fabrications and inflations.
   const OMISSION_PATTERNS = [
-    /omit/i, /does not (mention|specify|include|provide|state)/i,
-    /without (specifying|mentioning|providing|stating|detailing)/i,
+    // Explicit omission language
+    /omit/i,
+    /does not (mention|specify|include|provide|state)/i,
+    /without (specifying|mentioning|providing|stating|detailing|the)/i,
     /not (mentioned|specified|included|provided|stated)/i,
-    /missing/i, /lacks (supporting|details|evidence|specific)/i,
-    /does not provide evidence/i, /could mislead/i,
-    /downplay/i, /may misrepresent the (scale|scope|impact|level)/i,
+    // "lacks X" — e.g. "lacks the specificity", "lacks details", "lacks evidence"
+    /lacks/i,
+    // Missing/absent details
+    /missing/i,
+    /does not provide evidence/i,
+    // Mislead/misrepresent — caused by simplification, not fabrication
+    /mislead/i,
+    /misrepresent/i,
+    /downplay/i,
+    // Specificity/detail loss
     /not.*detail/i, /no.*detail/i,
+    /without.*number/i, /without.*date/i, /without.*metric/i,
+    /simplif/i,          // "simplifies", "simplified"
+    /understate/i,
+    /does not specify/i,
+    /no longer (mention|state|include)/i,
+    /less specific/i, /less (detailed|impactful|precise)/i,
+    /more generic/i, /more vague/i,
+    /than the original/i,   // "less X than the original claim"
   ];
   const OMISSION_TYPES = new Set(['inconsistency', 'unsupported_claim', 'exaggeration']);
 
@@ -989,7 +1030,7 @@ export async function fullCustomizationPipeline(
   // Step 1: Analyze job description
   const jobData = await analyzeJobDescription(jobDescription, userId, organizationId);
 
-  // Step 2: Customize resume
+  // Step 2: Customize resume — pass raw JD for full context
   const customization = await customizeResume(
     resumeData,
     resumeText,
@@ -997,7 +1038,8 @@ export async function fullCustomizationPipeline(
     jobTitle,
     companyName,
     userId,
-    organizationId
+    organizationId,
+    jobDescription
   );
 
   // Step 3: Run ATS analysis — pass confirmed missing keywords so scorer cannot ignore real gaps
@@ -1007,7 +1049,8 @@ export async function fullCustomizationPipeline(
     jobKeywords,
     userId,
     organizationId,
-    customization.missingKeywords  // Fix 3: inject verified missing keywords
+    customization.missingKeywords,  // Fix 3: inject verified missing keywords
+    jobData.jobField                // domain mismatch detection
   );
 
   // Fix 4: Enforce hard score ceiling based on match strength
