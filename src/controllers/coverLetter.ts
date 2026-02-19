@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest, ParsedResumeData, JobData } from '../types';
 import { ValidationError, NotFoundError } from '../utils/errors';
-import { generateCoverLetter as aiGenerateCoverLetter, generateEnhancedCoverLetter as aiGenerateEnhancedCoverLetter } from '../services/ai';
+import { generateCoverLetter as aiGenerateCoverLetter, generateEnhancedCoverLetter as aiGenerateEnhancedCoverLetter, analyzeJobDescription } from '../services/ai';
 import { generateCoverLetterPDF, generateCoverLetterDOCX } from '../services/documents';
 import { uploadDocument } from '../services/storage';
 
@@ -24,7 +24,7 @@ export const generateCoverLetter = async (
     let resumeData: ParsedResumeData;
     let jobData: JobData;
 
-    // If resumeVersionId provided, use that version's data
+    // If resumeVersionId provided, use that version's tailored data
     if (resumeVersionId) {
       const version = await prisma.resumeVersion.findFirst({
         where: { id: resumeVersionId, userId },
@@ -35,7 +35,10 @@ export const generateCoverLetter = async (
       }
 
       resumeData = version.tailoredData as unknown as ParsedResumeData;
-      jobData = version.jobData as unknown as JobData;
+      // Use stored jobData if present, otherwise analyze the JD
+      const storedJobData = version.jobData as unknown as JobData;
+      const hasJobData = storedJobData && (storedJobData.requiredSkills?.length || storedJobData.keywords?.length);
+      jobData = hasJobData ? storedJobData : await analyzeJobDescription(jobDescription, userId, organizationId);
     } else {
       // Use the most recent resume
       const resume = await prisma.resume.findFirst({
@@ -48,24 +51,18 @@ export const generateCoverLetter = async (
       }
 
       resumeData = resume.parsedData as unknown as ParsedResumeData;
-
-      // Extract job data from provided job description
-      jobData = {
-        requiredSkills: [],
-        preferredSkills: [],
-        responsibilities: [],
-        keywords: [],
-        qualifications: [],
-      };
+      // Always analyze the JD so AI has real job context
+      jobData = await analyzeJobDescription(jobDescription, userId, organizationId);
     }
 
-    // Generate cover letter using AI
+    // Generate cover letter using AI — pass both structured jobData and raw JD text
     const content = await aiGenerateCoverLetter(
       {
         resumeData,
         jobData,
         jobTitle,
         companyName,
+        jobDescription,
         tone: tone as 'professional' | 'enthusiastic' | 'formal',
       },
       userId,
@@ -320,7 +317,11 @@ export const regenerateCoverLetter = async (
 
       if (version) {
         resumeData = version.tailoredData as unknown as ParsedResumeData;
-        jobData = version.jobData as unknown as JobData;
+        const storedJobData = version.jobData as unknown as JobData;
+        const hasJobData = storedJobData && (storedJobData.requiredSkills?.length || storedJobData.keywords?.length);
+        jobData = hasJobData
+          ? storedJobData
+          : await analyzeJobDescription(coverLetter.jobDescription, userId, organizationId);
       } else {
         throw new NotFoundError('Associated resume version not found');
       }
@@ -335,22 +336,18 @@ export const regenerateCoverLetter = async (
       }
 
       resumeData = resume.parsedData as unknown as ParsedResumeData;
-      jobData = {
-        requiredSkills: [],
-        preferredSkills: [],
-        responsibilities: [],
-        keywords: [],
-        qualifications: [],
-      };
+      // Re-analyze the stored JD so regeneration has the same job context as original
+      jobData = await analyzeJobDescription(coverLetter.jobDescription, userId, organizationId);
     }
 
-    // Generate new content
+    // Generate new content — pass both structured jobData and original raw JD text
     const content = await aiGenerateCoverLetter(
       {
         resumeData,
         jobData,
         jobTitle: coverLetter.jobTitle,
         companyName: coverLetter.companyName,
+        jobDescription: coverLetter.jobDescription,
         tone: tone as 'professional' | 'enthusiastic' | 'formal',
       },
       userId,
@@ -395,7 +392,7 @@ export const generateEnhancedCoverLetter = async (
     let resumeData: ParsedResumeData;
     let jobData: JobData;
 
-    // If resumeVersionId provided, use that version's data
+    // If resumeVersionId provided, use that version's tailored data
     if (resumeVersionId) {
       const version = await prisma.resumeVersion.findFirst({
         where: { id: resumeVersionId, userId },
@@ -406,7 +403,9 @@ export const generateEnhancedCoverLetter = async (
       }
 
       resumeData = version.tailoredData as unknown as ParsedResumeData;
-      jobData = version.jobData as unknown as JobData;
+      const storedJobData = version.jobData as unknown as JobData;
+      const hasJobData = storedJobData && (storedJobData.requiredSkills?.length || storedJobData.keywords?.length);
+      jobData = hasJobData ? storedJobData : await analyzeJobDescription(jobDescription, userId, organizationId);
     } else {
       // Use the most recent resume
       const resume = await prisma.resume.findFirst({
@@ -419,24 +418,18 @@ export const generateEnhancedCoverLetter = async (
       }
 
       resumeData = resume.parsedData as unknown as ParsedResumeData;
-
-      // Extract job data from provided job description
-      jobData = {
-        requiredSkills: [],
-        preferredSkills: [],
-        responsibilities: [],
-        keywords: [],
-        qualifications: [],
-      };
+      // Always analyze the JD so AI has real job context
+      jobData = await analyzeJobDescription(jobDescription, userId, organizationId);
     }
 
-    // Generate enhanced cover letter using AI
+    // Generate enhanced cover letter using AI — pass both structured jobData and raw JD text
     const result = await aiGenerateEnhancedCoverLetter(
       {
         resumeData,
         jobData,
         jobTitle,
         companyName,
+        jobDescription,
         tone: tone as 'professional' | 'enthusiastic' | 'formal',
       },
       userId,

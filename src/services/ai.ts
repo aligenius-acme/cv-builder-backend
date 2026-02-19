@@ -798,26 +798,40 @@ export async function generateCoverLetter(
   userId: string,
   organizationId?: string | null
 ): Promise<string> {
+  const jobKeywordsSection = [
+    input.jobData.requiredSkills?.length ? `Required Skills: ${input.jobData.requiredSkills.join(', ')}` : '',
+    input.jobData.preferredSkills?.length ? `Preferred Skills: ${input.jobData.preferredSkills.join(', ')}` : '',
+    input.jobData.responsibilities?.length ? `Key Responsibilities: ${input.jobData.responsibilities.slice(0, 5).join('; ')}` : '',
+    input.jobData.keywords?.length ? `Keywords: ${input.jobData.keywords.join(', ')}` : '',
+    input.jobData.qualifications?.length ? `Qualifications: ${input.jobData.qualifications.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+
   const prompt = `Write a professional cover letter for this job application.
 
-Candidate Resume:
+CANDIDATE RESUME:
 ${JSON.stringify(input.resumeData, null, 2)}
 
-Job Information:
-${JSON.stringify(input.jobData, null, 2)}
+TARGET JOB:
+- Position: ${input.jobTitle}
+- Company: ${input.companyName}
+- Tone: ${input.tone || 'professional'}
+${jobKeywordsSection ? `\nJOB REQUIREMENTS:\n${jobKeywordsSection}` : ''}
+${input.jobDescription ? `\nFULL JOB DESCRIPTION (use for company context, culture, and specific requirements):\n${input.jobDescription}` : ''}
 
-Job Title: ${input.jobTitle}
-Company: ${input.companyName}
-Tone: ${input.tone || 'professional'}
+ABSOLUTE RULES — VIOLATION MEANS FAILURE:
+1. ONLY reference experiences, skills, and achievements that exist in the candidate's resume
+2. NEVER fabricate skills, tools, metrics, job titles, or accomplishments
+3. NEVER claim expertise in something not demonstrated in the resume
+4. If the candidate is underqualified, focus on genuine transferable skills — do NOT invent qualifications
+5. Use ACTUAL metrics and numbers from the resume (not invented ones)
 
-Guidelines:
-1. Opening: Express genuine interest in the role
-2. Body: Connect 2-3 specific experiences/skills to job requirements
-3. Use concrete examples from the resume
-4. Show knowledge of the company (if info available)
-5. Closing: Express enthusiasm and call to action
-6. Keep it concise: 3-4 paragraphs max
-7. NEVER fabricate experience or skills
+GUIDELINES:
+1. Opening: Express specific, genuine interest in ${input.jobTitle} at ${input.companyName} — reference something real about the role or company from the JD
+2. Body paragraphs: Connect 2-3 REAL experiences from the resume to the job's actual requirements (use the JD keywords naturally)
+3. Highlight concrete achievements with real numbers from the resume
+4. Mirror language/keywords from the job description where they apply truthfully
+5. Closing: Clear call to action, express enthusiasm
+6. Length: 3-4 focused paragraphs — concise and impact-driven
 
 Return only the cover letter text, no JSON or formatting markers.`;
 
@@ -832,26 +846,39 @@ export async function generateEnhancedCoverLetter(
   userId: string,
   organizationId?: string | null
 ): Promise<EnhancedCoverLetterResult> {
+  const jobKeywordsSection = [
+    input.jobData.requiredSkills?.length ? `Required Skills: ${input.jobData.requiredSkills.join(', ')}` : '',
+    input.jobData.preferredSkills?.length ? `Preferred Skills: ${input.jobData.preferredSkills.join(', ')}` : '',
+    input.jobData.responsibilities?.length ? `Key Responsibilities: ${input.jobData.responsibilities.slice(0, 5).join('; ')}` : '',
+    input.jobData.keywords?.length ? `Keywords: ${input.jobData.keywords.join(', ')}` : '',
+    input.jobData.qualifications?.length ? `Qualifications: ${input.jobData.qualifications.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+
   const prompt = `Write a professional cover letter for this job application AND provide alternative options.
 
-Candidate Resume:
+CANDIDATE RESUME:
 ${JSON.stringify(input.resumeData, null, 2)}
 
-Job Information:
-${JSON.stringify(input.jobData, null, 2)}
+TARGET JOB:
+- Position: ${input.jobTitle}
+- Company: ${input.companyName}
+- Tone: ${input.tone || 'professional'}
+${jobKeywordsSection ? `\nJOB REQUIREMENTS:\n${jobKeywordsSection}` : ''}
+${input.jobDescription ? `\nFULL JOB DESCRIPTION (use for company context, culture, tone, and specific requirements):\n${input.jobDescription}` : ''}
 
-Job Title: ${input.jobTitle}
-Company: ${input.companyName}
-Tone: ${input.tone || 'professional'}
+ABSOLUTE RULES — VIOLATION MEANS FAILURE:
+1. ONLY reference experiences, skills, and achievements that exist in the candidate's resume
+2. NEVER fabricate skills, tools, metrics, job titles, or accomplishments
+3. NEVER claim expertise in something not demonstrated in the resume
+4. Use ACTUAL metrics and numbers from the resume (not invented ones)
+5. Mirror job description language where it applies truthfully to the candidate's background
 
-Guidelines:
-1. Opening: Express genuine interest in the role
-2. Body: Connect 2-3 specific experiences/skills to job requirements
-3. Use concrete examples from the resume
-4. Show knowledge of the company (if info available)
-5. Closing: Express enthusiasm and call to action
-6. Keep it concise: 3-4 paragraphs max
-7. NEVER fabricate experience or skills
+GUIDELINES:
+1. Opening: Specific interest in ${input.jobTitle} at ${input.companyName} — reference something real from the JD
+2. Body: Connect 2-3 REAL experiences from resume to the job's actual requirements (use JD keywords naturally)
+3. Highlight concrete achievements with real numbers from the resume
+4. Closing: Clear call to action, express genuine enthusiasm
+5. Length: 3-4 focused paragraphs — concise and impact-driven
 
 Return JSON:
 {

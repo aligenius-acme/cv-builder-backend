@@ -294,6 +294,7 @@ export interface CoverLetterInput {
   jobData: JobData;
   jobTitle: string;
   companyName: string;
+  jobDescription?: string; // Raw JD text — gives AI full context beyond extracted keywords
   tone?: 'professional' | 'enthusiastic' | 'formal';
 }
 
