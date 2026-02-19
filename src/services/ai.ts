@@ -151,19 +151,17 @@ Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
   ],
   "detailedRecommendations": {
     "criticalIssues": [
-      "REQUIRED - Minimum 3 items. MUST include before/after examples",
       {
-        "issue": "EXAMPLE: Summary contains Lorem Ipsum placeholder text instead of professional summary",
-        "location": "Summary section, line 1",
-        "currentText": "Laborum soluta qui i",
-        "suggestedText": "Results-driven Software Engineer with 5+ years building scalable web applications using React, Node.js, and AWS, delivering solutions for 100K+ users",
-        "reasoning": "Lorem Ipsum text is automatically rejected by 100% of ATS systems. Real, keyword-rich summary is essential for passing initial screens.",
-        "estimatedScoreImpact": "+25 points",
-        "priority": "CRITICAL",
-        "keywords": ["Software Engineer", "React", "Node.js", "AWS", "scalable", "web applications"],
-        "implementation": "Step 1: Delete Lorem Ipsum text. Step 2: Write 2-3 sentences highlighting years of experience, key technologies (React, Node.js, AWS), and measurable impact (user counts, performance improvements)"
-      },
-      ... minimum 3-5 critical issues with EXACT before/after
+        "issue": "Specific critical issue found in THIS resume",
+        "location": "Exact section and position (e.g. 'Experience - [Company Name], bullet 2')",
+        "currentText": "The exact current text from the resume",
+        "suggestedText": "The exact improved replacement text with job keywords naturally incorporated",
+        "reasoning": "Why this is hurting the ATS score and recruiter appeal",
+        "estimatedScoreImpact": "+X points",
+        "priority": "CRITICAL|HIGH|MEDIUM",
+        "keywords": ["keywords being added"],
+        "implementation": "Step-by-step instructions to make this specific change"
+      }
     ],
     "missingKeywordDetails": [
       {
@@ -211,10 +209,7 @@ Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
     }
   },
   "quickWins": [
-    "REQUIRED - Minimum 3 items. Each must be a 5-minute fix with exact before/after and point impact",
-    "Example: Replace 'Worked on projects' with 'Led development of React app serving 50K+ users, reducing load time by 35%' (+8 points, <5 min)",
-    "Example: Add 'TypeScript' to Skills section (+5 points, <2 min)",
-    ... minimum 3-5 specific quick wins
+    "REQUIRED - Minimum 3 items specific to THIS resume. Each must be a concrete 5-minute fix with the exact current text, the exact replacement, and the estimated point impact. Format: 'Change [exact current text] to [exact improved text] in [section] (+X points, <5 min)'"
   ],
   "atsExtractedView": "plain text as an ATS would see it",
   "riskyElements": [
@@ -224,10 +219,10 @@ Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
   "honestAssessment": "A blunt 2-3 sentence assessment of this resume's actual competitiveness WITH specific numbers: 'This resume will be rejected by X% of ATS systems because [reasons]. Missing X critical keywords. Needs [specific improvements].'",
   "competitorComparison": "Compared to top candidates, this resume is [X]% weaker in [areas]. Top resumes have [specific elements this one lacks].",
   "actionPlan": {
-    "step1": "REQUIRED - IMMEDIATE (5 min): Replace Lorem Ipsum text with real content. Example: Change 'Laborum soluta' to 'Software Engineer with 5 years...'",
-    "step2": "REQUIRED - HIGH PRIORITY (15 min): Add missing critical keywords [list top 3]. Example: Add 'React, TypeScript, AWS' to Skills and Experience sections",
-    "step3": "REQUIRED - IMPORTANT (30 min): Quantify all experience bullets with metrics. Example: Add numbers, percentages, user counts to each bullet point",
-    "estimatedScoreAfterFixes": "REQUIRED - Must show: '40/100 → 75/100' format"
+    "step1": "REQUIRED - IMMEDIATE (5 min): [Most critical single fix for this specific resume — quote the exact text to change and what to change it to]",
+    "step2": "REQUIRED - HIGH PRIORITY (15 min): Add the top 3 missing critical keywords to the resume. Name the exact keywords and which sections to add them to.",
+    "step3": "REQUIRED - IMPORTANT (30 min): Quantify any bullet points that currently lack metrics. Specify exactly which bullets need numbers and what kind of metric to add (users, revenue, time saved, % improvement).",
+    "estimatedScoreAfterFixes": "REQUIRED - Must show current and projected score: e.g. '52/100 → 74/100'"
   }
 }
 
@@ -276,8 +271,8 @@ These are fabrications — the AI invented them.
 
 CHECK 2 — INFLATED NUMBERS:
 Find any number (dollar amount, percentage, count, ratio) in the TAILORED resume where the ORIGINAL has a SMALLER number for the same claim.
-Example: original "$3.2M" → tailored "$5M" = inflation. Flag it.
-Example: original "$3.2M" → tailored "$3.2M" = unchanged. Do NOT flag it.
+Example: original "20%" → tailored "45%" = inflation. Flag it.
+Example: original "20%" → tailored "20%" = unchanged. Do NOT flag it.
 
 THAT IS ALL. Do not check for anything else.
 Do NOT flag: simplified descriptions, condensed bullet points, omitted details, missing evidence, missing context, shorter project descriptions, missing certification dates, or anything that was REMOVED from the tailored version. Removal is not your concern.
@@ -477,9 +472,17 @@ ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 7. NEVER fabricate, exaggerate, or add anything not present in the original resume
 8. If a required skill is genuinely absent, put it in missingKeywords — do NOT invent it
 9. Be brutally honest about the match quality in matchStrength and changesExplanation
-10. PRESERVE ALL QUANTIFIED FACTS EXACTLY — copy every number, dollar amount, percentage, and unit verbatim from the original (e.g. "$3.2M/year" must stay "$3.2M/year", not become "$3.2M"). Never drop units, timeframes, or qualifying context from a metric
-11. PRESERVE ALL FACTUAL DETAILS — keep all locations, GPA scores, certification numbers, team sizes, date ranges, and other specifics exactly as stated in the original. Omitting details counts as a factual change
-12. YOUR JOB IS ADDITIVE — add keywords, strengthen verbs, improve framing. Never remove or water down existing facts to make room for keywords
+10. YOUR JOB IS ADDITIVE — add keywords, strengthen verbs, improve framing. Never remove or water down existing facts to make room for keywords
+
+METRIC PRESERVATION — NON-NEGOTIABLE:
+Before writing the tailored version, identify every number, percentage, dollar amount, ratio, headcount, and team size in the original resume. Every single one MUST appear verbatim in the tailored version.
+FORBIDDEN substitutions (applies to any resume):
+- Any "%" or "×" value → NEVER replace with "significant", "substantial", "notable", or "improved"
+- Any headcount (e.g. "team of 12", "15-person team") → NEVER replace with "large team" or "cross-functional team"
+- Any count (e.g. "500+ clients", "2M users") → NEVER replace with "many clients" or "large user base"
+- Any dollar amount (e.g. "$800K budget") → NEVER replace with "large budget" or "multi-million dollar"
+- Any timeframe or unit attached to a metric → NEVER drop it (e.g. "/year", "/quarter", "per month")
+RULE: If a metric cannot fit naturally in a rephrased sentence, keep the entire original sentence unchanged.
 
 ORIGINAL RESUME (full text):
 ${resumeText}
