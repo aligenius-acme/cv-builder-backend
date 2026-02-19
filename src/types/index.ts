@@ -278,11 +278,13 @@ export interface CustomizationResult {
 
 // Truth Guard Warning
 export interface TruthGuardWarning {
-  type: 'exaggeration' | 'inconsistency' | 'unsupported_claim';
+  type: 'fabrication' | 'inflation' | 'title_inflation' | 'invented_experience' | 'exaggeration' | 'inconsistency' | 'unsupported_claim';
   section: string;
   original: string;
+  tailored?: string;
   concern: string;
   severity: 'low' | 'medium' | 'high';
+  recommendation?: string;
 }
 
 // Cover Letter Generation

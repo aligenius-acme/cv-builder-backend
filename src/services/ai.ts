@@ -62,6 +62,16 @@ ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 5. If the candidate lacks a required skill, put it in missingKeywords — do NOT invent it
 6. matchStrength MUST be honest — do not inflate a weak match
 
+METRIC PRESERVATION — ABSOLUTE REQUIREMENT:
+Before writing the tailored version, extract every number, percentage, dollar amount, ratio, count, and team size from the original. Every single one MUST appear verbatim in the tailored version. You may rephrase the surrounding words but NEVER drop, round, or vague-ify a metric.
+EXAMPLES OF WHAT IS FORBIDDEN:
+- Original: "42% YoY growth" → Tailored: "significant growth" ← VIOLATION
+- Original: "300+ locations" → Tailored: "multiple locations" ← VIOLATION
+- Original: "$3.2M in savings" → Tailored: "significant savings" ← VIOLATION
+- Original: "35-person team" → Tailored: "large team" ← VIOLATION
+- Original: "75% reduction in attack surface" → Tailored: "improved security" ← VIOLATION
+RULE: If you cannot fit a metric naturally into a rephrased sentence, keep the entire original sentence unchanged rather than dropping the number.
+
 WHAT YOU MUST DO:
 - Reorder bullet points so the most job-relevant achievements come first
 - Rephrase descriptions to incorporate exact job keywords naturally and truthfully
@@ -250,8 +260,7 @@ If ANY of the required fields (quickWins, actionPlan, detailedRecommendations) a
 
 Return only valid JSON with ALL required fields populated.`,
 
-    truth_guard: `You are an accuracy checker comparing an original resume to a tailored (AI-optimised) version.
-Your job is to catch REAL fabrications and meaningful exaggerations — NOT to flag accurate rephrasing or concise restatements of original facts.
+    truth_guard: `Compare these two resumes. The tailored version was created by AI from the original.
 
 Original Resume:
 {original_data}
@@ -259,45 +268,36 @@ Original Resume:
 Tailored Resume:
 {tailored_data}
 
-WHAT TO FLAG (genuine issues only):
-1. ROLE INFLATION: verb upgrades that misrepresent responsibility — "assisted" → "led", "participated" → "managed"
-2. INVENTED SKILLS: a skill or tool in the tailored version that is completely absent from the original
-3. METRIC FABRICATION: a specific number/percentage that does NOT appear anywhere in the original
-4. SCOPE EXAGGERATION: team sizes, budgets, or user counts that are larger than the original states
-5. TITLE INFLATION: job title changed to a more senior-sounding title not in the original
-6. DATE MANIPULATION: employment gaps hidden or tenure extended beyond what the original states
-7. INVENTED EXPERIENCE: responsibilities or projects added that do not appear anywhere in the original
+YOUR TASK — TWO CHECKS ONLY:
 
-WHAT NOT TO FLAG:
-- A metric that appears in BOTH the original and tailored — do NOT call this "unsupported". It IS supported.
-- Shortened or paraphrased versions of original bullet points that preserve the core facts
-- Omitted optional details (location, GPA) — these are editorial choices, not fabrications
-- More concise project descriptions that still cite the same outcomes
-- Keyword-rich rephrasing that stays factually accurate to the original
+CHECK 1 — INVENTED CONTENT:
+Read each skill, tool, certification, job title, and project in the TAILORED resume.
+Find any item that does NOT exist anywhere in the ORIGINAL resume.
+These are fabrications — the AI invented them.
 
-CRITICAL RULE FOR THE "original" FIELD:
-The "original" field MUST contain text copied verbatim from the Original Resume above.
-Never put tailored text into the "original" field. If you cannot find an exact match, quote the closest original passage.
+CHECK 2 — INFLATED NUMBERS:
+Find any number (dollar amount, percentage, count, ratio) in the TAILORED resume where the ORIGINAL has a SMALLER number for the same claim.
+Example: original "$3.2M" → tailored "$5M" = inflation. Flag it.
+Example: original "$3.2M" → tailored "$3.2M" = unchanged. Do NOT flag it.
 
-SEVERITY GUIDELINES:
-- HIGH: Completely fabricated skills/experience, major metric inflation (2× or more)
-- MEDIUM: Role verb inflation that meaningfully misrepresents seniority, moderate metric exaggeration
-- LOW: Minor phrasing that slightly overstates but is still defensible from the original
+THAT IS ALL. Do not check for anything else.
+Do NOT flag: simplified descriptions, condensed bullet points, omitted details, missing evidence, missing context, shorter project descriptions, missing certification dates, or anything that was REMOVED from the tailored version. Removal is not your concern.
 
-Return a JSON array of warnings (only real issues — quality over quantity):
+For each issue found, quote the ORIGINAL text verbatim in the "original" field.
+
+Return JSON array (empty array = AI was faithful, which is the best outcome):
 [
   {
-    "type": "exaggeration|fabrication|inconsistency|unsupported_claim",
+    "type": "fabrication|inflation",
     "section": "section name",
-    "original": "verbatim text from the ORIGINAL resume",
-    "tailored": "the modified text from the TAILORED resume",
-    "concern": "specific explanation of the actual problem",
-    "severity": "low|medium|high",
-    "recommendation": "how to fix this while staying honest"
+    "original": "exact quote from original resume, or 'Not in original' if completely invented",
+    "tailored": "exact quote from tailored resume",
+    "concern": "one sentence: what was invented or what number was inflated",
+    "severity": "high|medium|low",
+    "recommendation": "how to fix"
   }
 ]
 
-If genuinely no issues found, return empty array: []
 Return only valid JSON.`,
 
     cover_letter: `Write a professional cover letter for this job application.
@@ -679,7 +679,32 @@ export async function runTruthGuard(
 
   const { content } = await callAI(prompt, userId, organizationId, 'truth_guard', 2000);
 
-  return parseAIJSON<TruthGuardWarning[]>(content);
+  const warnings = parseAIJSON<TruthGuardWarning[]>(content);
+
+  // Filter out omission-based warnings — the AI was trained to flag "missing details"
+  // but our Truth Guard should only surface fabrications and inflations.
+  const OMISSION_PATTERNS = [
+    /omit/i, /does not (mention|specify|include|provide|state)/i,
+    /without (specifying|mentioning|providing|stating|detailing)/i,
+    /not (mentioned|specified|included|provided|stated)/i,
+    /missing/i, /lacks (supporting|details|evidence|specific)/i,
+    /does not provide evidence/i, /could mislead/i,
+    /downplay/i, /may misrepresent the (scale|scope|impact|level)/i,
+    /not.*detail/i, /no.*detail/i,
+  ];
+  const OMISSION_TYPES = new Set(['inconsistency', 'unsupported_claim', 'exaggeration']);
+
+  return warnings.filter(w => {
+    // Always keep genuine fabrication type
+    if (w.type === 'fabrication') return true;
+    // Keep inflation if it's about a number being made larger
+    if (w.type === 'inflation') return true;
+    // For other types, drop if concern language is about omissions
+    const concernText = w.concern || '';
+    const isAboutOmission = OMISSION_PATTERNS.some(pattern => pattern.test(concernText));
+    if (isAboutOmission && OMISSION_TYPES.has(w.type)) return false;
+    return true;
+  });
 }
 
 // Enhanced cover letter result
