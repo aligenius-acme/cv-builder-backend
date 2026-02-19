@@ -431,7 +431,27 @@ function parseAIJSON<T>(content: string): T {
     cleaned = jsonMatch[1];
   }
 
-  return JSON.parse(cleaned) as T;
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    // If JSON is truncated (max_tokens hit), find the last valid closing brace/bracket
+    // and attempt to close the JSON structure minimally.
+    const isArray = cleaned.trimStart().startsWith('[');
+    const closeChar = isArray ? ']' : '}';
+    // Walk back from the end to find a position where we can close cleanly
+    for (let i = cleaned.length - 1; i > 0; i--) {
+      const ch = cleaned[i];
+      if (ch === ',' || ch === ':' || ch === '"' || ch === ' ' || ch === '\n') continue;
+      const candidate = cleaned.slice(0, i + 1) + '\n' + closeChar;
+      try {
+        return JSON.parse(candidate) as T;
+      } catch {
+        // keep walking back
+      }
+    }
+    // Give up — rethrow original error with context
+    throw new Error(`Failed to parse AI JSON response (length ${cleaned.length}): ${cleaned.slice(0, 200)}…`);
+  }
 }
 
 // Analyze job description
@@ -686,7 +706,7 @@ Apply the keyword ceiling rule: ${missingPct}% missing → score ceiling is ${
 Do NOT award points for keywords that appear in the confirmed-missing list above.`;
   }
 
-  const { content } = await callAI(prompt, userId, organizationId, 'ats_analysis');
+  const { content } = await callAI(prompt, userId, organizationId, 'ats_analysis', 6000);
 
   return parseAIJSON<ATSAnalysis>(content);
 }
@@ -1042,26 +1062,49 @@ export async function fullCustomizationPipeline(
     jobDescription
   );
 
-  // Step 3: Run ATS analysis — pass confirmed missing keywords so scorer cannot ignore real gaps
+  // Step 3: Code-level domain mismatch detection (reliable, not dependent on AI self-assessment)
+  // Count how many job required-skills/keywords appear verbatim in the ORIGINAL resume text.
+  // If fewer than 15% of domain-specific job keywords actually appear, it's a cross-domain application.
   const jobKeywords = [...jobData.requiredSkills, ...jobData.keywords];
+  const resumeTextLower = resumeText.toLowerCase();
+  const literalMatches = jobKeywords.filter(kw => kw && resumeTextLower.includes(kw.toLowerCase()));
+  const literalMatchRate = jobKeywords.length > 0 ? literalMatches.length / jobKeywords.length : 1;
+  const isDomainMismatch = literalMatchRate < 0.15; // < 15% of job keywords appear in original resume
+
+  if (isDomainMismatch) {
+    // Force matchStrength to poor before ATS step so ceiling logic applies correctly
+    (customization as any).matchStrength = 'poor';
+  }
+
+  // Run ATS analysis — pass confirmed missing keywords so scorer cannot ignore real gaps
   const atsDetails = await analyzeATS(
     customization.tailoredText,
     jobKeywords,
     userId,
     organizationId,
-    customization.missingKeywords,  // Fix 3: inject verified missing keywords
-    jobData.jobField                // domain mismatch detection
+    customization.missingKeywords,  // inject verified missing keywords
+    jobData.jobField                // domain mismatch hint for prompt
   );
 
-  // Fix 4: Enforce hard score ceiling based on match strength
-  // The LLM optimizes the resume text first, which inflates ATS scores — correct for this
-  const aiScore = atsDetails.score; // save original before any capping
+  // Fix 4: Domain mismatch hard cap — applied in code, not left to AI discretion
+  if (isDomainMismatch) {
+    atsDetails.score = Math.min(atsDetails.score, 25);
+    (customization as any).matchStrength = 'poor';
+    if (!atsDetails.honestAssessment) {
+      atsDetails.honestAssessment =
+        `Domain mismatch: your resume background does not align with the core requirements of this ${jobData.jobField ?? 'role'}. ` +
+        `Only ${Math.round(literalMatchRate * 100)}% of the job's required skills appear in your resume. ` +
+        `Consider applying to roles that match your actual skill set.`;
+    }
+  }
 
+  // Enforce hard score ceiling based on match strength
+  // The LLM optimizes the resume text first, which inflates ATS scores — correct for this
   const matchStrengthCeiling: Record<string, number> = {
     strong: 100,
     moderate: 78,
     weak: 58,
-    poor: 38,
+    poor: 30,
   };
   const ceiling = matchStrengthCeiling[customization.matchStrength as string] ?? 100;
   if (atsDetails.score > ceiling) {
