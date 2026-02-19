@@ -1520,6 +1520,7 @@ export async function generateFollowUpEmail(
     interviewDetails?: string;
     candidateName: string;
     keyPoints?: string[];
+    resumeData?: ParsedResumeData; // Optional: gives AI real candidate context
   },
   userId: string,
   organizationId?: string | null
@@ -1532,30 +1533,43 @@ export async function generateFollowUpEmail(
     networking: 'Write an email to maintain connection after a networking meeting or informational interview.',
   };
 
+  // Build candidate background from resume if available
+  const resumeContext = context.resumeData ? (() => {
+    const r = context.resumeData!;
+    const topRole = r.experience?.[0];
+    const skills = Array.isArray(r.skills) ? (r.skills as string[]).slice(0, 8).join(', ') : '';
+    return [
+      r.summary ? `Summary: ${r.summary}` : '',
+      topRole ? `Current/Most Recent Role: ${topRole.title ?? topRole.position} at ${topRole.company}` : '',
+      skills ? `Top Skills: ${skills}` : '',
+    ].filter(Boolean).join('\n');
+  })() : '';
+
   const prompt = `You are an expert at professional communication. ${typeInstructions[type]}
 
-CONTEXT:
-- Candidate Name: ${context.candidateName}
-- Company: ${context.companyName}
-- Position: ${context.jobTitle}
+CANDIDATE CONTEXT:
+- Name: ${context.candidateName}
+- Applying For: ${context.jobTitle} at ${context.companyName}
 ${context.recipientName ? `- Recipient: ${context.recipientName}${context.recipientTitle ? ` (${context.recipientTitle})` : ''}` : ''}
 ${context.interviewDate ? `- Interview Date: ${context.interviewDate}` : ''}
 ${context.interviewDetails ? `- Interview Details: ${context.interviewDetails}` : ''}
 ${context.keyPoints?.length ? `- Key Points to Reference: ${context.keyPoints.join(', ')}` : ''}
+${resumeContext ? `\nCANDIDATE BACKGROUND (use to make the email specific and personalized):\n${resumeContext}` : ''}
 
-Guidelines:
-1. Professional but warm tone
-2. Concise - 3-4 short paragraphs max
-3. Specific to the context (not generic)
-4. Clear call to action or next step
-5. No desperation or over-apologizing
+RULES:
+1. Reference ONLY experience and skills that exist in the candidate background above — never invent qualifications
+2. Be specific to this candidate and this role — not a generic template
+3. Professional but warm tone — 3-4 short paragraphs max
+4. No desperation or over-apologizing
+5. Clear call to action or next step
+6. If candidate background is provided, weave in 1-2 relevant accomplishments or skills naturally
 
 Return JSON:
 {
   "subject": "Email subject line",
   "body": "Full email body with proper greeting and signature placeholder [Your Name]",
   "timing": "When to send this email",
-  "tips": ["2-3 tips for sending this email"],
+  "tips": ["2-3 tips for sending this email effectively"],
   "alternativeSubjects": ["2 alternative subject line options"]
 }
 
@@ -1590,6 +1604,7 @@ export async function generateNetworkingMessage(
     commonGround?: string[];
     targetRole?: string;
     specificAsk?: string;
+    resumeData?: ParsedResumeData; // Optional: gives AI real candidate context
   },
   userId: string,
   organizationId?: string | null
@@ -1608,7 +1623,23 @@ export async function generateNetworkingMessage(
     cold_outreach: 'Reaching out to someone you have never met',
   };
 
-  const prompt = `You are an expert at professional networking and cold outreach. Write a compelling message.
+  // Build rich sender context from resume if available
+  const resumeContext = context.resumeData ? (() => {
+    const r = context.resumeData!;
+    const topRole = r.experience?.[0];
+    const skills = Array.isArray(r.skills) ? (r.skills as string[]).slice(0, 8).join(', ') : '';
+    const certs = Array.isArray(r.certifications)
+      ? (r.certifications as any[]).slice(0, 3).map((c: any) => (typeof c === 'string' ? c : c.name || '')).filter(Boolean).join(', ')
+      : '';
+    return [
+      r.summary ? `Professional Summary: ${r.summary}` : '',
+      topRole ? `Current/Most Recent: ${topRole.title ?? topRole.position} at ${topRole.company}` : '',
+      skills ? `Key Skills: ${skills}` : '',
+      certs ? `Certifications: ${certs}` : '',
+    ].filter(Boolean).join('\n');
+  })() : '';
+
+  const prompt = `You are an expert at professional networking and cold outreach. Write a compelling, personalized message.
 
 PLATFORM: ${platform} - ${platformLimits[platform]}
 PURPOSE: ${purposeDescriptions[purpose]}
@@ -1617,6 +1648,7 @@ SENDER INFO:
 - Name: ${context.senderName}
 - Background: ${context.senderBackground}
 ${context.targetRole ? `- Target Role: ${context.targetRole}` : ''}
+${resumeContext ? `\nSENDER RESUME CONTEXT (use specific details to make the message credible and personal):\n${resumeContext}` : ''}
 
 RECIPIENT INFO:
 - Name: ${context.recipientName}
@@ -1625,22 +1657,23 @@ RECIPIENT INFO:
 ${context.commonGround?.length ? `- Common Ground: ${context.commonGround.join(', ')}` : ''}
 ${context.specificAsk ? `- Specific Ask: ${context.specificAsk}` : ''}
 
-Guidelines:
-1. Lead with value or genuine interest, not with "I need a job"
-2. Reference specific common ground or their work
-3. Be concise and respect their time
-4. Make the ask clear but not pushy
-5. Sound human, not templated
-6. ${platform === 'linkedin' ? 'Keep connection request under 300 chars' : 'Appropriate length for platform'}
+RULES:
+1. Only reference the sender's ACTUAL experience and skills from the resume context above — never invent credentials
+2. Lead with value or genuine interest — not "I need a job"
+3. Reference specific common ground or the recipient's work if available
+4. Be concise and respect their time
+5. Make the ask clear but not pushy
+6. Sound human and personal, not templated
+7. ${platform === 'linkedin' ? 'Keep connection request under 300 chars; for InMail stay under 300 words' : platform === 'twitter' ? 'Under 280 characters' : 'Under 200 words for email'}
 
 Return JSON:
 {
   "message": "The networking message text",
   "platform": "${platform}",
   "approach": "Brief explanation of the strategy used",
-  "followUpMessage": "A follow-up message if they don't respond (optional)",
-  "tips": ["3-4 tips for this type of outreach"],
-  "personalizationPoints": ["Specific elements that should be further personalized"]
+  "followUpMessage": "A short follow-up message to send if they don't respond within a week",
+  "tips": ["3-4 tips specific to this type of outreach"],
+  "personalizationPoints": ["Specific elements to further personalize before sending"]
 }
 
 Return only valid JSON.`;

@@ -159,6 +159,7 @@ export const generateFollowUpEmail = async (
       interviewDetails,
       candidateName,
       keyPoints,
+      resumeId,
     } = req.body;
     const userId = req.user!.id;
 
@@ -178,6 +179,13 @@ export const generateFollowUpEmail = async (
       throw new ValidationError(`Type must be one of: ${validTypes.join(', ')}`);
     }
 
+    // Optionally fetch resume for richer AI context
+    let resumeData: any = undefined;
+    if (resumeId) {
+      const resume = await prisma.resume.findFirst({ where: { id: resumeId, userId } });
+      if (resume?.parsedData) resumeData = resume.parsedData;
+    }
+
     const result = await aiService.generateFollowUpEmail(
       type,
       {
@@ -189,6 +197,7 @@ export const generateFollowUpEmail = async (
         interviewDetails,
         candidateName,
         keyPoints,
+        resumeData,
       },
       userId,
       req.user!.organizationId
@@ -221,6 +230,7 @@ export const generateNetworkingMessage = async (
       commonGround,
       targetRole,
       specificAsk,
+      resumeId,
     } = req.body;
     const userId = req.user!.id;
 
@@ -245,6 +255,13 @@ export const generateNetworkingMessage = async (
       throw new ValidationError(`Purpose must be one of: ${validPurposes.join(', ')}`);
     }
 
+    // Optionally fetch resume for richer AI context
+    let resumeData: any = undefined;
+    if (resumeId) {
+      const resume = await prisma.resume.findFirst({ where: { id: resumeId, userId } });
+      if (resume?.parsedData) resumeData = resume.parsedData;
+    }
+
     const result = await aiService.generateNetworkingMessage(
       platform,
       purpose,
@@ -257,6 +274,7 @@ export const generateNetworkingMessage = async (
         commonGround,
         targetRole,
         specificAsk,
+        resumeData,
       },
       userId,
       req.user!.organizationId
