@@ -338,7 +338,7 @@ export interface SubscriptionLimits {
 }
 
 // AI Provider types
-export type AIProvider = 'groq';
+export type AIProvider = 'openai';
 
 // API Response types
 export interface ApiResponse<T = unknown> {

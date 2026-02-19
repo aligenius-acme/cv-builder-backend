@@ -1,11 +1,11 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { Groq } from 'groq-sdk';
+import OpenAI from 'openai';
 import { config } from '../config';
 import { prisma } from '../utils/prisma';
 
-const groq = new Groq({
-  apiKey: config.ai.groqApiKey,
+const openai = new OpenAI({
+  apiKey: config.ai.openaiApiKey,
 });
 
 interface SuggestionRequest {
@@ -110,8 +110,8 @@ Return as JSON array of strings.`;
         });
     }
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -142,11 +142,11 @@ Return as JSON array of strings.`;
       data: {
         userId: req.user!.id,
         operation: 'writing_suggestion',
-        provider: 'groq',
+        provider: 'openai',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.groqModel,
+        model: config.ai.openaiModel,
         estimatedCost: 0,
         durationMs: 0,
         success: true,
@@ -193,8 +193,8 @@ Only provide the completion text, not the full sentence.`;
 
 Provide 3 possible completions as a JSON array of strings.`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -276,8 +276,8 @@ Company: ${company}`;
     userPrompt += `\n\nIMPORTANT: Use placeholders like [X]%, [N]+, [$X] where users should insert their actual numbers.
 Return as a JSON array of strings.`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -305,11 +305,11 @@ Return as a JSON array of strings.`;
       data: {
         userId: req.user!.id,
         operation: 'generate_bullets',
-        provider: 'groq',
+        provider: 'openai',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.groqModel,
+        model: config.ai.openaiModel,
         estimatedCost: 0,
         durationMs: 0,
         success: true,

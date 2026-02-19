@@ -32,10 +32,10 @@ export const config = {
     businessPriceId: process.env.STRIPE_BUSINESS_PRICE_ID || '',
   },
 
-  // AI Provider - Groq
+  // AI Provider - OpenAI
   ai: {
-    groqApiKey: process.env.GROQ_API_KEY || '',
-    groqModel: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    openaiApiKey: process.env.OPENAI_API_KEY || '',
+    openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   },
 
   // Adzuna Job Search API

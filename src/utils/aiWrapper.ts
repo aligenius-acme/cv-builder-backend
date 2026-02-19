@@ -1,10 +1,10 @@
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 import config from '../config';
 import { prisma } from './prisma';
 import { AIServiceError } from './errors';
 
-// Initialize Groq client
-const groq = config.ai.groqApiKey ? new Groq({ apiKey: config.ai.groqApiKey }) : null;
+// Initialize OpenAI client
+const openai = config.ai.openaiApiKey ? new OpenAI({ apiKey: config.ai.openaiApiKey }) : null;
 
 export interface AICompletionOptions {
   systemPrompt: string;
@@ -37,14 +37,14 @@ export interface UsageLogParams {
 export async function executeCompletion(
   options: AICompletionOptions
 ): Promise<{ content: string; usage: AICompletionResult['usage']; durationMs: number }> {
-  if (!groq) {
+  if (!openai) {
     throw new AIServiceError('AI service not configured');
   }
 
   const startTime = Date.now();
 
-  const completion = await groq.chat.completions.create({
-    model: options.model || config.ai.groqModel,
+  const completion = await openai.chat.completions.create({
+    model: options.model || config.ai.openaiModel,
     messages: [
       { role: 'system', content: options.systemPrompt },
       { role: 'user', content: options.userPrompt },
@@ -141,9 +141,9 @@ export async function logAIUsage(
   success: boolean = true,
   errorMessage?: string
 ): Promise<void> {
-  // Estimate cost based on Groq pricing
-  const costPerInputToken = 0.00001;
-  const costPerOutputToken = 0.00003;
+  // Estimate cost based on GPT-4o-mini pricing ($0.15/M input, $0.60/M output)
+  const costPerInputToken = 0.00000015;
+  const costPerOutputToken = 0.0000006;
   const estimatedCost =
     usage.promptTokens * costPerInputToken + usage.completionTokens * costPerOutputToken;
 
@@ -152,8 +152,8 @@ export async function logAIUsage(
       userId: params.userId,
       organizationId: params.organizationId,
       operation: params.operation,
-      provider: 'groq',
-      model: model || config.ai.groqModel,
+      provider: 'openai',
+      model: model || config.ai.openaiModel,
       promptTokens: usage.promptTokens,
       completionTokens: usage.completionTokens,
       totalTokens: usage.totalTokens,
@@ -169,12 +169,12 @@ export async function logAIUsage(
  * Check if AI service is available
  */
 export function isAIAvailable(): boolean {
-  return !!groq;
+  return !!openai;
 }
 
 /**
  * Get the configured AI model
  */
 export function getAIModel(): string {
-  return config.ai.groqModel;
+  return config.ai.openaiModel;
 }

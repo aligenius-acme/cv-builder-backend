@@ -1,12 +1,12 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { Groq } from 'groq-sdk';
+import OpenAI from 'openai';
 import { config } from '../config';
 import { prisma } from '../utils/prisma';
 import * as adzunaService from '../services/adzunaService';
 
-const groq = new Groq({
-  apiKey: config.ai.groqApiKey,
+const openai = new OpenAI({
+  apiKey: config.ai.openaiApiKey,
 });
 
 export const searchJobs = async (
@@ -143,8 +143,8 @@ export const getJobDetails = async (
 
     // In production, this would fetch the actual job details
     // For now, generate expanded details
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         {
           role: 'system',

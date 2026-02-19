@@ -1,11 +1,11 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 import config from '../config';
 import { AppError } from '../utils/errors';
 
-// Initialize Groq client
-const groq = config.ai.groqApiKey ? new Groq({ apiKey: config.ai.groqApiKey }) : null;
+// Initialize OpenAI client
+const openai = config.ai.openaiApiKey ? new OpenAI({ apiKey: config.ai.openaiApiKey }) : null;
 
 // Job posting data extracted from URL
 export interface ScrapedJobData {
@@ -162,7 +162,7 @@ export async function scrapeJobPosting(url: string): Promise<ScrapedJobData> {
  * Use AI to extract job data from raw page text
  */
 async function extractJobDataWithAI(url: string, rawText: string): Promise<ScrapedJobData> {
-  if (!groq) {
+  if (!openai) {
     throw new AppError('AI service not configured', 500);
   }
 
@@ -183,8 +183,8 @@ ${rawText.substring(0, 12000)}
 
 Return only valid JSON, no markdown.`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
       max_tokens: 2000,

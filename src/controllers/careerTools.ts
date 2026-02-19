@@ -1,11 +1,11 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../utils/prisma';
-import { Groq } from 'groq-sdk';
+import OpenAI from 'openai';
 import config from '../config';
 import { logAIUsage } from '../utils/aiLogger';
 
-const groq = new Groq({ apiKey: config.ai.groqApiKey });
+const openai = new OpenAI({ apiKey: config.ai.openaiApiKey });
 
 // Resume Performance Score - comprehensive scoring beyond ATS
 export const getResumePerformanceScore = async (
@@ -115,8 +115,8 @@ ${rawText}
 Parsed Data:
 ${JSON.stringify(resumeData, null, 2)}`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         {
           role: 'system',
@@ -135,8 +135,8 @@ ${JSON.stringify(resumeData, null, 2)}`;
     await logAIUsage({
       userId,
       operation: 'resume_performance_score',
-      provider: 'groq',
-      model: config.ai.groqModel,
+      provider: 'openai',
+      model: config.ai.openaiModel,
       promptTokens: completion.usage?.prompt_tokens || 0,
       completionTokens: completion.usage?.completion_tokens || 0,
       totalTokens: completion.usage?.total_tokens || 0,
@@ -265,8 +265,8 @@ Target Role: ${roleToAnalyze}
 ${targetJobDescription ? `Job Description: ${targetJobDescription}` : ''}
 ${industry ? `Industry: ${industry}` : ''}`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         {
           role: 'system',
@@ -284,8 +284,8 @@ ${industry ? `Industry: ${industry}` : ''}`;
     await logAIUsage({
       userId,
       operation: 'skill_gap_analysis',
-      provider: 'groq',
-      model: config.ai.groqModel,
+      provider: 'openai',
+      model: config.ai.openaiModel,
       promptTokens: completion.usage?.prompt_tokens || 0,
       completionTokens: completion.usage?.completion_tokens || 0,
       totalTokens: completion.usage?.total_tokens || 0,

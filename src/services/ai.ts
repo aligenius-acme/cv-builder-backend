@@ -1,4 +1,4 @@
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 import config from '../config';
 import { prisma } from '../utils/prisma';
 import {
@@ -12,8 +12,8 @@ import {
 import { AIServiceError } from '../utils/errors';
 import { trackAIUsage } from '../middleware/subscription';
 
-// Initialize Groq client
-const groq = config.ai.groqApiKey ? new Groq({ apiKey: config.ai.groqApiKey }) : null;
+// Initialize OpenAI client
+const openai = config.ai.openaiApiKey ? new OpenAI({ apiKey: config.ai.openaiApiKey }) : null;
 
 // Get active prompts from database or use defaults
 async function getPrompt(name: string): Promise<string> {
@@ -355,12 +355,12 @@ async function callAI(
   const temperature = DETERMINISTIC_OPERATIONS.has(operation) ? 0.1 : 0.3;
 
   try {
-    if (!groq) {
-      throw new AIServiceError('Groq API key not configured');
+    if (!openai) {
+      throw new AIServiceError('OpenAI API key not configured');
     }
 
-    const response = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const response = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: maxTokens,
       temperature,
@@ -379,8 +379,8 @@ async function callAI(
       userId,
       organizationId,
       operation,
-      'groq',
-      config.ai.groqModel,
+      'openai',
+      config.ai.openaiModel,
       result.promptTokens,
       result.completionTokens,
       durationMs,
@@ -395,8 +395,8 @@ async function callAI(
       userId,
       organizationId,
       operation,
-      'groq',
-      config.ai.groqModel,
+      'openai',
+      config.ai.openaiModel,
       0,
       0,
       durationMs,
@@ -440,7 +440,7 @@ export async function analyzeJobDescription(
   const promptTemplate = await getPrompt('job_analysis');
   const prompt = promptTemplate.replace('{job_description}', jobDescription);
 
-  const { content } = await callAI(prompt, userId, organizationId, 'job_analysis');
+  const { content } = await callAI(prompt, userId, organizationId, 'job_analysis', 1500);
 
   return parseAIJSON<JobData>(content);
 }
@@ -677,7 +677,7 @@ export async function runTruthGuard(
     .replace('{original_data}', JSON.stringify(originalData, null, 2))
     .replace('{tailored_data}', JSON.stringify(tailoredData, null, 2));
 
-  const { content } = await callAI(prompt, userId, organizationId, 'truth_guard');
+  const { content } = await callAI(prompt, userId, organizationId, 'truth_guard', 2000);
 
   return parseAIJSON<TruthGuardWarning[]>(content);
 }
@@ -1135,7 +1135,7 @@ YOUR GOAL: Help users by being HONEST. An inflated score that leads to rejection
 
 Return only valid JSON.`;
 
-  const { content } = await callAI(prompt, userId, organizationId, 'job_match_score');
+  const { content } = await callAI(prompt, userId, organizationId, 'job_match_score', 1500);
   return parseAIJSON<JobMatchResult>(content);
 }
 

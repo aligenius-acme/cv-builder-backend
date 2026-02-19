@@ -1,11 +1,11 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { Groq } from 'groq-sdk';
+import OpenAI from 'openai';
 import { config } from '../config';
 import { prisma } from '../utils/prisma';
 
-const groq = new Groq({
-  apiKey: config.ai.groqApiKey,
+const openai = new OpenAI({
+  apiKey: config.ai.openaiApiKey,
 });
 
 interface SalaryRange {
@@ -110,8 +110,8 @@ Provide analysis in this JSON format:
   }` : ''}
 }`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -147,11 +147,11 @@ Provide analysis in this JSON format:
       data: {
         userId: req.user!.id,
         operation: 'salary_analysis',
-        provider: 'groq',
+        provider: 'openai',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.groqModel,
+        model: config.ai.openaiModel,
         estimatedCost: 0,
         durationMs: 0,
         success: true,
@@ -256,8 +256,8 @@ Provide comparison in this JSON format:
   ]
 }`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -290,11 +290,11 @@ Provide comparison in this JSON format:
       data: {
         userId: req.user!.id,
         operation: 'offer_comparison',
-        provider: 'groq',
+        provider: 'openai',
         promptTokens: completion.usage?.prompt_tokens || 0,
         completionTokens: completion.usage?.completion_tokens || 0,
         totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.groqModel,
+        model: config.ai.openaiModel,
         estimatedCost: 0,
         durationMs: 0,
         success: true,
@@ -422,8 +422,8 @@ Provide in this JSON format:
   }
 }`;
 
-    const completion = await groq.chat.completions.create({
-      model: config.ai.groqModel,
+    const completion = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
