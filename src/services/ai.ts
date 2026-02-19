@@ -63,14 +63,13 @@ ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 6. matchStrength MUST be honest — do not inflate a weak match
 
 METRIC PRESERVATION — ABSOLUTE REQUIREMENT:
-Before writing the tailored version, extract every number, percentage, dollar amount, ratio, count, and team size from the original. Every single one MUST appear verbatim in the tailored version. You may rephrase the surrounding words but NEVER drop, round, or vague-ify a metric.
-EXAMPLES OF WHAT IS FORBIDDEN:
-- Original: "42% YoY growth" → Tailored: "significant growth" ← VIOLATION
-- Original: "300+ locations" → Tailored: "multiple locations" ← VIOLATION
-- Original: "$3.2M in savings" → Tailored: "significant savings" ← VIOLATION
-- Original: "35-person team" → Tailored: "large team" ← VIOLATION
-- Original: "75% reduction in attack surface" → Tailored: "improved security" ← VIOLATION
-RULE: If you cannot fit a metric naturally into a rephrased sentence, keep the entire original sentence unchanged rather than dropping the number.
+Before writing the tailored version, extract every number, percentage, dollar amount, ratio, headcount, and team size from the original resume. Every single one MUST appear verbatim in the tailored version. You may rephrase surrounding words but NEVER drop, round, or replace a metric with a vague word.
+FORBIDDEN PATTERNS (apply to any resume):
+- Any "%", "$", "×", "x" value → NEVER replace with "significant", "substantial", "notable", "improved"
+- Any headcount ("10-person team", "team of 50") → NEVER replace with "large team" or "cross-functional team"
+- Any count ("200+ clients", "500K users") → NEVER replace with "many clients" or "large user base"
+- Any dollar amount ("$1.2M budget") → NEVER replace with "multi-million dollar" or "large budget"
+RULE: If a metric does not fit naturally in a rephrased sentence, keep the original sentence word-for-word rather than dropping the number.
 
 WHAT YOU MUST DO:
 - Reorder bullet points so the most job-relevant achievements come first
