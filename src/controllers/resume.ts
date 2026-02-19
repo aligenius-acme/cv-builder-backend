@@ -46,7 +46,7 @@ export const uploadResume = async (
       }
     }
 
-    // Upload to S3
+    // Upload to Cloudinary
     const { key, url } = await uploadFile(
       file.buffer,
       file.originalname,
@@ -286,7 +286,7 @@ export const deleteResume = async (
       throw new NotFoundError('Resume not found');
     }
 
-    // Delete S3 files
+    // Delete Cloudinary files
     await deleteFile(resume.originalFileKey);
 
     for (const version of resume.versions) {
