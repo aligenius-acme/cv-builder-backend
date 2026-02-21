@@ -19,6 +19,7 @@ import grammarRoutes from './grammar';
 import companyLogoRoutes from './companyLogo';
 import aiFeaturesRoutes from './aiFeatures';
 import uploadRoutes from './upload';
+import monitoringRoutes from './monitoring';
 
 const router = Router();
 
@@ -43,14 +44,6 @@ router.use('/grammar', grammarRoutes);
 router.use('/company-logos', companyLogoRoutes);
 router.use('/ai-features', aiFeaturesRoutes);
 router.use('/upload', uploadRoutes);
-
-// Health check
-router.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'API is healthy',
-    timestamp: new Date().toISOString(),
-  });
-});
+router.use('/monitoring', monitoringRoutes);
 
 export default router;

@@ -1,6 +1,8 @@
 import app from './app';
 import config from './config';
 import { prisma } from './utils/prisma';
+import { closeRedis } from './config/redis';
+import { closeAllQueues } from './queues';
 
 const PORT = config.port;
 
@@ -28,17 +30,30 @@ if (process.env.VERCEL !== '1') {
   }
 
   // Graceful shutdown
-  process.on('SIGINT', async () => {
+  const shutdown = async () => {
     console.log('\nShutting down gracefully...');
-    await prisma.$disconnect();
-    process.exit(0);
-  });
+    try {
+      // Close all background job queues
+      await closeAllQueues();
+      console.log('Job queues closed');
 
-  process.on('SIGTERM', async () => {
-    console.log('\nShutting down gracefully...');
-    await prisma.$disconnect();
-    process.exit(0);
-  });
+      // Close Redis connection
+      await closeRedis();
+      console.log('Redis connection closed');
+
+      // Disconnect from database
+      await prisma.$disconnect();
+      console.log('Database disconnected');
+
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 
   main();
 }

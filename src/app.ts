@@ -7,6 +7,7 @@ import config from './config';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { apiLimiter } from './middleware/rateLimiter';
+import { performanceMiddleware } from './middleware/performance';
 
 const app = express();
 
@@ -74,6 +75,9 @@ app.use(cors({
 if (config.nodeEnv !== 'test') {
   app.use(morgan(config.nodeEnv === 'development' ? 'dev' : 'combined'));
 }
+
+// Performance monitoring
+app.use(performanceMiddleware);
 
 // Body parsing (except for Stripe webhook which needs raw body)
 app.use((req, res, next) => {
