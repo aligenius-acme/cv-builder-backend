@@ -308,6 +308,90 @@ export const deleteResume = async (
   }
 };
 
+// Download original resume file
+export const downloadOriginalResume = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+
+    const resume = await prisma.resume.findFirst({
+      where: { id, userId },
+    });
+
+    if (!resume) {
+      throw new NotFoundError('Resume not found');
+    }
+
+    if (!resume.originalFileKey) {
+      throw new NotFoundError('Original file not found');
+    }
+
+    // Get presigned URL for secure download
+    const downloadUrl = await getPresignedDownloadUrl(resume.originalFileKey);
+
+    res.json({
+      success: true,
+      data: { downloadUrl },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete resume version
+export const deleteVersion = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id, versionId } = req.params;
+
+    // Find the resume and verify ownership
+    const resume = await prisma.resume.findFirst({
+      where: { id, userId },
+    });
+
+    if (!resume) {
+      throw new NotFoundError('Resume not found');
+    }
+
+    // Find the version
+    const version = await prisma.resumeVersion.findFirst({
+      where: { id: versionId, resumeId: id },
+    });
+
+    if (!version) {
+      throw new NotFoundError('Version not found');
+    }
+
+    // Delete Cloudinary files
+    if (version.pdfFileKey) {
+      await deleteFile(version.pdfFileKey);
+    }
+    if (version.docxFileKey) {
+      await deleteFile(version.docxFileKey);
+    }
+
+    // Delete from database
+    await prisma.resumeVersion.delete({
+      where: { id: versionId },
+    });
+
+    res.json({
+      success: true,
+      message: 'Version deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Customize resume for job
 export const customizeResume = async (
   req: AuthenticatedRequest,

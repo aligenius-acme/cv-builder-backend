@@ -5,19 +5,20 @@ import {
   checkResume,
   getLanguages,
 } from '../controllers/grammar';
+import { aiLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
 
-// Check text for grammar issues
-router.post('/check', checkText);
+// Check text for grammar issues (AI-powered, rate limited)
+router.post('/check', aiLimiter, checkText);
 
-// Check resume sections
-router.post('/check-resume', checkResume);
+// Check resume sections (AI-powered, rate limited)
+router.post('/check-resume', aiLimiter, checkResume);
 
-// Get supported languages
+// Get supported languages (no rate limit needed)
 router.get('/languages', getLanguages);
 
 export default router;

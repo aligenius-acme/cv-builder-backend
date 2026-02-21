@@ -11,6 +11,8 @@ import {
   addActivity,
   getStats,
 } from '../controllers/jobTracker';
+import { validateBody } from '../middleware/validate';
+import { jobApplicationSchema, jobApplicationUpdateSchema } from '../validation/schemas';
 
 const router = Router();
 
@@ -20,11 +22,11 @@ router.use(authenticate);
 // Statistics
 router.get('/stats', getStats);
 
-// CRUD operations
+// CRUD operations with validation
 router.get('/', getApplications);
 router.get('/:id', getApplication);
-router.post('/', createApplication);
-router.put('/:id', updateApplication);
+router.post('/', validateBody(jobApplicationSchema), createApplication);
+router.put('/:id', validateBody(jobApplicationUpdateSchema), updateApplication);
 router.delete('/:id', deleteApplication);
 
 // Status and ordering (for Kanban drag-and-drop)

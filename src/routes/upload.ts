@@ -3,6 +3,7 @@ import multer from 'multer';
 import { authenticate } from '../middleware/auth';
 import { uploadImage } from '../services/storage';
 import { AuthenticatedRequest } from '../types';
+import { uploadLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -26,8 +27,8 @@ const upload = multer({
 // All routes require authentication
 router.use(authenticate);
 
-// Upload profile photo
-router.post('/photo', upload.single('photo'), async (req: AuthenticatedRequest, res) => {
+// Upload profile photo with rate limiting
+router.post('/photo', uploadLimiter, upload.single('photo'), async (req: AuthenticatedRequest, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({

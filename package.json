@@ -38,10 +38,11 @@
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.1.2",
     "cloudinary": "^2.5.1",
-    "cors": "^2.8.5",
+    "cors": "^2.8.6",
     "docx": "^9.5.1",
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
+    "express-rate-limit": "^8.2.1",
     "googleapis": "^169.0.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
@@ -58,7 +59,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "stripe": "^20.1.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

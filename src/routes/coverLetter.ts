@@ -11,6 +11,9 @@ import {
   regenerateCoverLetter,
   generateEnhancedCoverLetter,
 } from '../controllers/coverLetter';
+import { aiLimiter } from '../middleware/rateLimiter';
+import { validateBody } from '../middleware/validate';
+import { coverLetterSchema, coverLetterUpdateSchema } from '../validation/schemas';
 
 const router = Router();
 
@@ -18,14 +21,14 @@ const router = Router();
 router.use(authenticate);
 router.use(checkCoverLetterAccess);
 
-// Cover letter operations
-router.post('/', generateCoverLetter);
-router.post('/enhanced', generateEnhancedCoverLetter); // Enhanced with alternatives
+// Cover letter operations with rate limiting and validation
+router.post('/', aiLimiter, validateBody(coverLetterSchema), generateCoverLetter);
+router.post('/enhanced', aiLimiter, validateBody(coverLetterSchema), generateEnhancedCoverLetter); // Enhanced with alternatives
 router.get('/', getCoverLetters);
 router.get('/:id', getCoverLetter);
-router.put('/:id', updateCoverLetter);
+router.put('/:id', validateBody(coverLetterUpdateSchema), updateCoverLetter);
 router.delete('/:id', deleteCoverLetter);
 router.get('/:id/download', downloadCoverLetter);
-router.post('/:id/regenerate', regenerateCoverLetter);
+router.post('/:id/regenerate', aiLimiter, regenerateCoverLetter);
 
 export default router;

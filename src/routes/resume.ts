@@ -8,6 +8,8 @@ import {
   getResume,
   updateResume,
   deleteResume,
+  deleteVersion,
+  downloadOriginalResume,
   customizeResume,
   getVersion,
   compareVersions,
@@ -19,6 +21,9 @@ import {
   downloadResume,
   previewResume,
 } from '../controllers/resume';
+import { uploadLimiter, aiLimiter } from '../middleware/rateLimiter';
+import { validateBody } from '../middleware/validate';
+import { resumeUpdateSchema, resumeTailoringSchema } from '../validation/schemas';
 
 const router = Router();
 
@@ -48,12 +53,13 @@ const upload = multer({
 // All routes require authentication
 router.use(authenticate);
 
-// Resume CRUD
-router.post('/', checkResumeQuota, upload.single('file'), uploadResume);
+// Resume CRUD with rate limiting
+router.post('/', uploadLimiter, checkResumeQuota, upload.single('file'), uploadResume);
 router.get('/', getResumes);
 router.get('/:id', getResume);
-router.put('/:id', updateResume);
+router.put('/:id', validateBody(resumeUpdateSchema), updateResume);
 router.delete('/:id', deleteResume);
+router.get('/:id/download-original', downloadOriginalResume);
 
 // Resume Builder
 router.post('/create', checkResumeQuota, createBlankResume);
@@ -61,18 +67,19 @@ router.put('/:id/content', updateResumeContent);
 router.get('/:id/download', downloadResume);
 router.get('/:id/preview', previewResume);
 
-// Resume customization
-router.post('/:id/customize', customizeResume);
+// Resume customization (AI-powered, rate limited)
+router.post('/:id/customize', aiLimiter, customizeResume);
 
-// Job URL scraping
-router.post('/scrape-job', scrapeJobUrl);
+// Job URL scraping (rate limited to prevent abuse)
+router.post('/scrape-job', aiLimiter, scrapeJobUrl);
 
 // Version operations
 router.get('/:id/versions/:versionId', getVersion);
 router.get('/:id/compare', compareVersions);
 router.get('/:id/versions/:versionId/download', downloadVersion);
+router.delete('/:id/versions/:versionId', deleteVersion);
 
-// ATS simulation (Pro feature)
-router.post('/:id/versions/:versionId/simulate-ats', checkATSSimulatorAccess, simulateATS);
+// ATS simulation (Pro feature, AI-powered, rate limited)
+router.post('/:id/versions/:versionId/simulate-ats', aiLimiter, checkATSSimulatorAccess, simulateATS);
 
 export default router;
