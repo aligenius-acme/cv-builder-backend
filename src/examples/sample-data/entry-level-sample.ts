@@ -175,7 +175,7 @@ export const entryLevelSampleData: ParsedResumeData = {
       organization: 'Code for Boston',
       role: 'Volunteer Developer',
       period: '2023-Present',
-      description: 'Contributing to open source civic tech projects improving Boston community',
+      description: ['Contributing to open source civic tech projects improving Boston community'],
     },
   ],
 };

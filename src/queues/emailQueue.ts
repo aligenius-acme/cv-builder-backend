@@ -1,6 +1,7 @@
 import { createQueue, jobOptions } from './config';
 import * as nodemailer from 'nodemailer';
 import { google } from 'googleapis';
+import { Job } from 'bull';
 
 // Email job data interface
 export interface EmailJobData {
@@ -66,8 +67,8 @@ const getTransporter = (): nodemailer.Transporter => {
 };
 
 // Process email jobs
-emailQueue.process(async (job) => {
-  const { to, subject, html, text, from, cc, bcc, attachments } = job.data as EmailJobData;
+emailQueue.process(async (job: Job<EmailJobData>) => {
+  const { to, subject, html, text, from, cc, bcc, attachments } = job.data;
 
   const transporter = getTransporter();
 
@@ -93,15 +94,15 @@ emailQueue.process(async (job) => {
 });
 
 // Event listeners
-emailQueue.on('completed', (job, result) => {
+emailQueue.on('completed', (job: Job<EmailJobData>, result: any) => {
   console.log(`Email job ${job.id} completed:`, result);
 });
 
-emailQueue.on('failed', (job, err) => {
+emailQueue.on('failed', (job: Job<EmailJobData>, err: Error) => {
   console.error(`Email job ${job.id} failed:`, err.message);
 });
 
-emailQueue.on('error', (error) => {
+emailQueue.on('error', (error: Error) => {
   console.error('Email queue error:', error);
 });
 

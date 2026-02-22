@@ -10,6 +10,7 @@ import {
   resetPassword,
   verifyEmail,
   resendVerification,
+  getCredits,
 } from '../controllers/auth';
 import { authLimiter, passwordResetLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
@@ -34,6 +35,7 @@ router.post('/verify-email', authLimiter, validateBody(verifyEmailSchema), verif
 
 // Protected routes with validation
 router.get('/me', authenticate, me);
+router.get('/credits', authenticate, getCredits);
 router.put('/profile', authenticate, validateBody(updateProfileSchema), updateProfile);
 router.put('/change-password', authenticate, validateBody(changePasswordSchema), changePassword);
 router.post('/resend-verification', authenticate, authLimiter, resendVerification);

@@ -5,7 +5,7 @@ import { generateToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types';
 import { ValidationError, AuthenticationError, ConflictError, NotFoundError } from '../utils/errors';
 import { generateToken as generateSecureToken } from '../utils/encryption';
-import { PlanType, UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { emailService } from '../services/email';
 
 // Register new user
@@ -38,7 +38,7 @@ export const register = async (
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user with free subscription
+    // Create user
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -46,15 +46,6 @@ export const register = async (
         firstName,
         lastName,
         emailVerifyToken: generateSecureToken(),
-        subscription: {
-          create: {
-            planType: PlanType.FREE,
-            resumeLimit: 1,
-          },
-        },
-      },
-      include: {
-        subscription: true,
       },
     });
 
@@ -82,7 +73,8 @@ export const register = async (
           lastName: user.lastName,
           role: user.role,
           emailVerified: user.emailVerified,
-          planType: user.subscription?.planType || PlanType.FREE,
+          aiCredits: user.aiCredits,
+          aiCreditsUsed: user.aiCreditsUsed,
         },
         token,
       },
@@ -109,10 +101,10 @@ export const login = async (
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: {
-        subscription: true,
         organization: {
-          include: {
-            subscription: true,
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -146,12 +138,6 @@ export const login = async (
       role: user.role,
     });
 
-    // Determine plan type
-    let planType = user.subscription?.planType || PlanType.FREE;
-    if (user.organization?.subscription) {
-      planType = PlanType.BUSINESS;
-    }
-
     res.json({
       success: true,
       data: {
@@ -161,9 +147,10 @@ export const login = async (
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          planType,
           organizationId: user.organizationId,
           organizationName: user.organization?.name,
+          aiCredits: user.aiCredits,
+          aiCreditsUsed: user.aiCreditsUsed,
         },
         token,
       },
@@ -185,10 +172,11 @@ export const me = async (
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        subscription: true,
         organization: {
-          include: {
-            subscription: true,
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
           },
         },
         _count: {
@@ -204,11 +192,6 @@ export const me = async (
       throw new NotFoundError('User not found');
     }
 
-    let planType = user.subscription?.planType || PlanType.FREE;
-    if (user.organization?.subscription) {
-      planType = PlanType.BUSINESS;
-    }
-
     res.json({
       success: true,
       data: {
@@ -218,23 +201,9 @@ export const me = async (
         lastName: user.lastName,
         role: user.role,
         emailVerified: user.emailVerified,
-        planType,
-        subscription: user.subscription
-          ? {
-              status: user.subscription.status,
-              currentPeriodEnd: user.subscription.currentPeriodEnd,
-              cancelAtPeriodEnd: user.subscription.cancelAtPeriodEnd,
-              resumeLimit: user.subscription.resumeLimit,
-              resumesCreated: user.subscription.resumesCreated,
-            }
-          : null,
-        organization: user.organization
-          ? {
-              id: user.organization.id,
-              name: user.organization.name,
-              logoUrl: user.organization.logoUrl,
-            }
-          : null,
+        aiCredits: user.aiCredits,
+        aiCreditsUsed: user.aiCreditsUsed,
+        organization: user.organization || null,
         stats: {
           resumes: user._count.resumes,
           coverLetters: user._count.coverLetters,
@@ -521,6 +490,40 @@ export const resendVerification = async (
     res.json({
       success: true,
       message: 'Verification email sent',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get AI credits
+export const getCredits = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        aiCredits: true,
+        aiCreditsUsed: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    res.json({
+      success: true,
+      data: {
+        total: user.aiCredits,
+        used: user.aiCreditsUsed,
+        remaining: user.aiCredits - user.aiCreditsUsed,
+      },
     });
   } catch (error) {
     next(error);

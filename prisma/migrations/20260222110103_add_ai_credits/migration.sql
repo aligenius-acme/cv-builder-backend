@@ -1,0 +1,3 @@
+-- Add AI credits to User table
+ALTER TABLE "User" ADD COLUMN "aiCredits" INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE "User" ADD COLUMN "aiCreditsUsed" INTEGER NOT NULL DEFAULT 0;

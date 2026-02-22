@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { User, UserRole, PlanType } from '@prisma/client';
+import { User, UserRole } from '@prisma/client';
 
 // Extended Request with user
 export interface AuthenticatedRequest extends Request {
@@ -8,7 +8,6 @@ export interface AuthenticatedRequest extends Request {
     email: string;
     role: UserRole;
     organizationId?: string | null;
-    planType: PlanType;
   };
 }
 
@@ -44,8 +43,18 @@ export interface VolunteerWorkEntry {
   location?: string;
   startDate?: string;
   endDate?: string;
+  period?: string; // Alternative to startDate/endDate (e.g., "2023-Present")
   current?: boolean;
   description?: string[];
+}
+
+// Grant entry type (academic)
+export interface GrantEntry {
+  title: string;
+  agency: string;
+  amount: string;
+  role: string;
+  period: string;
 }
 
 // Resume parsed data structure
@@ -65,7 +74,9 @@ export interface ParsedResumeData {
   leadership?: (string | LeadershipEntry)[];
   achievements?: string[];
   professionalAffiliations?: string[];
-  grants?: string[]; // Research grants (academic)
+  grants?: (string | GrantEntry)[]; // Research grants (academic) - can be simple strings or detailed entries
+  teaching?: string[]; // Teaching experience (academic)
+  service?: string[]; // Academic/professional service (academic)
   speaking?: string[]; // Speaking engagements (creative/executive)
   volunteerWork?: (string | VolunteerWorkEntry)[]; // Volunteer work (entry-level) - can be simple strings or detailed entries
 }

@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import * as pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
 import axios from 'axios';
+import { Job } from 'bull';
 
 const prisma = new PrismaClient();
 
@@ -96,8 +97,8 @@ async function parseResumeText(text: string): Promise<any> {
 }
 
 // Process document jobs
-documentQueue.process(async (job) => {
-  const { resumeId, fileUrl, fileType, userId } = job.data as DocumentJobData;
+documentQueue.process(async (job: Job<DocumentJobData>) => {
+  const { resumeId, fileUrl, fileType, userId } = job.data;
 
   try {
     // Update status to processing
@@ -168,15 +169,15 @@ documentQueue.process(async (job) => {
 });
 
 // Event listeners
-documentQueue.on('completed', (job, result) => {
+documentQueue.on('completed', (job: Job<DocumentJobData>, result: any) => {
   console.log(`Document processing job ${job.id} completed:`, result);
 });
 
-documentQueue.on('failed', (job, err) => {
+documentQueue.on('failed', (job: Job<DocumentJobData>, err: Error) => {
   console.error(`Document processing job ${job.id} failed:`, err.message);
 });
 
-documentQueue.on('error', (error) => {
+documentQueue.on('error', (error: Error) => {
   console.error('Document queue error:', error);
 });
 

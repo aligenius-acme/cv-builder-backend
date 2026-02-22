@@ -635,7 +635,7 @@ async function generateBannerPDF(
             .font('Helvetica-Bold')
             .fontSize(fontSize.body + 1)
             .fillColor(textColor)
-            .text(exp.title, 40, y, { width: pageWidth - 80 });
+            .text(exp.title || exp.position || '', 40, y, { width: pageWidth - 80 });
           y = doc.y + 2;
 
           const info = [exp.company, exp.location].filter(Boolean).join(', ');
@@ -916,7 +916,7 @@ async function generateSidebarLeftPDF(
             .font('Helvetica-Bold')
             .fontSize(fontSize.body + 0.5)
             .fillColor(textColor)
-            .text(exp.title, mainX, mainY, { width: contentWidth });
+            .text(exp.title || exp.position || '', mainX, mainY, { width: contentWidth });
           mainY = doc.y + 2;
 
           const info = [exp.company, exp.location].filter(Boolean).join(' • ');
@@ -1075,7 +1075,7 @@ async function generateSidebarRightPDF(
             .font('Helvetica-Bold')
             .fontSize(fontSize.body + 0.5)
             .fillColor(textColor)
-            .text(exp.title, mainX, mainY, { width: contentWidth });
+            .text(exp.title || exp.position || '', mainX, mainY, { width: contentWidth });
           mainY = doc.y + 2;
 
           const info = [exp.company, exp.location].filter(Boolean).join(', ');
@@ -1671,8 +1671,12 @@ export async function generateDOCXFromRegistry(
           spacing: { before: 200, after: 50 },
         }),
         new Paragraph({
-          text: `${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`,
-          italics: true,
+          children: [
+            new TextRun({
+              text: `${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}`,
+              italics: true,
+            }),
+          ],
           spacing: { after: 100 },
         })
       );
@@ -1712,8 +1716,12 @@ export async function generateDOCXFromRegistry(
           spacing: { before: 100, after: 50 },
         }),
         new Paragraph({
-          text: edu.graduationDate || '',
-          italics: true,
+          children: [
+            new TextRun({
+              text: edu.graduationDate || '',
+              italics: true,
+            }),
+          ],
           spacing: { after: 200 },
         })
       );

@@ -16,22 +16,6 @@ enum UserRole {
   ADMIN      // Super admin
 }
 
-// Subscription Plan Types
-enum PlanType {
-  FREE
-  PRO
-  BUSINESS
-}
-
-// Subscription Status
-enum SubscriptionStatus {
-  ACTIVE
-  CANCELED
-  PAST_DUE
-  TRIALING
-  PAUSED
-}
-
 // OAuth Provider Enum
 enum AuthProvider {
   LOCAL
@@ -56,9 +40,6 @@ model User {
   providerId        String?           // ID from OAuth provider
   providerData      Json?             // Additional data from provider
 
-  // Subscription
-  subscription      Subscription?
-
   // Resume related
   resumes           Resume[]
   resumeVersions    ResumeVersion[]
@@ -72,6 +53,10 @@ model User {
 
   // Usage tracking
   aiUsageLogs       AIUsageLog[]
+
+  // AI Credits (5 lifetime credits for all users)
+  aiCredits         Int               @default(5)
+  aiCreditsUsed     Int               @default(0)
 
   // Timestamps
   createdAt         DateTime          @default(now())
@@ -102,9 +87,6 @@ model Organization {
   primaryColor      String?
   secondaryColor    String?
 
-  // Subscription
-  subscription      OrgSubscription?
-
   // Members
   users             User[]
 
@@ -120,58 +102,6 @@ model Organization {
   updatedAt         DateTime          @updatedAt
 
   @@index([domain])
-}
-
-// Individual Subscription (B2C)
-model Subscription {
-  id                String            @id @default(uuid())
-  userId            String            @unique
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  stripeCustomerId      String?       @unique
-  stripeSubscriptionId  String?       @unique
-  stripePriceId         String?
-
-  planType          PlanType          @default(FREE)
-  status            SubscriptionStatus @default(ACTIVE)
-
-  currentPeriodStart    DateTime?
-  currentPeriodEnd      DateTime?
-  cancelAtPeriodEnd     Boolean       @default(false)
-
-  // Usage limits for free tier
-  resumesCreated    Int               @default(0)
-  resumeLimit       Int               @default(1)
-
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  @@index([stripeCustomerId])
-  @@index([stripeSubscriptionId])
-}
-
-// Organization Subscription (B2B)
-model OrgSubscription {
-  id                String            @id @default(uuid())
-  organizationId    String            @unique
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  stripeCustomerId      String?       @unique
-  stripeSubscriptionId  String?       @unique
-  stripePriceId         String?
-
-  status            SubscriptionStatus @default(ACTIVE)
-  seatsTotal        Int               @default(5)
-  seatsUsed         Int               @default(0)
-
-  currentPeriodStart    DateTime?
-  currentPeriodEnd      DateTime?
-  cancelAtPeriodEnd     Boolean       @default(false)
-
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  @@index([stripeCustomerId])
 }
 
 // Resume Model (Base Resume)

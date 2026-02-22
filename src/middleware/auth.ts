@@ -4,7 +4,7 @@ import { AuthenticatedRequest } from '../types';
 import { prisma } from '../utils/prisma';
 import config from '../config';
 import { AuthenticationError, AuthorizationError } from '../utils/errors';
-import { UserRole, PlanType } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 // Re-export AuthenticatedRequest for controllers
 export { AuthenticatedRequest } from '../types';
@@ -36,26 +36,10 @@ export const authenticate = async (
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      include: {
-        subscription: true,
-        organization: {
-          include: {
-            subscription: true,
-          },
-        },
-      },
     });
 
     if (!user) {
       throw new AuthenticationError('User not found');
-    }
-
-    // Determine plan type
-    let planType: PlanType = PlanType.FREE;
-    if (user.subscription) {
-      planType = user.subscription.planType;
-    } else if (user.organization?.subscription) {
-      planType = PlanType.BUSINESS;
     }
 
     req.user = {
@@ -63,7 +47,6 @@ export const authenticate = async (
       email: user.email,
       role: user.role,
       organizationId: user.organizationId,
-      planType,
     };
 
     next();
@@ -96,9 +79,6 @@ export const optionalAuth = async (
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      include: {
-        subscription: true,
-      },
     });
 
     if (user) {
@@ -107,7 +87,6 @@ export const optionalAuth = async (
         email: user.email,
         role: user.role,
         organizationId: user.organizationId,
-        planType: user.subscription?.planType || PlanType.FREE,
       };
     }
 

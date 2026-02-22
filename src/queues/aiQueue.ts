@@ -2,6 +2,8 @@ import { createQueue, jobOptions } from './config';
 import { PrismaClient } from '@prisma/client';
 import { cacheService, CACHE_PREFIXES, CACHE_TTL } from '../services/cache';
 import * as crypto from 'crypto';
+import { Job } from 'bull';
+import { deductAICredit } from '../middleware/credits';
 
 const prisma = new PrismaClient();
 
@@ -43,8 +45,8 @@ function generateCacheKey(type: AIJobType, payload: any): string {
 }
 
 // Process AI jobs
-aiQueue.process(async (job) => {
-  const { type, userId, payload, cacheKey } = job.data as AIJobData;
+aiQueue.process(async (job: Job<AIJobData>) => {
+  const { type, userId, payload, cacheKey } = job.data;
 
   // Check cache first if cacheKey is provided
   if (cacheKey) {
@@ -106,7 +108,10 @@ aiQueue.process(async (job) => {
       });
     }
 
-    console.log(`AI job ${job.id} (${type}) completed in ${durationMs}ms`);
+    // Deduct one AI credit from user (5 lifetime credits)
+    await deductAICredit(userId);
+
+    console.log(`AI job ${job.id} (${type}) completed in ${durationMs}ms - 1 credit deducted`);
     return result;
   } catch (error: any) {
     const durationMs = Date.now() - startTime;
@@ -220,19 +225,19 @@ async function processNetworkingMessage(payload: any, userId: string): Promise<a
 }
 
 // Event listeners
-aiQueue.on('completed', (job, result) => {
+aiQueue.on('completed', (job: Job<AIJobData>, result: any) => {
   console.log(`AI job ${job.id} completed successfully`);
 });
 
-aiQueue.on('failed', (job, err) => {
+aiQueue.on('failed', (job: Job<AIJobData>, err: Error) => {
   console.error(`AI job ${job.id} failed:`, err.message);
 });
 
-aiQueue.on('error', (error) => {
+aiQueue.on('error', (error: Error) => {
   console.error('AI queue error:', error);
 });
 
-aiQueue.on('stalled', (job) => {
+aiQueue.on('stalled', (job: Job<AIJobData>) => {
   console.warn(`AI job ${job.id} stalled`);
 });
 
