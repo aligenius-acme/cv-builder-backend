@@ -6,7 +6,6 @@ import {
   getUser,
   updateUser,
   deleteUser,
-  getOrganizations,
   getAIUsage,
   getParsingErrors,
   getAuditLogs,
@@ -30,9 +29,6 @@ router.get('/users', getUsers);
 router.get('/users/:id', getUser);
 router.put('/users/:id', updateUser);
 router.delete('/users/:id', deleteUser);
-
-// Organizations management
-router.get('/organizations', getOrganizations);
 
 // AI Usage monitoring
 router.get('/ai-usage', getAIUsage);

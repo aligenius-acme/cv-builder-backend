@@ -10,9 +10,7 @@ datasource db {
 
 // User Roles Enum
 enum UserRole {
-  USER       // B2C individual job seekers
-  ORG_ADMIN  // B2B organization admin
-  ORG_USER   // B2B organization member
+  USER       // Individual job seekers
   ADMIN      // Super admin
 }
 
@@ -32,8 +30,6 @@ model User {
   lastName          String?
   avatarUrl         String?           // Profile picture from OAuth
   role              UserRole          @default(USER)
-  organizationId    String?
-  organization      Organization?     @relation(fields: [organizationId], references: [id])
 
   // OAuth fields
   authProvider      AuthProvider      @default(LOCAL)
@@ -72,36 +68,7 @@ model User {
   passwordResetExpires  DateTime?
 
   @@index([email])
-  @@index([organizationId])
   @@index([authProvider, providerId])
-}
-
-// Organization Model (B2B)
-model Organization {
-  id                String            @id @default(uuid())
-  name              String
-  domain            String?           @unique
-
-  // Branding
-  logoUrl           String?
-  primaryColor      String?
-  secondaryColor    String?
-
-  // Members
-  users             User[]
-
-  // Settings
-  anonymizationEnabled  Boolean       @default(false)
-
-  // Quotas
-  monthlyResumeLimit    Int           @default(100)
-  monthlyCoverLetterLimit Int         @default(100)
-
-  // Timestamps
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  @@index([domain])
 }
 
 // Resume Model (Base Resume)
@@ -270,7 +237,6 @@ model ResumeTemplate {
   // Access control
   isDefault         Boolean           @default(false)
   isPremium         Boolean           @default(false)
-  organizationId    String?           // For B2B custom templates
 
   // ATS safety (legacy)
   isAtsSafe         Boolean           @default(true)
@@ -304,7 +270,6 @@ model ResumeTemplate {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  @@index([organizationId])
   @@index([primaryCategory])
   @@index([designStyle])
   @@index([atsCompatibility])
@@ -318,7 +283,6 @@ model AIUsageLog {
   id                String            @id @default(uuid())
   userId            String
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organizationId    String?
 
   // Request details
   operation         String            // resume_tailor, cover_letter, ats_analysis, etc.
@@ -344,7 +308,6 @@ model AIUsageLog {
   createdAt         DateTime          @default(now())
 
   @@index([userId])
-  @@index([organizationId])
   @@index([createdAt])
 }
 

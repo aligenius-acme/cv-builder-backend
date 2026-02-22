@@ -106,12 +106,6 @@ export const getUsers = async (
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          organization: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
           _count: {
             select: {
               resumes: true,
@@ -132,7 +126,6 @@ export const getUsers = async (
           firstName: u.firstName,
           lastName: u.lastName,
           role: u.role,
-          organization: u.organization,
           resumeCount: u._count.resumes,
           coverLetterCount: u._count.coverLetters,
           createdAt: u.createdAt,
@@ -163,13 +156,6 @@ export const getUser = async (
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            domain: true,
-          },
-        },
         resumes: {
           select: {
             id: true,
@@ -208,7 +194,6 @@ export const getUser = async (
         lastName: user.lastName,
         role: user.role,
         emailVerified: user.emailVerified,
-        organization: user.organization,
         resumes: user.resumes,
         recentAIUsage: user.aiUsageLogs,
         createdAt: user.createdAt,
@@ -308,53 +293,6 @@ export const deleteUser = async (
     res.json({
       success: true,
       message: 'User deleted successfully',
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get all organizations
-export const getOrganizations = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-
-    const [orgs, total] = await Promise.all([
-      prisma.organization.findMany({
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: {
-            select: { users: true },
-          },
-        },
-      }),
-      prisma.organization.count(),
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        organizations: orgs.map((o) => ({
-          id: o.id,
-          name: o.name,
-          domain: o.domain,
-          userCount: o._count.users,
-          createdAt: o.createdAt,
-        })),
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
-      },
     });
   } catch (error) {
     next(error);
