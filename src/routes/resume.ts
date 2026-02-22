@@ -70,8 +70,8 @@ router.get('/:id/preview', previewResume);
 // Resume customization (AI-powered, rate limited, credit checked)
 router.post('/:id/customize', aiLimiter, checkAICredits, customizeResume);
 
-// Job URL scraping (rate limited to prevent abuse)
-router.post('/scrape-job', aiLimiter, scrapeJobUrl);
+// Job URL scraping (AI-powered, rate limited, credit checked)
+router.post('/scrape-job', aiLimiter, checkAICredits, scrapeJobUrl);
 
 // Version operations
 router.get('/:id/versions/:versionId', getVersion);
