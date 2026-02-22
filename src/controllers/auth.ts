@@ -100,14 +100,6 @@ export const login = async (
     // Find user
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-      include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
     });
 
     if (!user) {
@@ -147,8 +139,7 @@ export const login = async (
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          organizationId: user.organizationId,
-          organizationName: user.organization?.name,
+          emailVerified: user.emailVerified,
           aiCredits: user.aiCredits,
           aiCreditsUsed: user.aiCreditsUsed,
         },
@@ -172,13 +163,6 @@ export const me = async (
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            logoUrl: true,
-          },
-        },
         _count: {
           select: {
             resumes: true,
@@ -203,7 +187,6 @@ export const me = async (
         emailVerified: user.emailVerified,
         aiCredits: user.aiCredits,
         aiCreditsUsed: user.aiCreditsUsed,
-        organization: user.organization || null,
         stats: {
           resumes: user._count.resumes,
           coverLetters: user._count.coverLetters,
