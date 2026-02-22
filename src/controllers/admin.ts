@@ -11,16 +11,95 @@ export const getDashboard = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Execute all queries in parallel for performance
     const [
+      // Basic counts
       totalUsers,
       totalResumes,
       totalCoverLetters,
-      recentUsers,
+      totalResumeVersions,
+      totalJobApplications,
+      totalSavedJobs,
+
+      // User metrics
+      activeUsers,
+      newUsers,
+      oldNewUsers,
+
+      // AI metrics
       aiUsageStats,
+      aiCreditsData,
+      topAIUsersData,
+      aiOpBreakdown,
+      aiSuccessData,
+
+      // System health
+      parsingErrors,
+      recentErrors,
+
+      // Recent data
+      recentUsers,
     ] = await Promise.all([
+      // Basic counts
       prisma.user.count(),
       prisma.resume.count(),
       prisma.coverLetter.count(),
+      prisma.resumeVersion.count(),
+      prisma.jobApplication.count(),
+      prisma.savedJob.count(),
+
+      // User metrics (30 days)
+      prisma.user.count({ where: { lastLoginAt: { gte: thirtyDaysAgo } } }),
+      prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.user.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+
+      // AI usage stats (30 days)
+      prisma.aIUsageLog.aggregate({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        _sum: { totalTokens: true, estimatedCost: true },
+        _count: true,
+      }),
+
+      // AI credits
+      prisma.user.aggregate({
+        _sum: { aiCredits: true, aiCreditsUsed: true },
+      }),
+
+      // Top 5 AI users
+      prisma.aIUsageLog.groupBy({
+        by: ['userId'],
+        _sum: { totalTokens: true, estimatedCost: true },
+        _count: true,
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        orderBy: { _sum: { totalTokens: 'desc' } },
+        take: 5,
+      }),
+
+      // AI operations breakdown
+      prisma.aIUsageLog.groupBy({
+        by: ['operation'],
+        _count: true,
+        _sum: { estimatedCost: true },
+        _avg: { durationMs: true },
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        orderBy: { _count: { operation: 'desc' } },
+      }),
+
+      // AI success rate
+      prisma.aIUsageLog.aggregate({
+        where: { success: true, createdAt: { gte: thirtyDaysAgo } },
+        _count: true,
+      }),
+
+      // System health
+      prisma.parsingErrorLog.count(),
+      prisma.parsingErrorLog.count({ where: { createdAt: { gte: yesterday } } }),
+
+      // Recent users
       prisma.user.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
@@ -32,19 +111,49 @@ export const getDashboard = async (
           createdAt: true,
         },
       }),
-      prisma.aIUsageLog.aggregate({
-        where: {
-          createdAt: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
-          },
-        },
-        _sum: {
-          totalTokens: true,
-          estimatedCost: true,
-        },
-        _count: true,
-      }),
     ]);
+
+    // Fetch user details for top AI users
+    const topAIUserIds = topAIUsersData.map((u) => u.userId);
+    const topAIUsersDetails = await prisma.user.findMany({
+      where: { id: { in: topAIUserIds } },
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+
+    const topAIUsersMap = new Map(topAIUsersDetails.map((u) => [u.id, u]));
+    const topAIUsers = topAIUsersData.map((u) => {
+      const user = topAIUsersMap.get(u.userId);
+      return {
+        userId: u.userId,
+        email: user?.email || 'Unknown',
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        totalTokens: u._sum.totalTokens || 0,
+        totalCost: Number(u._sum.estimatedCost || 0).toFixed(4),
+        requestCount: u._count,
+      };
+    });
+
+    // Calculate derived metrics
+    const userGrowthRate = oldNewUsers > 0
+      ? ((newUsers - oldNewUsers) / oldNewUsers * 100).toFixed(1)
+      : '0';
+
+    const avgVersionsPerResume = totalResumes > 0
+      ? (totalResumeVersions / totalResumes).toFixed(1)
+      : '0';
+
+    const aiSuccessRate = aiUsageStats._count > 0
+      ? ((aiSuccessData._count / aiUsageStats._count) * 100).toFixed(1)
+      : '0';
+
+    const parsingSuccessRate = totalResumes > 0
+      ? (((totalResumes - parsingErrors) / totalResumes) * 100).toFixed(1)
+      : '100';
+
+    const errorRate24h = totalResumes > 0
+      ? ((recentErrors / totalResumes) * 100).toFixed(2)
+      : '0';
 
     // Log admin action
     await prisma.auditLog.create({
@@ -59,12 +168,40 @@ export const getDashboard = async (
       success: true,
       data: {
         stats: {
+          // Existing stats
           totalUsers,
           totalResumes,
           totalCoverLetters,
           aiRequests30d: aiUsageStats._count,
           aiCost30d: Number(aiUsageStats._sum.estimatedCost || 0).toFixed(2),
+
+          // Enhanced stats
+          totalResumeVersions,
+          totalJobApplications,
+          totalSavedJobs,
+          activeUsers30d: activeUsers,
+          newUsers30d: newUsers,
+          userGrowthRate: parseFloat(userGrowthRate),
+          avgVersionsPerResume: parseFloat(avgVersionsPerResume),
+
+          // AI metrics
+          aiCreditsRemaining: aiCreditsData._sum.aiCredits || 0,
+          aiCreditsUsed: aiCreditsData._sum.aiCreditsUsed || 0,
+          aiSuccessRate: parseFloat(aiSuccessRate),
+
+          // System health
+          parsingSuccessRate: parseFloat(parsingSuccessRate),
+          errorRate24h: parseFloat(errorRate24h),
+          totalParsingErrors: parsingErrors,
+          recentErrors24h: recentErrors,
         },
+        topAIUsers,
+        aiOperations: aiOpBreakdown.map((op) => ({
+          operation: op.operation,
+          count: op._count,
+          totalCost: Number(op._sum.estimatedCost || 0).toFixed(4),
+          avgDuration: Math.round(op._avg.durationMs || 0),
+        })),
         recentUsers,
       },
     });
@@ -426,10 +563,32 @@ export const getAuditLogs = async (
       prisma.auditLog.count(),
     ]);
 
+    // Fetch admin user details for each log
+    const adminIds = [...new Set(logs.map((log) => log.adminId))];
+    const adminUsers = await prisma.user.findMany({
+      where: { id: { in: adminIds } },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+      },
+    });
+
+    // Create a map for quick lookup
+    const adminMap = new Map(adminUsers.map((u) => [u.id, u]));
+
+    // Attach admin data to each log
+    const enrichedLogs = logs.map((log) => ({
+      ...log,
+      admin: adminMap.get(log.adminId) || null,
+    }));
+
     res.json({
       success: true,
       data: {
-        logs,
+        logs: enrichedLogs,
         pagination: {
           page,
           limit,
