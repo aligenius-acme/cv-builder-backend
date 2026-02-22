@@ -40,7 +40,7 @@ export const calculateJobMatch = async (
       jobDescription,
       jobTitle,
       userId,
-      req.user!.organizationId
+      null
     );
 
     res.json({
@@ -80,7 +80,7 @@ export const quantifyAchievements = async (
       validBullets,
       jobContext,
       userId,
-      req.user!.organizationId
+      null
     );
 
     res.json({
@@ -130,7 +130,7 @@ export const detectWeaknesses = async (
       resumeText,
       targetRole,
       userId,
-      req.user!.organizationId
+      null
     );
 
     res.json({
@@ -200,7 +200,7 @@ export const generateFollowUpEmail = async (
         resumeData,
       },
       userId,
-      req.user!.organizationId
+      null
     );
 
     res.json({
@@ -277,7 +277,7 @@ export const generateNetworkingMessage = async (
         resumeData,
       },
       userId,
-      req.user!.organizationId
+      null
     );
 
     res.json({
@@ -346,7 +346,7 @@ export const quickJobMatch = async (
       job.jobDescription || '',
       job.jobTitle,
       userId,
-      req.user!.organizationId
+      null
     );
 
     res.json({

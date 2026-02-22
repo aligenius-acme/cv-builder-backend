@@ -387,7 +387,7 @@ export const customizeResume = async (
 ): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const organizationId = req.user!.organizationId;
+    const organizationId = null;
     const { id } = req.params;
     const { jobTitle, companyName, jobDescription } = req.body;
 
@@ -725,7 +725,7 @@ export const simulateATS = async (
 ): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const organizationId = req.user!.organizationId;
+    const organizationId = null;
     const { id, versionId } = req.params;
 
     const version = await prisma.resumeVersion.findFirst({

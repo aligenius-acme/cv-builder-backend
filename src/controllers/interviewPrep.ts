@@ -117,7 +117,7 @@ IMPORTANT:
       },
       {
         userId: req.user!.id,
-        organizationId: req.user!.organizationId,
+        organizationId: null,
         operation: 'interview_questions',
       }
     );
@@ -200,7 +200,7 @@ Provide evaluation in this JSON format:
       },
       {
         userId: req.user!.id,
-        organizationId: req.user!.organizationId,
+        organizationId: null,
         operation: 'answer_evaluation',
       }
     );

@@ -24,28 +24,6 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-/**
- * Middleware to check if user is an organization admin
- */
-export const isOrgAdmin = (req: Request, res: Response, next: NextFunction) => {
-  const user = (req as any).user;
-
-  if (!user) {
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Authentication required',
-    });
-  }
-
-  if (user.role !== UserRole.ORG_ADMIN && user.role !== UserRole.ADMIN) {
-    return res.status(403).json({
-      error: 'Forbidden',
-      message: 'Organization admin access required',
-    });
-  }
-
-  next();
-};
 
 /**
  * Middleware to check if user has one of the allowed roles

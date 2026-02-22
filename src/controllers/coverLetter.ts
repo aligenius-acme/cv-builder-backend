@@ -14,7 +14,7 @@ export const generateCoverLetter = async (
 ): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const organizationId = req.user!.organizationId;
+    const organizationId = null;
     const { resumeVersionId, jobTitle, companyName, jobDescription, tone = 'professional' } = req.body;
 
     if (!jobTitle || !companyName || !jobDescription) {
@@ -294,7 +294,7 @@ export const regenerateCoverLetter = async (
 ): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const organizationId = req.user!.organizationId;
+    const organizationId = null;
     const { id } = req.params;
     const { tone = 'professional' } = req.body;
 
@@ -382,7 +382,7 @@ export const generateEnhancedCoverLetter = async (
 ): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const organizationId = req.user!.organizationId;
+    const organizationId = null;
     const { resumeVersionId, jobTitle, companyName, jobDescription, tone = 'professional' } = req.body;
 
     if (!jobTitle || !companyName || !jobDescription) {

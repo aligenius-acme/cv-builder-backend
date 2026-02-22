@@ -46,7 +46,6 @@ export const authenticate = async (
       id: user.id,
       email: user.email,
       role: user.role,
-      organizationId: user.organizationId,
     };
 
     next();
@@ -86,7 +85,6 @@ export const optionalAuth = async (
         id: user.id,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId,
       };
     }
 
@@ -114,9 +112,6 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
 
 // Require admin role
 export const requireAdmin = requireRole(UserRole.ADMIN);
-
-// Require organization admin or super admin
-export const requireOrgAdmin = requireRole(UserRole.ORG_ADMIN, UserRole.ADMIN);
 
 // Generate JWT token
 export const generateToken = (user: { id: string; email: string; role: UserRole }): string => {

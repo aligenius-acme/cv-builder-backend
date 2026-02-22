@@ -189,20 +189,6 @@ export const subscriptionSchema = z.object({
 });
 
 // ============================================================================
-// Organization Schemas
-// ============================================================================
-
-export const createOrganizationSchema = z.object({
-  name: z.string().min(2, 'Organization name must be at least 2 characters').max(200),
-  domain: z.string().max(100).optional(),
-});
-
-export const updateOrganizationSchema = z.object({
-  name: z.string().min(2).max(200).optional(),
-  domain: z.string().max(100).optional(),
-});
-
-// ============================================================================
 // Share/Collaboration Schemas
 // ============================================================================
 
