@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest } from '../types';
 import { ValidationError, NotFoundError, ForbiddenError } from '../utils/errors';
-import { UserRole, SubscriptionStatus } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { generateToken } from '../utils/encryption';
 import { emailService } from '../services/email';
 
@@ -45,16 +45,6 @@ export const createOrganization = async (
         data: {
           name,
           domain: domain || null,
-          subscription: {
-            create: {
-              status: SubscriptionStatus.ACTIVE,
-              seatsTotal: 5,
-              seatsUsed: 1,
-            },
-          },
-        },
-        include: {
-          subscription: true,
         },
       });
 
@@ -75,7 +65,6 @@ export const createOrganization = async (
         id: org.id,
         name: org.name,
         domain: org.domain,
-        subscription: org.subscription,
       },
     });
   } catch (error) {
@@ -126,7 +115,6 @@ export const getOrganization = async (
         logoUrl: user.organization.logoUrl,
         primaryColor: user.organization.primaryColor,
         anonymizationEnabled: user.organization.anonymizationEnabled,
-        subscription: user.organization.subscription,
         members: user.organization.users,
         isAdmin: user.role === UserRole.ORG_ADMIN,
       },
@@ -216,9 +204,7 @@ export const inviteMember = async (
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        organization: {
-          include: { subscription: true },
-        },
+        organization: true,
       },
     });
 
@@ -235,7 +221,7 @@ export const inviteMember = async (
       where: { organizationId: user.organization.id },
     });
 
-    const seatLimit = user.organization.subscription?.seatsTotal || 5;
+    const seatLimit = 10; // Default seat limit for organizations
     if (memberCount >= seatLimit) {
       throw new ValidationError('Seat limit reached. Please upgrade your plan.');
     }
@@ -327,12 +313,7 @@ export const acceptInvite = async (
           role: UserRole.ORG_USER,
         },
       }),
-      prisma.orgSubscription.update({
-        where: { organizationId: invite.orgId },
-        data: {
-          seatsUsed: { increment: 1 },
-        },
-      }),
+      // Subscription logic removed
     ]);
 
     // Remove invite
@@ -391,21 +372,13 @@ export const removeMember = async (
     }
 
     // Remove from org
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: memberId },
-        data: {
-          organizationId: null,
-          role: UserRole.USER,
-        },
-      }),
-      prisma.orgSubscription.update({
-        where: { organizationId: admin.organization.id },
-        data: {
-          seatsUsed: { decrement: 1 },
-        },
-      }),
-    ]);
+    await prisma.user.update({
+      where: { id: memberId },
+      data: {
+        organizationId: null,
+        role: UserRole.USER,
+      },
+    });
 
     res.json({
       success: true,
@@ -515,12 +488,7 @@ export const leaveOrganization = async (
           role: UserRole.USER,
         },
       }),
-      prisma.orgSubscription.update({
-        where: { organizationId: user.organization.id },
-        data: {
-          seatsUsed: { decrement: 1 },
-        },
-      }),
+      // Subscription logic removed
     ]);
 
     res.json({

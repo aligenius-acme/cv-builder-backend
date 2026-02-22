@@ -8,7 +8,6 @@ import { fullCustomizationPipeline, analyzeATS } from '../services/ai';
 import { generatePDF, generateDOCX, generatePDFFromRegistry, generateDOCXFromRegistry, anonymizeResumeData } from '../services/documents';
 import { getTemplate, isValidTemplate } from '../services/templates';
 import { getTemplateById, getTemplateConfigFromDB } from '../services/template-registry';
-import { getSubscriptionLimits } from '../middleware/subscription';
 import { scrapeJobPosting, formatJobDescription, ScrapedJobData } from '../services/jobScraper';
 import { PlanType } from '@prisma/client';
 
@@ -32,19 +31,7 @@ export const uploadResume = async (
       throw new ValidationError('Only PDF and DOCX files are allowed');
     }
 
-    // Check quota
-    const limits = getSubscriptionLimits(req.user!.planType);
-    if (limits.maxResumes !== -1) {
-      const resumeCount = await prisma.resume.count({
-        where: { userId },
-      });
-
-      if (resumeCount >= limits.maxResumes) {
-        throw new QuotaExceededError(
-          `Resume limit reached (${limits.maxResumes}). Upgrade to Pro for more resumes.`
-        );
-      }
-    }
+    // No quota limits - all users have unlimited resumes
 
     // Upload to Cloudinary
     const { key, url } = await uploadFile(
@@ -420,22 +407,7 @@ export const customizeResume = async (
       throw new ValidationError('Resume parsing is not completed');
     }
 
-    // Check version quota
-    const versionCount = await prisma.resumeVersion.count({
-      where: { resumeId: id },
-    });
-
-    const limits = getSubscriptionLimits(req.user!.planType);
-    if (limits.maxVersionsPerResume !== -1 && versionCount >= limits.maxVersionsPerResume) {
-      const currentPlan = req.user!.planType;
-      const upgradeMessage = currentPlan === PlanType.FREE
-        ? 'Upgrade to Pro or Business for unlimited resume versions.'
-        : 'Upgrade to Business for unlimited resume versions.';
-
-      throw new QuotaExceededError(
-        `You've reached your plan's limit of ${limits.maxVersionsPerResume} versions per resume (${versionCount}/${limits.maxVersionsPerResume}). ${upgradeMessage}`
-      );
-    }
+    // No version quota - unlimited versions for all users
 
     // Get next version number
     const latestVersion = await prisma.resumeVersion.findFirst({
@@ -863,19 +835,7 @@ export const createBlankResume = async (
     const userId = req.user!.id;
     const { title, template } = req.body;
 
-    // Check quota
-    const limits = getSubscriptionLimits(req.user!.planType);
-    if (limits.maxResumes !== -1) {
-      const resumeCount = await prisma.resume.count({
-        where: { userId },
-      });
-
-      if (resumeCount >= limits.maxResumes) {
-        throw new QuotaExceededError(
-          `Resume limit reached (${limits.maxResumes}). Upgrade to Pro for more resumes.`
-        );
-      }
-    }
+    // No quota limits - all users have unlimited resumes
 
     // Default blank resume structure
     const blankResumeData: ParsedResumeData = {

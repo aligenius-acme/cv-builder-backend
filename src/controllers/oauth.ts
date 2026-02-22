@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
 import { generateToken } from '../middleware/auth';
 import { ValidationError, AuthenticationError } from '../utils/errors';
-import { PlanType, AuthProvider } from '@prisma/client';
+import { AuthProvider } from '@prisma/client';
 import * as oauthService from '../services/oauthService';
 
 // Get OAuth URLs
@@ -67,7 +67,6 @@ export const googleCallback = async (
     // Find or create user
     let user = await prisma.user.findUnique({
       where: { email: googleUser.email.toLowerCase() },
-      include: { subscription: true },
     });
 
     if (user) {
@@ -97,14 +96,7 @@ export const googleCallback = async (
           providerId: googleUser.id,
           providerData: googleUser.rawData,
           emailVerified: true,
-          subscription: {
-            create: {
-              planType: PlanType.FREE,
-              resumeLimit: 1,
-            },
-          },
         },
-        include: { subscription: true },
       });
     }
 
@@ -131,7 +123,6 @@ export const googleCallback = async (
           lastName: user.lastName,
           avatarUrl: user.avatarUrl,
           role: user.role,
-          planType: user.subscription?.planType || PlanType.FREE,
         },
         token,
         isNewUser: !user.lastLoginAt,
@@ -177,7 +168,6 @@ export const githubCallback = async (
     // Find or create user
     let user = await prisma.user.findUnique({
       where: { email: githubUser.email.toLowerCase() },
-      include: { subscription: true },
     });
 
     if (user) {
@@ -207,14 +197,7 @@ export const githubCallback = async (
           providerId: githubUser.id,
           providerData: githubUser.rawData,
           emailVerified: true,
-          subscription: {
-            create: {
-              planType: PlanType.FREE,
-              resumeLimit: 1,
-            },
-          },
         },
-        include: { subscription: true },
       });
     }
 
@@ -241,7 +224,6 @@ export const githubCallback = async (
           lastName: user.lastName,
           avatarUrl: user.avatarUrl,
           role: user.role,
-          planType: user.subscription?.planType || PlanType.FREE,
         },
         token,
         isNewUser: !user.lastLoginAt,

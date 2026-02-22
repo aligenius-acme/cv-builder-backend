@@ -19,7 +19,6 @@ describe('Auth API', () => {
   afterAll(async () => {
     // Cleanup test user
     if (userId) {
-      await prisma.subscription.deleteMany({ where: { userId } });
       await prisma.user.deleteMany({ where: { id: userId } });
     }
   });

@@ -79,15 +79,8 @@ if (config.nodeEnv !== 'test') {
 // Performance monitoring
 app.use(performanceMiddleware);
 
-// Body parsing (except for Stripe webhook which needs raw body)
-app.use((req, res, next) => {
-  if (req.originalUrl === '/api/subscription/webhook') {
-    next();
-  } else {
-    express.json({ limit: '10mb' })(req, res, next);
-  }
-});
-
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve uploaded files statically

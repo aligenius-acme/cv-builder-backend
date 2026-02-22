@@ -10,7 +10,6 @@ import {
   CoverLetterInput,
 } from '../types';
 import { AIServiceError } from '../utils/errors';
-import { trackAIUsage } from '../middleware/subscription';
 
 // Initialize OpenAI client
 const openai = config.ai.openaiApiKey ? new OpenAI({ apiKey: config.ai.openaiApiKey }) : null;
@@ -377,35 +376,16 @@ async function callAI(
 
     const durationMs = Date.now() - startTime;
 
-    // Track usage
-    await trackAIUsage(
-      userId,
-      organizationId,
-      operation,
-      'openai',
-      config.ai.openaiModel,
-      result.promptTokens,
-      result.completionTokens,
-      durationMs,
-      true
-    );
+    // AI usage tracking handled by aiQueue middleware
+    const totalTokens = result.promptTokens + result.completionTokens;
+    console.log(`AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms`);
 
     return result;
   } catch (error) {
     const durationMs = Date.now() - startTime;
 
-    await trackAIUsage(
-      userId,
-      organizationId,
-      operation,
-      'openai',
-      config.ai.openaiModel,
-      0,
-      0,
-      durationMs,
-      false,
-      (error as Error).message
-    );
+    // AI usage error tracking handled by aiQueue middleware
+    console.error(`AI operation ${operation} failed after ${durationMs}ms:`, error);
 
     throw new AIServiceError(`AI service error: ${(error as Error).message}`);
   }

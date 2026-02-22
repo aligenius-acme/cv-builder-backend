@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest } from '../types';
 import { ValidationError, NotFoundError } from '../utils/errors';
-import { UserRole, PlanType, SubscriptionStatus } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 // Get dashboard stats
 export const getDashboard = async (
@@ -13,19 +13,12 @@ export const getDashboard = async (
   try {
     const [
       totalUsers,
-      activeSubscriptions,
       totalResumes,
       totalCoverLetters,
       recentUsers,
       aiUsageStats,
     ] = await Promise.all([
       prisma.user.count(),
-      prisma.subscription.count({
-        where: {
-          planType: { not: PlanType.FREE },
-          status: SubscriptionStatus.ACTIVE,
-        },
-      }),
       prisma.resume.count(),
       prisma.coverLetter.count(),
       prisma.user.findMany({
@@ -67,7 +60,6 @@ export const getDashboard = async (
       data: {
         stats: {
           totalUsers,
-          activeSubscriptions,
           totalResumes,
           totalCoverLetters,
           aiRequests30d: aiUsageStats._count,
@@ -114,12 +106,6 @@ export const getUsers = async (
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          subscription: {
-            select: {
-              planType: true,
-              status: true,
-            },
-          },
           organization: {
             select: {
               id: true,
@@ -146,8 +132,6 @@ export const getUsers = async (
           firstName: u.firstName,
           lastName: u.lastName,
           role: u.role,
-          planType: u.subscription?.planType || PlanType.FREE,
-          status: u.subscription?.status || SubscriptionStatus.ACTIVE,
           organization: u.organization,
           resumeCount: u._count.resumes,
           coverLetterCount: u._count.coverLetters,
@@ -179,10 +163,11 @@ export const getUser = async (
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        subscription: true,
         organization: {
-          include: {
-            subscription: true,
+          select: {
+            id: true,
+            name: true,
+            domain: true,
           },
         },
         resumes: {
@@ -223,7 +208,6 @@ export const getUser = async (
         lastName: user.lastName,
         role: user.role,
         emailVerified: user.emailVerified,
-        subscription: user.subscription,
         organization: user.organization,
         resumes: user.resumes,
         recentAIUsage: user.aiUsageLogs,
@@ -346,7 +330,6 @@ export const getOrganizations = async (
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          subscription: true,
           _count: {
             select: { users: true },
           },
@@ -363,7 +346,6 @@ export const getOrganizations = async (
           name: o.name,
           domain: o.domain,
           userCount: o._count.users,
-          subscription: o.subscription,
           createdAt: o.createdAt,
         })),
         pagination: {

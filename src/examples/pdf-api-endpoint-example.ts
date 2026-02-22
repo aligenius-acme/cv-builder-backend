@@ -290,7 +290,7 @@ router.post('/batch-generate-pdf', async (req: Request, res: Response) => {
     archive.pipe(res);
 
     // Add each PDF to the archive
-    pdfs.forEach((pdfBuffer, index) => {
+    pdfs.forEach((pdfBuffer: Buffer, index: number) => {
       const templateId = requests[index].templateId;
       const name = requests[index].resumeData.contact?.name || 'resume';
       const filename = `${name}-${templateId}.pdf`;

@@ -25,14 +25,6 @@ export const config = {
     apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
 
-  // Stripe
-  stripe: {
-    secretKey: process.env.STRIPE_SECRET_KEY || '',
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
-    proPriceId: process.env.STRIPE_PRO_PRICE_ID || '',
-    businessPriceId: process.env.STRIPE_BUSINESS_PRICE_ID || '',
-  },
-
   // AI Provider - OpenAI
   ai: {
     openaiApiKey: process.env.OPENAI_API_KEY || '',
