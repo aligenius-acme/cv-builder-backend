@@ -1,13 +1,9 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import OpenAI from 'openai';
+import { callAIRaw } from '../services/ai';
 import { config } from '../config';
 import { prisma } from '../utils/prisma';
 import * as adzunaService from '../services/adzunaService';
-
-const openai = new OpenAI({
-  apiKey: config.ai.openaiApiKey,
-});
 
 export const searchJobs = async (
   req: AuthenticatedRequest,
@@ -143,16 +139,10 @@ export const getJobDetails = async (
 
     // In production, this would fetch the actual job details
     // For now, generate expanded details
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        {
-          role: 'system',
-          content: 'Generate detailed job listing information.',
-        },
-        {
-          role: 'user',
-          content: `Generate full job details for a position. Include:
+    // Call AI with automatic credit deduction and usage logging
+    const responseText = await callAIRaw(
+      'Generate detailed job listing information.',
+      `Generate full job details for a position. Include:
 - Full description
 - Responsibilities (5-7 items)
 - Requirements (5-7 items)
@@ -169,13 +159,11 @@ Return as JSON:
   "benefits": ["..."],
   "culture": "..."
 }`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '{}';
+      req.user!.id,
+      'job_details_generation',
+      1500,
+      0.7
+    );
 
     let details = {
       fullDescription: '',

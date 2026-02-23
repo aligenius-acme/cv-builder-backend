@@ -1,11 +1,8 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../utils/prisma';
-import OpenAI from 'openai';
-import config from '../config';
+import { callAIRaw } from '../services/ai';
 import { logAIUsage } from '../utils/aiLogger';
-
-const openai = new OpenAI({ apiKey: config.ai.openaiApiKey });
 
 // Resume Performance Score - comprehensive scoring beyond ATS
 export const getResumePerformanceScore = async (
@@ -115,21 +112,17 @@ ${rawText}
 Parsed Data:
 ${JSON.stringify(resumeData, null, 2)}`;
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert resume analyst. Analyze resumes and provide detailed scoring with actionable improvements. Always respond with valid JSON only.',
-        },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 2000,
-    });
+    // Call AI with automatic credit deduction and usage logging
+    const content = await callAIRaw(
+      'You are an expert resume analyst. Analyze resumes and provide detailed scoring with actionable improvements. Always respond with valid JSON only.',
+      prompt,
+      userId,
+      'resume_performance_score',
+      2000,
+      0.3
+    );
 
     const duration = Date.now() - startTime;
-    const content = completion.choices[0]?.message?.content || '';
 
     // Log AI usage
     await logAIUsage({
@@ -265,21 +258,17 @@ Target Role: ${roleToAnalyze}
 ${targetJobDescription ? `Job Description: ${targetJobDescription}` : ''}
 ${industry ? `Industry: ${industry}` : ''}`;
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a career development expert. Analyze skill gaps and provide actionable learning paths with real resources. Always respond with valid JSON only.',
-        },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.4,
-      max_tokens: 3000,
-    });
+    // Call AI with automatic credit deduction and usage logging
+    const content = await callAIRaw(
+      'You are a career development expert. Analyze skill gaps and provide actionable learning paths with real resources. Always respond with valid JSON only.',
+      prompt,
+      userId,
+      'skill_gap_analysis',
+      3000,
+      0.4
+    );
 
     const duration = Date.now() - startTime;
-    const content = completion.choices[0]?.message?.content || '';
 
     await logAIUsage({
       userId,

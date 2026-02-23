@@ -1,12 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import OpenAI from 'openai';
-import { config } from '../config';
+import { callAIRaw } from '../services/ai';
 import { prisma } from '../utils/prisma';
-
-const openai = new OpenAI({
-  apiKey: config.ai.openaiApiKey,
-});
 
 interface SuggestionRequest {
   text: string;
@@ -110,17 +105,15 @@ Return as JSON array of strings.`;
         });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.4, // Lower temperature for more consistent, realistic suggestions
-      max_tokens: 500,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '[]';
+    // Call AI with automatic credit deduction and usage logging
+    const responseText = await callAIRaw(
+      systemPrompt,
+      userPrompt,
+      req.user!.id,
+      'writing_suggestions',
+      500,
+      0.4 // Lower temperature for more consistent, realistic suggestions
+    );
 
     // Parse the JSON response
     let suggestions;
@@ -137,21 +130,7 @@ Return as JSON array of strings.`;
       suggestions = [responseText];
     }
 
-    // Log AI usage
-    await prisma.aIUsageLog.create({
-      data: {
-        userId: req.user!.id,
-        operation: 'writing_suggestion',
-        provider: 'openai',
-        promptTokens: completion.usage?.prompt_tokens || 0,
-        completionTokens: completion.usage?.completion_tokens || 0,
-        totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.openaiModel,
-        estimatedCost: 0,
-        durationMs: 0,
-        success: true,
-      },
-    });
+    // Note: AI credits are automatically deducted by callAIRaw() in ai.ts
 
     res.json({
       success: true,
@@ -193,17 +172,15 @@ Only provide the completion text, not the full sentence.`;
 
 Provide 3 possible completions as a JSON array of strings.`;
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.6,
-      max_tokens: 150,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '[]';
+    // Call AI with automatic credit deduction and usage logging
+    const responseText = await callAIRaw(
+      systemPrompt,
+      userPrompt,
+      req.user!.id,
+      'writing_completions',
+      150,
+      0.6
+    );
 
     let completions;
     try {
@@ -276,17 +253,15 @@ Company: ${company}`;
     userPrompt += `\n\nIMPORTANT: Use placeholders like [X]%, [N]+, [$X] where users should insert their actual numbers.
 Return as a JSON array of strings.`;
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.4, // Lower temperature for more realistic suggestions
-      max_tokens: 600,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '[]';
+    // Call AI with automatic credit deduction and usage logging
+    const responseText = await callAIRaw(
+      systemPrompt,
+      userPrompt,
+      req.user!.id,
+      'generate_bullets',
+      600,
+      0.4 // Lower temperature for more realistic suggestions
+    );
 
     let bulletPoints;
     try {
@@ -300,21 +275,7 @@ Return as a JSON array of strings.`;
       bulletPoints = [];
     }
 
-    // Log AI usage
-    await prisma.aIUsageLog.create({
-      data: {
-        userId: req.user!.id,
-        operation: 'generate_bullets',
-        provider: 'openai',
-        promptTokens: completion.usage?.prompt_tokens || 0,
-        completionTokens: completion.usage?.completion_tokens || 0,
-        totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.openaiModel,
-        estimatedCost: 0,
-        durationMs: 0,
-        success: true,
-      },
-    });
+    // Note: AI credits are automatically deducted by callAIRaw() in ai.ts
 
     res.json({
       success: true,

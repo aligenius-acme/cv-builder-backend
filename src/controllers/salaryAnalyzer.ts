@@ -1,12 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import OpenAI from 'openai';
-import { config } from '../config';
+import { callAIRaw } from '../services/ai';
 import { prisma } from '../utils/prisma';
-
-const openai = new OpenAI({
-  apiKey: config.ai.openaiApiKey,
-});
 
 interface SalaryRange {
   min: number;
@@ -110,17 +105,15 @@ Provide analysis in this JSON format:
   }` : ''}
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.5,
-      max_tokens: 1500,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '{}';
+    // Call AI with automatic credit deduction and usage logging
+    const responseText = await callAIRaw(
+      systemPrompt,
+      userPrompt,
+      req.user!.id,
+      'salary_analysis',
+      1500,
+      0.5
+    );
 
     let analysis = {
       salaryRange: { min: 0, median: 0, max: 0, currency: 'USD' },
@@ -141,22 +134,6 @@ Provide analysis in this JSON format:
     } catch {
       // Use default
     }
-
-    // Log AI usage
-    await prisma.aIUsageLog.create({
-      data: {
-        userId: req.user!.id,
-        operation: 'salary_analysis',
-        provider: 'openai',
-        promptTokens: completion.usage?.prompt_tokens || 0,
-        completionTokens: completion.usage?.completion_tokens || 0,
-        totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.openaiModel,
-        estimatedCost: 0,
-        durationMs: 0,
-        success: true,
-      },
-    });
 
     res.json({
       success: true,
@@ -256,17 +233,15 @@ Provide comparison in this JSON format:
   ]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.5,
-      max_tokens: 1500,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '{}';
+    // Call AI with automatic credit deduction and usage logging
+    const responseText = await callAIRaw(
+      systemPrompt,
+      userPrompt,
+      req.user!.id,
+      'offer_comparison',
+      1500,
+      0.5
+    );
 
     let comparison = {
       totalCompensation: [],
@@ -284,22 +259,6 @@ Provide comparison in this JSON format:
     } catch {
       // Use default
     }
-
-    // Log AI usage
-    await prisma.aIUsageLog.create({
-      data: {
-        userId: req.user!.id,
-        operation: 'offer_comparison',
-        provider: 'openai',
-        promptTokens: completion.usage?.prompt_tokens || 0,
-        completionTokens: completion.usage?.completion_tokens || 0,
-        totalTokens: completion.usage?.total_tokens || 0,
-        model: config.ai.openaiModel,
-        estimatedCost: 0,
-        durationMs: 0,
-        success: true,
-      },
-    });
 
     res.json({
       success: true,
@@ -422,17 +381,15 @@ Provide in this JSON format:
   }
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: config.ai.openaiModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.6,
-      max_tokens: 4000,
-    });
-
-    const responseText = completion.choices[0]?.message?.content || '{}';
+    // Call AI with automatic credit deduction and usage logging
+    const responseText = await callAIRaw(
+      systemPrompt,
+      userPrompt,
+      req.user!.id,
+      'negotiation_script',
+      4000,
+      0.6
+    );
 
     let script: any = {
       openingStatement: '',

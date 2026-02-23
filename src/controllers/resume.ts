@@ -201,6 +201,7 @@ export const getResume = async (
         parsedData: parsedData,
         photoUrl: resume.photoUrl,
         rawText: resume.rawText,
+        originalFileKey: resume.originalFileKey,
         versions: resume.versions.map((v) => ({
           id: v.id,
           versionNumber: v.versionNumber,
@@ -448,6 +449,8 @@ export const customizeResume = async (
         truthGuardWarnings: result.truthGuardWarnings as any,
       },
     });
+
+    // Note: AI credits are automatically deducted by callAI() function in ai.ts
 
     res.status(201).json({
       success: true,

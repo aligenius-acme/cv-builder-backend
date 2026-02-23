@@ -375,17 +375,149 @@ async function callAI(
     };
 
     const durationMs = Date.now() - startTime;
-
-    // AI usage tracking handled by aiQueue middleware
     const totalTokens = result.promptTokens + result.completionTokens;
-    console.log(`AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms`);
+
+    // Log AI usage for monitoring
+    await prisma.aIUsageLog.create({
+      data: {
+        userId,
+        organizationId,
+        operation,
+        provider: 'openai',
+        model: config.ai.openaiModel,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+        totalTokens,
+        estimatedCost: (totalTokens / 1000) * 0.002, // GPT-4o-mini rough cost
+        durationMs,
+        success: true,
+      },
+    });
+
+    // CRITICAL: Auto-deduct AI credit after successful operation
+    // This ensures NO AI operation can bypass the credit system
+    const { deductAICredit } = await import('../middleware/credits');
+    await deductAICredit(userId);
+
+    console.log(`✅ AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms | 1 credit deducted from user ${userId}`);
 
     return result;
   } catch (error) {
     const durationMs = Date.now() - startTime;
 
-    // AI usage error tracking handled by aiQueue middleware
-    console.error(`AI operation ${operation} failed after ${durationMs}ms:`, error);
+    // Log failed AI operation
+    await prisma.aIUsageLog.create({
+      data: {
+        userId,
+        organizationId,
+        operation,
+        provider: 'openai',
+        model: config.ai.openaiModel,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        estimatedCost: 0,
+        durationMs,
+        success: false,
+        errorMessage: (error as Error).message,
+      },
+    });
+
+    console.error(`❌ AI operation ${operation} failed after ${durationMs}ms:`, error);
+
+    throw new AIServiceError(`AI service error: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * Public wrapper for callAI - allows controllers to make AI calls with custom prompts
+ * while still benefiting from automatic credit deduction and usage logging.
+ *
+ * @param systemPrompt - The system/instruction prompt
+ * @param userPrompt - The user/data prompt
+ * @param userId - User ID for credit deduction and logging
+ * @param operation - Operation name for logging (e.g., 'salary_analysis', 'skill_gap')
+ * @param maxTokens - Maximum tokens for response (default: 4096)
+ * @param temperature - Temperature for response (default: 0.3 for creative, 0.1 for analytical)
+ * @returns AI response content as string
+ */
+export async function callAIRaw(
+  systemPrompt: string,
+  userPrompt: string,
+  userId: string,
+  operation: string,
+  maxTokens: number = 4096,
+  temperature: number = 0.3
+): Promise<string> {
+  const startTime = Date.now();
+
+  try {
+    if (!openai) {
+      throw new AIServiceError('OpenAI API key not configured');
+    }
+
+    const response = await openai.chat.completions.create({
+      model: config.ai.openaiModel,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      max_tokens: maxTokens,
+      temperature,
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+    const promptTokens = response.usage?.prompt_tokens || 0;
+    const completionTokens = response.usage?.completion_tokens || 0;
+    const totalTokens = promptTokens + completionTokens;
+    const durationMs = Date.now() - startTime;
+
+    // Log AI usage for monitoring
+    await prisma.aIUsageLog.create({
+      data: {
+        userId,
+        organizationId: null,
+        operation,
+        provider: 'openai',
+        model: config.ai.openaiModel,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        estimatedCost: (totalTokens / 1000) * 0.002, // GPT-4o-mini rough cost
+        durationMs,
+        success: true,
+      },
+    });
+
+    // CRITICAL: Auto-deduct AI credit after successful operation
+    const { deductAICredit } = await import('../middleware/credits');
+    await deductAICredit(userId);
+
+    console.log(`✅ AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms | 1 credit deducted from user ${userId}`);
+
+    return content;
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+
+    // Log failed AI operation
+    await prisma.aIUsageLog.create({
+      data: {
+        userId,
+        organizationId: null,
+        operation,
+        provider: 'openai',
+        model: config.ai.openaiModel,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        estimatedCost: 0,
+        durationMs,
+        success: false,
+        errorMessage: (error as Error).message,
+      },
+    });
+
+    console.error(`❌ AI operation ${operation} failed after ${durationMs}ms:`, error);
 
     throw new AIServiceError(`AI service error: ${(error as Error).message}`);
   }
