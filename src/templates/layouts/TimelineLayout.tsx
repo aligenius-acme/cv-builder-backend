@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const TimelineLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications } = data;
+  const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -272,7 +272,7 @@ export const TimelineLayout: React.FC<LayoutProps> = ({ data, config }) => {
 
       {/* Certifications */}
       {certifications && certifications.length > 0 && (
-        <div>
+        <div style={{ marginBottom: '30px' }}>
           <h2 style={{
             fontSize: `${fontSize.subheader + 2}px`,
             color: primaryColor,
@@ -284,12 +284,140 @@ export const TimelineLayout: React.FC<LayoutProps> = ({ data, config }) => {
             Certifications
           </h2>
           {certifications.map((cert, index) => (
-            <div key={index} style={{
-              fontSize: `${fontSize.body}px`,
-              color: textColor,
-              marginBottom: '8px',
-            }}>
+            <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px' }}>
               • {typeof cert === 'string' ? cert : `${cert.name}${cert.date ? ` (${cert.date})` : ''}`}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Projects */}
+      {projects && projects.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader + 2}px`,
+            color: primaryColor,
+            fontWeight: 700,
+            marginBottom: '20px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+          }}>
+            Projects
+          </h2>
+          {projects.map((project, index) => (
+            <div key={index} style={{ marginBottom: '16px', paddingLeft: '20px', borderLeft: `3px solid ${primaryColor}30` }}>
+              <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, marginBottom: '4px' }}>
+                {project.name}
+              </h3>
+              <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 6px 0' }}>
+                {project.description}
+              </p>
+              {project.technologies && project.technologies.length > 0 && (
+                <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
+                  {project.technologies.join(' • ')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Languages & Awards */}
+      {((languages && languages.length > 0) || (awards && awards.length > 0)) && (
+        <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
+          {languages && languages.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <h2 style={{
+                fontSize: `${fontSize.subheader + 2}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                marginBottom: '20px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+              }}>
+                Languages
+              </h2>
+              {languages.map((lang, index) => (
+                <span
+                  key={index}
+                  style={{
+                    display: 'inline-block',
+                    fontSize: `${fontSize.body}px`,
+                    color: textColor,
+                    backgroundColor: `${primaryColor}15`,
+                    padding: '6px 14px',
+                    borderRadius: '4px',
+                    border: `1px solid ${primaryColor}30`,
+                    marginRight: '8px',
+                    marginBottom: '8px',
+                  }}
+                >
+                  {lang}
+                </span>
+              ))}
+            </div>
+          )}
+          {awards && awards.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <h2 style={{
+                fontSize: `${fontSize.subheader + 2}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                marginBottom: '20px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+              }}>
+                Awards & Honors
+              </h2>
+              {awards.map((award, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px' }}>
+                  → {typeof award === 'string' ? award : award.name}
+                  {typeof award === 'object' && award.date && (
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, marginLeft: '8px' }}>({award.date})</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Volunteer Work */}
+      {volunteerWork && volunteerWork.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader + 2}px`,
+            color: primaryColor,
+            fontWeight: 700,
+            marginBottom: '20px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+          }}>
+            Volunteer Work
+          </h2>
+          {volunteerWork.map((vol, index) => (
+            <div key={index} style={{ display: 'flex', gap: '30px', marginBottom: '20px' }}>
+              <div style={{ width: '150px', flexShrink: 0 }}>
+                {typeof vol !== 'string' && (
+                  <div style={{ fontSize: `${fontSize.body - 1}px`, color: primaryColor, fontWeight: 600 }}>
+                    {vol.period || vol.startDate || ''}
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                {typeof vol === 'string' ? (
+                  <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>→ {vol}</div>
+                ) : (
+                  <>
+                    <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, marginBottom: '4px' }}>
+                      {vol.role}
+                    </h3>
+                    <div style={{ fontSize: `${fontSize.body}px`, color: primaryColor, fontWeight: 600 }}>
+                      {vol.organization}{vol.location && ` • ${vol.location}`}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         </div>

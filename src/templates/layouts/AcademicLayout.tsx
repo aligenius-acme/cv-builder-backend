@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const AcademicLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications, awards, projects } = data;
+  const { contact, summary, experience, education, skills, certifications, awards, projects, languages, volunteerWork } = data;
   const {
     primaryColor,
     textColor,
@@ -322,7 +322,7 @@ export const AcademicLayout: React.FC<LayoutProps> = ({ data, config }) => {
 
       {/* Professional Affiliations / Certifications */}
       {certifications && certifications.length > 0 && (
-        <div>
+        <div style={{ marginBottom: '30px' }}>
           <h2 style={{
             fontSize: `${fontSize.subheader + 1}px`,
             color: primaryColor,
@@ -348,6 +348,82 @@ export const AcademicLayout: React.FC<LayoutProps> = ({ data, config }) => {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Languages */}
+      {languages && languages.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader + 1}px`,
+            color: primaryColor,
+            fontWeight: 700,
+            marginBottom: '16px',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            borderBottom: `2px solid ${primaryColor}`,
+            paddingBottom: '8px',
+          }}>
+            Languages
+          </h2>
+          <div style={{
+            fontSize: `${fontSize.body}px`,
+            color: textColor,
+            lineHeight: 1.8,
+            textAlign: 'center',
+          }}>
+            {languages.join(' • ')}
+          </div>
+        </div>
+      )}
+
+      {/* Volunteer Work / Community Service */}
+      {volunteerWork && volunteerWork.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader + 1}px`,
+            color: primaryColor,
+            fontWeight: 700,
+            marginBottom: '16px',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            borderBottom: `2px solid ${primaryColor}`,
+            paddingBottom: '8px',
+          }}>
+            Service & Community
+          </h2>
+          {volunteerWork.map((vol, index) => (
+            <div key={index} style={{ marginBottom: '14px' }}>
+              {typeof vol === 'string' ? (
+                <div style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7 }}>• {vol}</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0 }}>
+                      {vol.role}
+                    </h3>
+                    <span style={{ fontSize: `${fontSize.body}px`, color: mutedColor, fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                      {vol.period || `${vol.startDate || ''}${vol.endDate ? ` – ${vol.endDate}` : vol.current ? ' – Present' : ''}`}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, fontStyle: 'italic', marginTop: '4px', marginBottom: '6px' }}>
+                    {vol.organization}{vol.location && `, ${vol.location}`}
+                  </div>
+                  {vol.description && vol.description.length > 0 && (
+                    <ul style={{ margin: 0, paddingLeft: '24px', listStyleType: 'disc' }}>
+                      {vol.description.map((desc, i) => (
+                        <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, marginBottom: '4px' }}>
+                          {desc}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

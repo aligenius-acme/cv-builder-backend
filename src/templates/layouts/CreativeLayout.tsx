@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const CreativeLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, projects } = data;
+  const { contact, summary, experience, education, skills, projects, certifications, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -292,26 +292,77 @@ export const CreativeLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 </h2>
                 {education.map((edu, index) => (
                   <div key={index} style={{ marginBottom: '20px' }}>
-                    <h3 style={{
-                      fontSize: `${fontSize.subheader}px`,
-                      color: textColor,
-                      fontWeight: 700,
-                      margin: 0,
-                      marginBottom: '6px',
-                      lineHeight: 1.3,
-                    }}>
+                    <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, marginBottom: '6px', lineHeight: 1.3 }}>
                       {edu.degree}
                     </h3>
-                    <div style={{
-                      fontSize: `${fontSize.body - 1}px`,
-                      color: mutedColor,
-                      lineHeight: 1.5,
-                    }}>
-                      {edu.institution}
-                      <br />
-                      {edu.graduationDate}
-                      {edu.gpa && <><br />GPA: {edu.gpa}</>}
+                    <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, lineHeight: 1.5 }}>
+                      {edu.institution}<br />{edu.graduationDate}{edu.gpa && <><br />GPA: {edu.gpa}</>}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Certifications */}
+            {certifications && certifications.length > 0 && (
+              <div style={{ marginBottom: '40px' }}>
+                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
+                  Certifications
+                </h2>
+                {certifications.map((cert, index) => (
+                  <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '10px', paddingLeft: '12px', borderLeft: `3px solid ${accentColor}` }}>
+                    {typeof cert === 'string' ? cert : cert.name}
+                    {typeof cert === 'object' && cert.date && <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>{cert.date}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Languages */}
+            {languages && languages.length > 0 && (
+              <div style={{ marginBottom: '40px' }}>
+                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
+                  Languages
+                </h2>
+                {languages.map((lang, index) => (
+                  <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px', fontWeight: 600 }}>
+                    {lang}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Awards */}
+            {awards && awards.length > 0 && (
+              <div style={{ marginBottom: '40px' }}>
+                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
+                  Awards
+                </h2>
+                {awards.map((award, index) => (
+                  <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '10px', paddingLeft: '12px', borderLeft: `3px solid ${accentColor}` }}>
+                    {typeof award === 'string' ? award : award.name}
+                    {typeof award === 'object' && award.date && <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>{award.date}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Volunteer Work */}
+            {volunteerWork && volunteerWork.length > 0 && (
+              <div style={{ marginBottom: '40px' }}>
+                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
+                  Volunteer Work
+                </h2>
+                {volunteerWork.map((vol, index) => (
+                  <div key={index} style={{ marginBottom: '12px' }}>
+                    {typeof vol === 'string' ? (
+                      <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>{vol}</div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: `${fontSize.body}px`, color: textColor, fontWeight: 700 }}>{vol.role}</div>
+                        <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>{vol.organization}</div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

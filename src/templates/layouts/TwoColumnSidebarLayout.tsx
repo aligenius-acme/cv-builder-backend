@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const TwoColumnSidebarLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications, projects, languages } = data;
+  const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -132,7 +132,7 @@ export const TwoColumnSidebarLayout: React.FC<LayoutProps> = ({ data, config }) 
 
         {/* Certifications */}
         {certifications && certifications.length > 0 && (
-          <div>
+          <div style={{ marginBottom: '24px' }}>
             <h3 style={{
               fontSize: `${fontSize.subheader}px`,
               color: primaryColor,
@@ -147,6 +147,32 @@ export const TwoColumnSidebarLayout: React.FC<LayoutProps> = ({ data, config }) 
               {certifications.map((cert, index) => (
                 <div key={index} style={{ marginBottom: '8px', color: textColor }}>
                   {typeof cert === 'string' ? cert : cert.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Awards */}
+        {awards && awards.length > 0 && (
+          <div>
+            <h3 style={{
+              fontSize: `${fontSize.subheader}px`,
+              color: primaryColor,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              marginBottom: '12px',
+            }}>
+              Awards
+            </h3>
+            <div style={{ fontSize: `${fontSize.body - 1}px`, lineHeight: 1.8 }}>
+              {awards.map((award, index) => (
+                <div key={index} style={{ marginBottom: '8px', color: textColor }}>
+                  • {typeof award === 'string' ? award : award.name}
+                  {typeof award === 'object' && award.date && (
+                    <div style={{ fontSize: `${fontSize.body - 2}px`, color: mutedColor }}>{award.date}</div>
+                  )}
                 </div>
               ))}
             </div>
@@ -288,7 +314,7 @@ export const TwoColumnSidebarLayout: React.FC<LayoutProps> = ({ data, config }) 
 
         {/* Projects */}
         {projects && projects.length > 0 && (
-          <div>
+          <div style={{ marginBottom: '30px' }}>
             <h2 style={{
               fontSize: `${fontSize.subheader}px`,
               color: primaryColor,
@@ -310,6 +336,11 @@ export const TwoColumnSidebarLayout: React.FC<LayoutProps> = ({ data, config }) 
                   margin: 0,
                 }}>
                   {project.name}
+                  {project.url && (
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: primaryColor, fontWeight: 400, marginLeft: '8px' }}>
+                      {project.url}
+                    </span>
+                  )}
                 </h3>
                 <p style={{
                   fontSize: `${fontSize.body}px`,
@@ -327,6 +358,54 @@ export const TwoColumnSidebarLayout: React.FC<LayoutProps> = ({ data, config }) 
                   }}>
                     {project.technologies.join(' • ')}
                   </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Volunteer Work */}
+        {volunteerWork && volunteerWork.length > 0 && (
+          <div style={{ marginBottom: '30px' }}>
+            <h2 style={{
+              fontSize: `${fontSize.subheader}px`,
+              color: primaryColor,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              marginBottom: '12px',
+              borderBottom: `2px solid ${primaryColor}`,
+              paddingBottom: '8px',
+            }}>
+              Volunteer Work
+            </h2>
+            {volunteerWork.map((vol, index) => (
+              <div key={index} style={{ marginBottom: '16px' }}>
+                {typeof vol === 'string' ? (
+                  <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>• {vol}</div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 600, margin: 0 }}>
+                        {vol.role}
+                      </h3>
+                      <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, whiteSpace: 'nowrap' }}>
+                        {vol.period || `${vol.startDate || ''}${vol.endDate ? ` - ${vol.endDate}` : vol.current ? ' - Present' : ''}`}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, marginTop: '4px', marginBottom: '8px' }}>
+                      {vol.organization}{vol.location && ` • ${vol.location}`}
+                    </div>
+                    {vol.description && vol.description.length > 0 && (
+                      <ul style={{ margin: 0, paddingLeft: '20px', listStyle: 'none' }}>
+                        {vol.description.map((desc, i) => (
+                          <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '4px' }}>
+                            • {desc}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
                 )}
               </div>
             ))}

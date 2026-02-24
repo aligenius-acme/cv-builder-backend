@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, projects, certifications } = data;
+  const { contact, summary, experience, education, skills, projects, certifications, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -272,7 +272,7 @@ export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
       )}
 
       {/* Education & Certifications */}
-      <div style={{ display: 'flex', gap: '30px' }}>
+      <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
         {/* Education */}
         {education && education.length > 0 && (
           <div style={{ flex: 1 }}>
@@ -332,6 +332,98 @@ export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
           </div>
         )}
       </div>
+
+      {/* Languages & Awards */}
+      {((languages && languages.length > 0) || (awards && awards.length > 0)) && (
+        <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
+          {languages && languages.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontSize: `${fontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                marginBottom: '12px',
+                fontFamily: "'Courier New', monospace",
+              }}>
+                {'> Languages'}
+              </div>
+              {languages.map((lang, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '6px', fontFamily: 'Helvetica, Arial, sans-serif' }}>
+                  ✓ {lang}
+                </div>
+              ))}
+            </div>
+          )}
+          {awards && awards.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontSize: `${fontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                marginBottom: '12px',
+                fontFamily: "'Courier New', monospace",
+              }}>
+                {'> Awards'}
+              </div>
+              {awards.map((award, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px', fontFamily: 'Helvetica, Arial, sans-serif' }}>
+                  ★ {typeof award === 'string' ? award : award.name}
+                  {typeof award === 'object' && award.date && (
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, marginLeft: '8px', fontFamily: "'Courier New', monospace" }}>
+                      [{award.date}]
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Volunteer Work */}
+      {volunteerWork && volunteerWork.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <div style={{
+            fontSize: `${fontSize.subheader}px`,
+            color: primaryColor,
+            fontWeight: 700,
+            marginBottom: '16px',
+            fontFamily: "'Courier New', monospace",
+          }}>
+            {'> Volunteer Work'}
+          </div>
+          {volunteerWork.map((vol, index) => (
+            <div key={index} style={{ marginBottom: '16px', paddingLeft: '20px', borderLeft: `3px solid ${primaryColor}40` }}>
+              {typeof vol === 'string' ? (
+                <div style={{ fontSize: `${fontSize.body}px`, color: textColor, fontFamily: 'Helvetica, Arial, sans-serif' }}>→ {vol}</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, fontFamily: 'Helvetica, Arial, sans-serif' }}>
+                      {vol.role}
+                    </h3>
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, whiteSpace: 'nowrap', fontFamily: "'Courier New', monospace" }}>
+                      {vol.period || `${vol.startDate || ''}${vol.endDate ? ` - ${vol.endDate}` : vol.current ? ' - Present' : ''}`}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: `${fontSize.body}px`, color: secondaryColor, fontWeight: 600, marginTop: '4px', marginBottom: '8px' }}>
+                    {vol.organization}{vol.location && ` @ ${vol.location}`}
+                  </div>
+                  {vol.description && vol.description.length > 0 && (
+                    <ul style={{ margin: 0, paddingLeft: '20px', listStyle: 'none' }}>
+                      {vol.description.map((desc, i) => (
+                        <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '4px', fontFamily: 'Helvetica, Arial, sans-serif' }}>
+                          → {desc}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

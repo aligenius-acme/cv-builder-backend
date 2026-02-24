@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const CompactLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications, languages } = data;
+  const { contact, summary, experience, education, skills, certifications, languages, projects, awards, volunteerWork } = data;
   const {
     primaryColor,
     textColor,
@@ -210,6 +210,73 @@ export const CompactLayout: React.FC<LayoutProps> = ({ data, config }) => {
               ))}
             </div>
           )}
+
+          {/* Projects */}
+          {projects && projects.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <h2 style={{
+                fontSize: `${compactFontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                margin: 0,
+                marginBottom: '8px',
+              }}>
+                PROJECTS
+              </h2>
+              {projects.map((project, index) => (
+                <div key={index} style={{ marginBottom: '8px' }}>
+                  <h3 style={{
+                    fontSize: `${compactFontSize.subheader - 1}px`,
+                    color: textColor,
+                    fontWeight: 700,
+                    margin: 0,
+                    marginBottom: '2px',
+                  }}>
+                    {project.name}
+                  </h3>
+                  <p style={{ fontSize: `${compactFontSize.body}px`, color: textColor, lineHeight: 1.3, margin: '0 0 2px 0' }}>
+                    {project.description}
+                  </p>
+                  {project.technologies && project.technologies.length > 0 && (
+                    <div style={{ fontSize: `${compactFontSize.body - 1}px`, color: mutedColor }}>
+                      {project.technologies.join(', ')}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Volunteer Work */}
+          {volunteerWork && volunteerWork.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <h2 style={{
+                fontSize: `${compactFontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                margin: 0,
+                marginBottom: '8px',
+              }}>
+                VOLUNTEER
+              </h2>
+              {volunteerWork.map((vol, index) => (
+                <div key={index} style={{ marginBottom: '6px' }}>
+                  {typeof vol === 'string' ? (
+                    <div style={{ fontSize: `${compactFontSize.body}px`, color: textColor }}>• {vol}</div>
+                  ) : (
+                    <div style={{ fontSize: `${compactFontSize.body}px`, color: textColor }}>
+                      <strong>{vol.role}</strong>, {vol.organization}
+                      {(vol.period || vol.startDate) && (
+                        <span style={{ fontSize: `${compactFontSize.body - 1}px`, color: mutedColor, marginLeft: '4px' }}>
+                          {vol.period || vol.startDate}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Sidebar - 30% */}
@@ -266,7 +333,7 @@ export const CompactLayout: React.FC<LayoutProps> = ({ data, config }) => {
 
           {/* Certifications */}
           {certifications && certifications.length > 0 && (
-            <div>
+            <div style={{ marginBottom: '16px' }}>
               <h2 style={{
                 fontSize: `${compactFontSize.subheader}px`,
                 color: primaryColor,
@@ -280,6 +347,28 @@ export const CompactLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 {certifications.map((cert, index) => (
                   <div key={index} style={{ marginBottom: '6px', color: textColor, lineHeight: 1.3 }}>
                     • {typeof cert === 'string' ? cert : cert.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Awards */}
+          {awards && awards.length > 0 && (
+            <div>
+              <h2 style={{
+                fontSize: `${compactFontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                margin: 0,
+                marginBottom: '8px',
+              }}>
+                AWARDS
+              </h2>
+              <div style={{ fontSize: `${compactFontSize.body - 1}px` }}>
+                {awards.map((award, index) => (
+                  <div key={index} style={{ marginBottom: '6px', color: textColor, lineHeight: 1.3 }}>
+                    • {typeof award === 'string' ? award : award.name}
                   </div>
                 ))}
               </div>

@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications, languages } = data;
+  const { contact, summary, experience, education, skills, certifications, languages, projects, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -178,7 +178,7 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
 
         {/* Certifications */}
         {certifications && certifications.length > 0 && (
-          <div>
+          <div style={{ marginBottom: '30px' }}>
             <h3 style={{
               fontSize: `${fontSize.subheader}px`,
               color: primaryColor,
@@ -190,13 +190,29 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
               Certifications
             </h3>
             {certifications.slice(0, 4).map((cert, index) => (
-              <div key={index} style={{
-                fontSize: `${fontSize.body - 1}px`,
-                color: textColor,
-                marginBottom: '10px',
-                lineHeight: 1.4,
-              }}>
+              <div key={index} style={{ fontSize: `${fontSize.body - 1}px`, color: textColor, marginBottom: '10px', lineHeight: 1.4 }}>
                 ✓ {typeof cert === 'string' ? cert : cert.name}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Awards */}
+        {awards && awards.length > 0 && (
+          <div>
+            <h3 style={{
+              fontSize: `${fontSize.subheader}px`,
+              color: primaryColor,
+              fontWeight: 700,
+              marginBottom: '16px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+            }}>
+              Awards
+            </h3>
+            {awards.map((award, index) => (
+              <div key={index} style={{ fontSize: `${fontSize.body - 1}px`, color: textColor, marginBottom: '10px', lineHeight: 1.4 }}>
+                ★ {typeof award === 'string' ? award : award.name}
               </div>
             ))}
           </div>
@@ -310,7 +326,7 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
 
         {/* Education */}
         {education && education.length > 0 && (
-          <div>
+          <div style={{ marginBottom: '30px' }}>
             <h2 style={{
               fontSize: `${fontSize.subheader + 2}px`,
               color: primaryColor,
@@ -325,32 +341,80 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
             </h2>
             {education.map((edu, index) => (
               <div key={index} style={{ marginBottom: '16px', paddingLeft: '20px', position: 'relative' }}>
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: '6px',
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  backgroundColor: secondaryColor,
-                }}></div>
-
-                <h3 style={{
-                  fontSize: `${fontSize.subheader}px`,
-                  color: textColor,
-                  fontWeight: 700,
-                  margin: 0,
-                }}>
+                <div style={{ position: 'absolute', left: 0, top: '6px', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: secondaryColor }}></div>
+                <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0 }}>
                   {edu.degree}
                 </h3>
-                <div style={{
-                  fontSize: `${fontSize.body}px`,
-                  color: mutedColor,
-                  marginTop: '4px',
-                }}>
-                  {edu.institution} • {edu.graduationDate}
-                  {edu.gpa && ` • GPA: ${edu.gpa}`}
+                <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, marginTop: '4px' }}>
+                  {edu.institution} • {edu.graduationDate}{edu.gpa && ` • GPA: ${edu.gpa}`}
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Projects */}
+        {projects && projects.length > 0 && (
+          <div style={{ marginBottom: '30px' }}>
+            <h2 style={{
+              fontSize: `${fontSize.subheader + 2}px`,
+              color: primaryColor,
+              fontWeight: 700,
+              marginBottom: '20px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              paddingBottom: '10px',
+              borderBottom: `2px solid ${primaryColor}`,
+            }}>
+              Projects
+            </h2>
+            {projects.map((project, index) => (
+              <div key={index} style={{ marginBottom: '16px', paddingLeft: '20px', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 0, top: '6px', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: secondaryColor }}></div>
+                <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, marginBottom: '4px' }}>
+                  {project.name}
+                </h3>
+                <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 4px 0' }}>
+                  {project.description}
+                </p>
+                {project.technologies && project.technologies.length > 0 && (
+                  <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
+                    {project.technologies.join(' • ')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Volunteer Work */}
+        {volunteerWork && volunteerWork.length > 0 && (
+          <div style={{ marginBottom: '30px' }}>
+            <h2 style={{
+              fontSize: `${fontSize.subheader + 2}px`,
+              color: primaryColor,
+              fontWeight: 700,
+              marginBottom: '20px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              paddingBottom: '10px',
+              borderBottom: `2px solid ${primaryColor}`,
+            }}>
+              Volunteer Work
+            </h2>
+            {volunteerWork.map((vol, index) => (
+              <div key={index} style={{ marginBottom: '12px', paddingLeft: '20px', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 0, top: '6px', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: secondaryColor }}></div>
+                {typeof vol === 'string' ? (
+                  <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>→ {vol}</div>
+                ) : (
+                  <>
+                    <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0 }}>{vol.role}</h3>
+                    <div style={{ fontSize: `${fontSize.body}px`, color: secondaryColor, fontWeight: 600, marginTop: '4px' }}>
+                      {vol.organization}{vol.location && ` • ${vol.location}`}
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

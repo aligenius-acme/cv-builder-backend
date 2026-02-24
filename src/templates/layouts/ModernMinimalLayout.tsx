@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const ModernMinimalLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications } = data;
+  const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     textColor,
@@ -228,7 +228,7 @@ export const ModernMinimalLayout: React.FC<LayoutProps> = ({ data, config }) => 
 
       {/* Certifications */}
       {certifications && certifications.length > 0 && (
-        <div>
+        <div style={{ marginBottom: '50px' }}>
           <h2 style={{
             fontSize: `${fontSize.subheader}px`,
             color: primaryColor,
@@ -252,6 +252,118 @@ export const ModernMinimalLayout: React.FC<LayoutProps> = ({ data, config }) => 
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Projects */}
+      {projects && projects.length > 0 && (
+        <div style={{ marginBottom: '50px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader}px`,
+            color: primaryColor,
+            fontWeight: 300,
+            textTransform: 'uppercase',
+            letterSpacing: '3px',
+            marginBottom: '30px',
+            textAlign: 'center',
+          }}>
+            Projects
+          </h2>
+          {projects.map((project, index) => (
+            <div key={index} style={{ marginBottom: '30px', textAlign: 'center' }}>
+              <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 500, margin: 0, marginBottom: '8px' }}>
+                {project.name}
+              </h3>
+              <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, margin: '0 0 8px 0', fontWeight: 300 }}>
+                {project.description}
+              </p>
+              {project.technologies && project.technologies.length > 0 && (
+                <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
+                  {project.technologies.join(' • ')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Languages & Awards */}
+      {((languages && languages.length > 0) || (awards && awards.length > 0)) && (
+        <div style={{ marginBottom: '50px', display: 'flex', gap: '40px', justifyContent: 'center' }}>
+          {languages && languages.length > 0 && (
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{
+                fontSize: `${fontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 300,
+                textTransform: 'uppercase',
+                letterSpacing: '3px',
+                marginBottom: '20px',
+              }}>
+                Languages
+              </h2>
+              {languages.map((lang, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px', fontWeight: 300 }}>
+                  {lang}
+                </div>
+              ))}
+            </div>
+          )}
+          {awards && awards.length > 0 && (
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{
+                fontSize: `${fontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 300,
+                textTransform: 'uppercase',
+                letterSpacing: '3px',
+                marginBottom: '20px',
+              }}>
+                Awards
+              </h2>
+              {awards.map((award, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px', fontWeight: 300 }}>
+                  {typeof award === 'string' ? award : award.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Volunteer Work */}
+      {volunteerWork && volunteerWork.length > 0 && (
+        <div style={{ marginBottom: '50px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader}px`,
+            color: primaryColor,
+            fontWeight: 300,
+            textTransform: 'uppercase',
+            letterSpacing: '3px',
+            marginBottom: '30px',
+            textAlign: 'center',
+          }}>
+            Volunteer Work
+          </h2>
+          {volunteerWork.map((vol, index) => (
+            <div key={index} style={{ marginBottom: '30px', textAlign: 'center' }}>
+              {typeof vol === 'string' ? (
+                <p style={{ fontSize: `${fontSize.body}px`, color: textColor, fontWeight: 300, margin: 0 }}>{vol}</p>
+              ) : (
+                <>
+                  <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 500, margin: 0, marginBottom: '6px' }}>
+                    {vol.role}
+                  </h3>
+                  <div style={{ fontSize: `${fontSize.body}px`, color: primaryColor, fontWeight: 500, marginBottom: '4px' }}>
+                    {vol.organization}
+                  </div>
+                  <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
+                    {vol.period || `${vol.startDate || ''}${vol.endDate ? ` - ${vol.endDate}` : vol.current ? ' - Present' : ''}`}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

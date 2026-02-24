@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, projects } = data;
+  const { contact, summary, experience, education, skills, projects, certifications, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -215,7 +215,7 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
       )}
 
       {/* Experience & Education - Condensed */}
-      <div style={{ display: 'flex', gap: '30px' }}>
+      <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
         {/* Experience */}
         {experience && experience.length > 0 && (
           <div style={{ flex: 1 }}>
@@ -231,19 +231,10 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
             </h2>
             {experience.map((exp, index) => (
               <div key={index} style={{ marginBottom: '16px' }}>
-                <h3 style={{
-                  fontSize: `${fontSize.subheader - 1}px`,
-                  color: textColor,
-                  fontWeight: 700,
-                  margin: 0,
-                }}>
+                <h3 style={{ fontSize: `${fontSize.subheader - 1}px`, color: textColor, fontWeight: 700, margin: 0 }}>
                   {exp.title}
                 </h3>
-                <div style={{
-                  fontSize: `${fontSize.body}px`,
-                  color: mutedColor,
-                  marginTop: '4px',
-                }}>
+                <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, marginTop: '4px' }}>
                   {exp.company} • {exp.startDate} - {exp.current ? 'Present' : exp.endDate}
                 </div>
               </div>
@@ -266,19 +257,10 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
             </h2>
             {education.map((edu, index) => (
               <div key={index} style={{ marginBottom: '16px' }}>
-                <h3 style={{
-                  fontSize: `${fontSize.subheader - 1}px`,
-                  color: textColor,
-                  fontWeight: 700,
-                  margin: 0,
-                }}>
+                <h3 style={{ fontSize: `${fontSize.subheader - 1}px`, color: textColor, fontWeight: 700, margin: 0 }}>
                   {edu.degree}
                 </h3>
-                <div style={{
-                  fontSize: `${fontSize.body}px`,
-                  color: mutedColor,
-                  marginTop: '4px',
-                }}>
+                <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, marginTop: '4px' }}>
                   {edu.institution} • {edu.graduationDate}
                 </div>
               </div>
@@ -286,6 +268,71 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
           </div>
         )}
       </div>
+
+      {/* Certifications, Languages, Awards - Row */}
+      {((certifications && certifications.length > 0) || (languages && languages.length > 0) || (awards && awards.length > 0)) && (
+        <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
+          {certifications && certifications.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 700, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Certifications
+              </h2>
+              {certifications.map((cert, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px' }}>
+                  • {typeof cert === 'string' ? cert : cert.name}
+                </div>
+              ))}
+            </div>
+          )}
+          {languages && languages.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 700, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Languages
+              </h2>
+              {languages.map((lang, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px' }}>• {lang}</div>
+              ))}
+            </div>
+          )}
+          {awards && awards.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 700, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Awards
+              </h2>
+              {awards.map((award, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px' }}>
+                  • {typeof award === 'string' ? award : award.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Volunteer Work */}
+      {volunteerWork && volunteerWork.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 700, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '2px' }}>
+            Volunteer Work
+          </h2>
+          {volunteerWork.map((vol, index) => (
+            <div key={index} style={{ marginBottom: '12px' }}>
+              {typeof vol === 'string' ? (
+                <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>• {vol}</div>
+              ) : (
+                <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>
+                  <strong>{vol.role}</strong>, {vol.organization}
+                  {(vol.period || vol.startDate) && (
+                    <span style={{ color: mutedColor, marginLeft: '8px' }}>
+                      {vol.period || `${vol.startDate}${vol.endDate ? ` - ${vol.endDate}` : vol.current ? ' - Present' : ''}`}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -1033,7 +1033,9 @@ function generateRawTextFromParsedData(data: ParsedResumeData): string {
   // Certifications
   if (data.certifications && data.certifications.length > 0) {
     lines.push('CERTIFICATIONS');
-    lines.push(data.certifications.join(', '));
+    for (const cert of data.certifications) {
+      lines.push(typeof cert === 'string' ? cert : cert.name);
+    }
   }
 
   // Projects
@@ -1043,6 +1045,37 @@ function generateRawTextFromParsedData(data: ParsedResumeData): string {
       lines.push(proj.name);
       if (proj.description) lines.push(proj.description);
       if (proj.technologies) lines.push(proj.technologies.join(', '));
+    }
+  }
+
+  // Languages
+  if (data.languages && data.languages.length > 0) {
+    lines.push('LANGUAGES');
+    lines.push(data.languages.join(', '));
+  }
+
+  // Awards
+  if (data.awards && data.awards.length > 0) {
+    lines.push('AWARDS');
+    for (const award of data.awards) {
+      lines.push(typeof award === 'string' ? award : award.name);
+    }
+  }
+
+  // Volunteer Work
+  if (data.volunteerWork && data.volunteerWork.length > 0) {
+    lines.push('VOLUNTEER WORK');
+    for (const vol of data.volunteerWork) {
+      if (typeof vol === 'string') {
+        lines.push(vol);
+      } else {
+        lines.push(`${vol.role} at ${vol.organization}`);
+        if (vol.description) {
+          for (const desc of vol.description) {
+            lines.push(`• ${desc}`);
+          }
+        }
+      }
     }
   }
 

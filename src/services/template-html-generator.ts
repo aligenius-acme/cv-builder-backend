@@ -86,6 +86,11 @@ function generateSingleColumnHTML(name: string, data: ParsedResumeData, colors: 
   const education = data.education || [];
   const skills = data.skills || [];
   const summary = data.summary || '';
+  const certifications = data.certifications || [];
+  const projects = data.projects || [];
+  const languages = data.languages || [];
+  const awards = data.awards || [];
+  const volunteerWork = data.volunteerWork || [];
 
   return `
     <!DOCTYPE html>
@@ -219,6 +224,67 @@ function generateSingleColumnHTML(name: string, data: ParsedResumeData, colors: 
         `).join('')}
       </div>
       ` : ''}
+
+      ${certifications.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Certifications</div>
+        ${certifications.map((cert: any) => `
+        <div class="edu-entry">
+          <div class="degree">${typeof cert === 'string' ? cert : cert.name || ''}</div>
+          ${typeof cert === 'object' && (cert.issuer || cert.date) ? `<div class="school">${cert.issuer || ''}${cert.date ? ' • ' + cert.date : ''}</div>` : ''}
+        </div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      ${projects.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Projects</div>
+        ${projects.map((proj: any) => `
+        <div class="edu-entry">
+          <div class="degree">${proj.name || ''}${proj.url ? ' — ' + proj.url : ''}</div>
+          ${proj.description ? `<div class="school">${proj.description}</div>` : ''}
+          ${proj.technologies && proj.technologies.length > 0 ? `<div class="school">Tech: ${proj.technologies.join(', ')}</div>` : ''}
+        </div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      ${languages.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Languages</div>
+        <div class="skills">
+          ${languages.map((lang: string) => `<span class="skill">${lang}</span>`).join('')}
+        </div>
+      </div>
+      ` : ''}
+
+      ${awards.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Awards & Honors</div>
+        ${awards.map((award: any) => `
+        <div class="bullet">${typeof award === 'string' ? award : (award.name || '') + (award.date ? ' (' + award.date + ')' : '')}</div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      ${volunteerWork.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Volunteer Work</div>
+        ${volunteerWork.map((vol: any) => `
+        <div class="job-entry">
+          ${typeof vol === 'string' ? `<div class="bullet">${vol}</div>` : `
+          <div class="job-header">
+            <div class="job-title">${vol.role || ''}</div>
+            <div class="job-date">${vol.period || (vol.startDate ? vol.startDate + (vol.endDate ? ' - ' + vol.endDate : vol.current ? ' - Present' : '') : '')}</div>
+          </div>
+          <div class="company">${vol.organization || ''}${vol.location ? ' • ' + vol.location : ''}</div>
+          ${Array.isArray(vol.description) ? vol.description.map((d: string) => `<div class="bullet">${d}</div>`).join('') : ''}
+          `}
+        </div>
+        `).join('')}
+      </div>
+      ` : ''}
     </body>
     </html>
   `;
@@ -230,6 +296,11 @@ function generateTwoColumnHTML(name: string, data: ParsedResumeData, colors: Tem
   const education = data.education || [];
   const skills = data.skills || [];
   const summary = data.summary || '';
+  const certifications = data.certifications || [];
+  const projects = data.projects || [];
+  const languages = data.languages || [];
+  const awards = data.awards || [];
+  const volunteerWork = data.volunteerWork || [];
 
   return `
     <!DOCTYPE html>
@@ -336,6 +407,31 @@ function generateTwoColumnHTML(name: string, data: ParsedResumeData, colors: Tem
           ).join('')}
         </div>
         ` : ''}
+
+        ${certifications.length > 0 ? `
+        <div class="sidebar-section">
+          <div class="sidebar-title">Certifications</div>
+          ${certifications.map((cert: any) => `
+          <div class="sidebar-item">• ${typeof cert === 'string' ? cert : cert.name || ''}${typeof cert === 'object' && cert.date ? ' (' + cert.date + ')' : ''}</div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        ${languages.length > 0 ? `
+        <div class="sidebar-section">
+          <div class="sidebar-title">Languages</div>
+          ${languages.map((lang: string) => `<div class="sidebar-item">• ${lang}</div>`).join('')}
+        </div>
+        ` : ''}
+
+        ${awards.length > 0 ? `
+        <div class="sidebar-section">
+          <div class="sidebar-title">Awards</div>
+          ${awards.map((award: any) => `
+          <div class="sidebar-item">• ${typeof award === 'string' ? award : (award.name || '') + (award.date ? ' (' + award.date + ')' : '')}</div>
+          `).join('')}
+        </div>
+        ` : ''}
       </div>
 
       <div class="main">
@@ -375,6 +471,37 @@ function generateTwoColumnHTML(name: string, data: ParsedResumeData, colors: Tem
           `).join('')}
         </div>
         ` : ''}
+
+        ${projects.length > 0 ? `
+        <div class="section">
+          <div class="section-title">Projects</div>
+          ${projects.map((proj: any) => `
+          <div class="job-entry">
+            <div class="job-title">${proj.name || ''}${proj.url ? ' — ' + proj.url : ''}</div>
+            ${proj.description ? `<div class="company">${proj.description}</div>` : ''}
+            ${proj.technologies && proj.technologies.length > 0 ? `<div class="company">Tech: ${proj.technologies.join(', ')}</div>` : ''}
+          </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        ${volunteerWork.length > 0 ? `
+        <div class="section">
+          <div class="section-title">Volunteer Work</div>
+          ${volunteerWork.map((vol: any) => `
+          <div class="job-entry">
+            ${typeof vol === 'string' ? `<div class="company">${vol}</div>` : `
+            <div class="job-header">
+              <div class="job-title">${vol.role || ''}</div>
+              <div class="job-date">${vol.period || (vol.startDate ? vol.startDate + (vol.endDate ? ' - ' + vol.endDate : vol.current ? ' - Present' : '') : '')}</div>
+            </div>
+            <div class="company">${vol.organization || ''}${vol.location ? ' • ' + vol.location : ''}</div>
+            ${Array.isArray(vol.description) ? vol.description.map((d: string) => `<div class="bullet">${d}</div>`).join('') : ''}
+            `}
+          </div>
+          `).join('')}
+        </div>
+        ` : ''}
       </div>
     </body>
     </html>
@@ -385,6 +512,13 @@ function generateAcademicHTML(name: string, data: ParsedResumeData, colors: Temp
   const contact = data.contact || {};
   const education = data.education || [];
   const experience = data.experience || [];
+  const summary = data.summary || '';
+  const skills = data.skills || [];
+  const certifications = data.certifications || [];
+  const projects = data.projects || [];
+  const languages = data.languages || [];
+  const awards = data.awards || [];
+  const volunteerWork = data.volunteerWork || [];
 
   return `
     <!DOCTYPE html>
@@ -447,12 +581,74 @@ function generateAcademicHTML(name: string, data: ParsedResumeData, colors: Temp
       </div>
       ` : ''}
 
+      ${summary ? `
+      <div class="section">
+        <div class="section-title">Research Interests</div>
+        <div class="entry">${summary}</div>
+      </div>
+      ` : ''}
+
       ${experience.length > 0 ? `
       <div class="section">
-        <div class="section-title">Experience</div>
+        <div class="section-title">Academic & Research Experience</div>
         ${experience.map(exp => `
         <div class="entry">
           <strong>${exp.title || ''}</strong>, ${exp.company || ''}, ${exp.startDate || ''} - ${exp.current ? 'Present' : exp.endDate || ''}
+          ${Array.isArray(exp.description) && exp.description.length > 0 ? '<ul style="margin:4px 0 0 20px;">' + exp.description.map((d: string) => `<li>${d}</li>`).join('') + '</ul>' : ''}
+        </div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      ${projects.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Publications & Research</div>
+        ${projects.map((proj: any) => `
+        <div class="entry">
+          <strong>${proj.name || ''}</strong>${proj.description ? '. ' + proj.description : ''}${proj.url ? ' [' + proj.url + ']' : ''}
+        </div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      ${skills.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Areas of Expertise</div>
+        <div class="entry">${(Array.isArray(skills) ? skills : []).map((skill: any) => typeof skill === 'string' ? skill : (skill.category || skill.name || '')).join(' • ')}</div>
+      </div>
+      ` : ''}
+
+      ${awards.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Honors & Awards</div>
+        ${awards.map((award: any) => `
+        <div class="entry">• ${typeof award === 'string' ? award : (award.name || '') + (award.issuer ? ', ' + award.issuer : '') + (award.date ? ' (' + award.date + ')' : '')}</div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      ${certifications.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Professional Affiliations</div>
+        ${certifications.map((cert: any) => `
+        <div class="entry">• ${typeof cert === 'string' ? cert : (cert.name || '') + (cert.issuer ? ', ' + cert.issuer : '')}</div>
+        `).join('')}
+      </div>
+      ` : ''}
+
+      ${languages.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Languages</div>
+        <div class="entry">${languages.join(' • ')}</div>
+      </div>
+      ` : ''}
+
+      ${volunteerWork.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Service & Community</div>
+        ${volunteerWork.map((vol: any) => `
+        <div class="entry">
+          ${typeof vol === 'string' ? '• ' + vol : `<strong>${vol.role || ''}</strong>, ${vol.organization || ''}${vol.location ? ', ' + vol.location : ''}${vol.period ? ' (' + vol.period + ')' : ''}`}
         </div>
         `).join('')}
       </div>

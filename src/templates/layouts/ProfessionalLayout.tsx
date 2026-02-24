@@ -10,7 +10,7 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const ProfessionalLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications } = data;
+  const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
   const {
     primaryColor,
     secondaryColor,
@@ -212,7 +212,7 @@ export const ProfessionalLayout: React.FC<LayoutProps> = ({ data, config }) => {
       )}
 
       {/* Education & Certifications */}
-      <div style={{ display: 'flex', gap: '30px' }}>
+      <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
         {/* Education */}
         {education && education.length > 0 && (
           <div style={{ flex: 1 }}>
@@ -289,6 +289,143 @@ export const ProfessionalLayout: React.FC<LayoutProps> = ({ data, config }) => {
           </div>
         )}
       </div>
+
+      {/* Projects */}
+      {projects && projects.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader}px`,
+            color: primaryColor,
+            fontWeight: 700,
+            marginBottom: '16px',
+            paddingBottom: '8px',
+            borderBottom: `3px solid ${primaryColor}`,
+          }}>
+            PROJECTS
+          </h2>
+          {projects.map((project, index) => (
+            <div key={index} style={{ marginBottom: '16px' }}>
+              <h3 style={{
+                fontSize: `${fontSize.subheader - 1}px`,
+                color: textColor,
+                fontWeight: 700,
+                margin: 0,
+                marginBottom: '4px',
+              }}>
+                {project.name}
+                {project.url && (
+                  <span style={{ fontSize: `${fontSize.body - 1}px`, color: secondaryColor, fontWeight: 400, marginLeft: '8px' }}>
+                    {project.url}
+                  </span>
+                )}
+              </h3>
+              <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 6px 0' }}>
+                {project.description}
+              </p>
+              {project.technologies && project.technologies.length > 0 && (
+                <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
+                  Technologies: {project.technologies.join(', ')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Languages & Awards */}
+      {((languages && languages.length > 0) || (awards && awards.length > 0)) && (
+        <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
+          {languages && languages.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <h2 style={{
+                fontSize: `${fontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                marginBottom: '12px',
+                paddingBottom: '8px',
+                borderBottom: `3px solid ${primaryColor}`,
+              }}>
+                LANGUAGES
+              </h2>
+              {languages.map((lang, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '6px' }}>
+                  ▪ {lang}
+                </div>
+              ))}
+            </div>
+          )}
+          {awards && awards.length > 0 && (
+            <div style={{ flex: 1 }}>
+              <h2 style={{
+                fontSize: `${fontSize.subheader}px`,
+                color: primaryColor,
+                fontWeight: 700,
+                marginBottom: '12px',
+                paddingBottom: '8px',
+                borderBottom: `3px solid ${primaryColor}`,
+              }}>
+                AWARDS & HONORS
+              </h2>
+              {awards.map((award, index) => (
+                <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px' }}>
+                  <strong>▸</strong> {typeof award === 'string' ? award : award.name}
+                  {typeof award === 'object' && award.date && (
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, marginLeft: '8px' }}>
+                      ({award.date})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Volunteer Work */}
+      {volunteerWork && volunteerWork.length > 0 && (
+        <div style={{ marginBottom: '30px' }}>
+          <h2 style={{
+            fontSize: `${fontSize.subheader}px`,
+            color: primaryColor,
+            fontWeight: 700,
+            marginBottom: '16px',
+            paddingBottom: '8px',
+            borderBottom: `3px solid ${primaryColor}`,
+          }}>
+            VOLUNTEER WORK
+          </h2>
+          {volunteerWork.map((vol, index) => (
+            <div key={index} style={{ marginBottom: '16px' }}>
+              {typeof vol === 'string' ? (
+                <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>▪ {vol}</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+                    <h3 style={{ fontSize: `${fontSize.subheader - 1}px`, color: textColor, fontWeight: 700, margin: 0 }}>
+                      {vol.role}
+                    </h3>
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, fontStyle: 'italic' }}>
+                      {vol.period || `${vol.startDate || ''}${vol.endDate ? ` – ${vol.endDate}` : vol.current ? ' – Present' : ''}`}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: `${fontSize.body}px`, color: secondaryColor, fontWeight: 600, marginBottom: '6px' }}>
+                    {vol.organization}{vol.location && ` | ${vol.location}`}
+                  </div>
+                  {vol.description && vol.description.length > 0 && (
+                    <ul style={{ margin: 0, paddingLeft: '20px', listStyleType: 'square' }}>
+                      {vol.description.map((desc, i) => (
+                        <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '4px' }}>
+                          {desc}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

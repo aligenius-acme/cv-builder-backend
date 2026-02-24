@@ -1731,6 +1731,10 @@ export async function generateDOCXFromRegistry(
 
   // Skills
   if (data.skills && data.skills.length > 0) {
+    const skillsText = data.skills
+      .map((s: any) => typeof s === 'string' ? s : (s.category || s.name || ''))
+      .filter(Boolean)
+      .join(', ');
     sections.push(
       new Paragraph({
         text: 'SKILLS',
@@ -1738,10 +1742,149 @@ export async function generateDOCXFromRegistry(
         spacing: { before: 200, after: 100 },
       }),
       new Paragraph({
-        text: data.skills.join(', '),
+        text: skillsText,
         spacing: { after: 200 },
       })
     );
+  }
+
+  // Certifications
+  if (data.certifications && data.certifications.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'CERTIFICATIONS',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      })
+    );
+    data.certifications.forEach((cert: any) => {
+      const certName = typeof cert === 'string' ? cert : cert.name || '';
+      const certDate = typeof cert === 'object' && cert.date ? ` (${cert.date})` : '';
+      sections.push(
+        new Paragraph({
+          text: `• ${certName}${certDate}`,
+          spacing: { after: 80 },
+        })
+      );
+    });
+    sections.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+  }
+
+  // Projects
+  if (data.projects && data.projects.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'PROJECTS',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      })
+    );
+    data.projects.forEach((proj: any) => {
+      sections.push(
+        new Paragraph({
+          children: [new TextRun({ text: proj.name || '', bold: true })],
+          spacing: { before: 150, after: 50 },
+        })
+      );
+      if (proj.description) {
+        sections.push(
+          new Paragraph({ text: proj.description, spacing: { after: 50 } })
+        );
+      }
+      if (proj.technologies && proj.technologies.length > 0) {
+        sections.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'Technologies: ', italics: true }),
+              new TextRun({ text: proj.technologies.join(', ') }),
+            ],
+            spacing: { after: 50 },
+          })
+        );
+      }
+      if (proj.url) {
+        sections.push(
+          new Paragraph({ text: proj.url, spacing: { after: 100 } })
+        );
+      }
+    });
+    sections.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+  }
+
+  // Languages
+  if (data.languages && data.languages.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'LANGUAGES',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      }),
+      new Paragraph({
+        text: data.languages.join(' • '),
+        spacing: { after: 200 },
+      })
+    );
+  }
+
+  // Awards
+  if (data.awards && data.awards.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'AWARDS & HONORS',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      })
+    );
+    data.awards.forEach((award: any) => {
+      const awardName = typeof award === 'string' ? award : award.name || '';
+      const awardDate = typeof award === 'object' && award.date ? ` (${award.date})` : '';
+      sections.push(
+        new Paragraph({
+          text: `• ${awardName}${awardDate}`,
+          spacing: { after: 80 },
+        })
+      );
+    });
+    sections.push(new Paragraph({ text: '', spacing: { after: 200 } }));
+  }
+
+  // Volunteer Work
+  if (data.volunteerWork && data.volunteerWork.length > 0) {
+    sections.push(
+      new Paragraph({
+        text: 'VOLUNTEER WORK',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 200, after: 100 },
+      })
+    );
+    data.volunteerWork.forEach((vol: any) => {
+      if (typeof vol === 'string') {
+        sections.push(new Paragraph({ text: `• ${vol}`, spacing: { after: 80 } }));
+      } else {
+        sections.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: vol.role || '', bold: true }),
+              new TextRun({ text: vol.organization ? ` - ${vol.organization}` : '', bold: true }),
+            ],
+            spacing: { before: 150, after: 50 },
+          }),
+          new Paragraph({
+            children: [new TextRun({
+              text: vol.period || `${vol.startDate || ''}${vol.endDate ? ` - ${vol.endDate}` : vol.current ? ' - Present' : ''}`,
+              italics: true,
+            })],
+            spacing: { after: 50 },
+          })
+        );
+        if (vol.description && Array.isArray(vol.description)) {
+          vol.description.forEach((bullet: string) => {
+            sections.push(new Paragraph({ text: `• ${bullet}`, spacing: { after: 50 } }));
+          });
+        }
+        sections.push(new Paragraph({ text: '', spacing: { after: 150 } }));
+      }
+    });
   }
 
   // Create document
