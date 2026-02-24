@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest, ParsedResumeData } from '../types';
 import { ValidationError, NotFoundError, QuotaExceededError } from '../utils/errors';
-import { uploadFile, deleteFile, getPresignedDownloadUrl } from '../services/storage';
+import { uploadFile, deleteFile, getFile } from '../services/storage';
 import { parseFile, extractResumeData, logParsingError } from '../services/parser';
 import { fullCustomizationPipeline, analyzeATS } from '../services/ai';
 import { generatePDF, generateDOCX, generatePDFFromRegistry, generateDOCXFromRegistry, anonymizeResumeData } from '../services/documents';
@@ -318,13 +318,20 @@ export const downloadOriginalResume = async (
       throw new NotFoundError('Original file not found');
     }
 
-    // Get presigned URL for secure download
-    const downloadUrl = await getPresignedDownloadUrl(resume.originalFileKey);
+    // Stream file directly to avoid file:// or Cloudinary auth URL issues
+    const fileBuffer = await getFile(resume.originalFileKey);
+    const ext = resume.originalFileKey.split('.').pop()?.toLowerCase() || 'pdf';
+    const contentTypeMap: Record<string, string> = {
+      pdf: 'application/pdf',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      doc: 'application/msword',
+    };
+    const contentType = contentTypeMap[ext] || 'application/octet-stream';
+    const fileName = resume.fileName || `original-resume.${ext}`;
 
-    res.json({
-      success: true,
-      data: { downloadUrl },
-    });
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.end(fileBuffer, 'binary');
   } catch (error) {
     next(error);
   }
