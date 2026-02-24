@@ -658,11 +658,7 @@ export const downloadVersion = async (
       where: { id: versionId, resumeId: id, userId },
       include: {
         resume: true,
-        user: {
-          include: {
-            organization: true,
-          },
-        },
+        user: true,
       },
     });
 
@@ -684,8 +680,8 @@ export const downloadVersion = async (
       resumeData.contact.photoUrl = version.resume.photoUrl;
     }
 
-    // Apply anonymization if requested and allowed
-    if (anonymize === 'true' && version.user.organization?.anonymizationEnabled) {
+    // Apply anonymization if requested
+    if (anonymize === 'true') {
       resumeData = anonymizeResumeData(resumeData, {
         maskName: true,
         maskEmail: true,

@@ -92,12 +92,13 @@ function generateSingleColumnHTML(name: string, data: ParsedResumeData, colors: 
     <html>
     <head>
       <style>
+        @page { size: A4; margin-top: ${isCreative ? '32px' : '40px'}; margin-bottom: ${isCreative ? '32px' : '40px'}; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: 'Calibri', Arial, sans-serif;
           background: white;
           width: 850px;
-          padding: ${isCreative ? '32px 40px' : '40px 48px'};
+          padding: ${isCreative ? '0 40px' : '0 48px'};
           color: ${colors.text};
           line-height: 1.5;
         }
@@ -235,6 +236,7 @@ function generateTwoColumnHTML(name: string, data: ParsedResumeData, colors: Tem
     <html>
     <head>
       <style>
+        @page { size: A4; margin-top: 32px; margin-bottom: 32px; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: 'Segoe UI', Arial, sans-serif;
@@ -246,11 +248,11 @@ function generateTwoColumnHTML(name: string, data: ParsedResumeData, colors: Tem
         .sidebar {
           width: 280px;
           background: ${isCreative ? colors.primary : '#f8fafc'};
-          padding: 32px 22px;
+          padding: 0 22px;
           color: ${isCreative ? 'white' : colors.text};
           ${isCreative ? `background: linear-gradient(180deg, ${colors.primary} 0%, ${colors.secondary} 100%);` : ''}
         }
-        .main { flex: 1; padding: 36px 32px; }
+        .main { flex: 1; padding: 0 32px; }
         .name {
           font-size: 28px;
           font-weight: bold;
@@ -389,12 +391,13 @@ function generateAcademicHTML(name: string, data: ParsedResumeData, colors: Temp
     <html>
     <head>
       <style>
+        @page { size: A4; margin-top: 42px; margin-bottom: 42px; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: 'Times New Roman', Georgia, serif;
           background: white;
           width: 850px;
-          padding: 42px 56px;
+          padding: 0 56px;
           color: ${colors.text};
           font-size: 10px;
           line-height: 1.5;
@@ -491,7 +494,7 @@ export async function generateTemplatePDF(
       format: 'A4',
       printBackground: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
-      preferCSSPageSize: false,
+      preferCSSPageSize: true,
     });
 
     console.log(`  PDF generated successfully, size: ${buffer.length} bytes`);
