@@ -8,10 +8,10 @@
 
 import * as React from 'react';
 import { LayoutProps } from './types';
+import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const ClassicLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
-  const photoUrl = contact.photoUrl || (data as any).photoUrl;
   const { primaryColor, secondaryColor, textColor, mutedColor, backgroundColor, fontSize, margins } = config;
 
   const skillStr = (s: any) => typeof s === 'string' ? s : s.category || s.name || String(s);
@@ -46,18 +46,14 @@ export const ClassicLayout: React.FC<LayoutProps> = ({ data, config }) => {
     }}>
       {/* Centered Header */}
       <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-        {photoUrl && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              overflow: 'hidden',
-              border: `2px solid ${primaryColor}`,
-            }}>
-              <img src={photoUrl} alt={contact.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-          </div>
+        {contact.photoUrl && (
+          <PhotoCircle
+            photoUrl={contact.photoUrl}
+            name={contact.name || 'User'}
+            size="small"
+            position="center"
+            primaryColor={primaryColor}
+          />
         )}
         <h1 style={{
           fontSize: `${fontSize.header}px`,

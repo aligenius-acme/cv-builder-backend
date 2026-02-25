@@ -8,10 +8,10 @@
 
 import * as React from 'react';
 import { LayoutProps } from './types';
+import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
-  const photoUrl = contact.photoUrl || (data as any).photoUrl;
   const { primaryColor, secondaryColor, textColor, mutedColor, backgroundColor, accentColor, fontSize, margins } = config;
 
   const skillStr = (s: any) => typeof s === 'string' ? s : s.category || s.name || String(s);
@@ -72,16 +72,15 @@ export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
               .join('  ·  ')}
           </div>
         </div>
-        {photoUrl && (
-          <div style={{
-            width: '90px',
-            height: '90px',
-            borderRadius: '50%',
-            overflow: 'hidden',
-            flexShrink: 0,
-            border: '3px solid rgba(255,255,255,0.4)',
-          }}>
-            <img src={photoUrl} alt={contact.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {contact.photoUrl && (
+          <div style={{ flexShrink: 0 }}>
+            <PhotoCircle
+              photoUrl={contact.photoUrl}
+              name={contact.name || 'User'}
+              size="small"
+              position="right"
+              primaryColor={primaryColor}
+            />
           </div>
         )}
       </div>

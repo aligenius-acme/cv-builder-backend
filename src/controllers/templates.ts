@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, ParsedResumeData } from '../types';
 import { getAllTemplates, getTemplate, isValidTemplate } from '../services/templates';
 import { generatePDF } from '../services/documents';
@@ -253,6 +253,72 @@ export const previewTemplate = async (
   } catch (error) {
     next(error);
   }
+};
+
+/**
+ * GET /:templateId/thumbnail
+ * Serve a Puppeteer JPEG screenshot for the template.
+ * Results are cached in-memory; first call triggers generation.
+ */
+export const getThumbnail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { templateId } = req.params;
+
+    const template = await prisma.resumeTemplate.findUnique({
+      where: { id: templateId },
+      select: { previewImageUrl: true },
+    });
+
+    if (!template) {
+      res.status(404).json({ error: 'Template not found' });
+      return;
+    }
+
+    // If an external thumbnail URL exists, redirect to it
+    if (template.previewImageUrl && !template.previewImageUrl.startsWith('/api/')) {
+      res.redirect(template.previewImageUrl);
+      return;
+    }
+
+    const { generateTemplateThumbnail, clearThumbnailCache } = await import('../services/react-pdf-generator');
+
+    // Hard timeout: clear this template's cache entry on failure so the next
+    // request retries from scratch rather than serving a broken cached promise.
+    const TIMEOUT_MS = 60_000;
+    const thumbnailBuffer = await Promise.race([
+      generateTemplateThumbnail(templateId),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => {
+          clearThumbnailCache(templateId);
+          reject(new Error(`Thumbnail generation timed out after ${TIMEOUT_MS}ms`));
+        }, TIMEOUT_MS)
+      ),
+    ]);
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    // Server-side in-memory cache is authoritative; tell browsers to always revalidate
+    // so they pick up freshly-generated screenshots after server restarts
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(thumbnailBuffer);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error(`Thumbnail error for ${req.params.templateId}: ${msg}`);
+    // Return a proper HTTP error so the frontend img tag shows its broken-image
+    // state rather than a JSON body which produces a CORB-blocked response.
+    res.status(500).end();
+  }
+};
+
+/**
+ * POST /thumbnails/regenerate
+ * Force-clear the in-memory thumbnail cache and re-warm all thumbnails.
+ * Fire-and-forget: returns 202 immediately; generation runs in background.
+ */
+export const regenerateThumbnails = async (_req: Request, res: Response): Promise<void> => {
+  const { clearThumbnailCache, warmupThumbnails } = await import('../services/react-pdf-generator');
+  clearThumbnailCache();
+  warmupThumbnails().catch(err => console.error('Thumbnail regeneration failed:', err));
+  res.status(202).json({ message: 'Thumbnail regeneration started' });
 };
 
 // Sample data for template preview
