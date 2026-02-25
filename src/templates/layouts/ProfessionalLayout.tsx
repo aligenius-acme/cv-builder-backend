@@ -121,7 +121,6 @@ export const ProfessionalLayout: React.FC<LayoutProps> = ({ data, config }) => {
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '12px',
-            backgroundColor: accentColor || `${primaryColor}08`,
             padding: '16px',
           }}>
             {skills.map((skill, index) => {

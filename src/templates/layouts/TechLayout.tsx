@@ -37,8 +37,7 @@ export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
     >
       {/* Tech-style Header */}
       <div style={{
-        backgroundColor: primaryColor,
-        color: '#ffffff',
+        borderBottom: `3px solid ${primaryColor}`,
         padding: '24px 30px',
         marginTop: `-${margins.top}px`,
         marginLeft: `-${margins.left}px`,
@@ -48,21 +47,22 @@ export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: `${fontSize.body - 2}px`, opacity: 0.8, marginBottom: '4px' }}>
+            <div style={{ fontSize: `${fontSize.body - 2}px`, color: mutedColor, marginBottom: '4px' }}>
               $ whoami
             </div>
             <h1 style={{
               fontSize: `${fontSize.header}px`,
               margin: 0,
               fontWeight: 700,
+              color: primaryColor,
               fontFamily: "'Courier New', monospace",
             }}>
               {contact.name || 'developer'}
             </h1>
             <div style={{
               fontSize: `${fontSize.body}px`,
+              color: mutedColor,
               marginTop: '8px',
-              opacity: 0.9,
             }}>
               {contact.email && <span>{contact.email}</span>}
               {contact.github && <span> | {contact.github}</span>}
@@ -109,7 +109,6 @@ export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
         <div style={{
           marginBottom: '30px',
           padding: '20px',
-          backgroundColor: `${primaryColor}08`,
           border: `2px solid ${primaryColor}30`,
         }}>
           <div style={{
@@ -133,8 +132,8 @@ export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
                   key={index}
                   style={{
                     fontSize: `${fontSize.body}px`,
-                    color: '#ffffff',
-                    backgroundColor: secondaryColor,
+                    color: primaryColor,
+                    border: `1px solid ${primaryColor}30`,
                     padding: '8px 12px',
                     textAlign: 'center',
                     fontWeight: 600,

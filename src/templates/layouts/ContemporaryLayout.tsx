@@ -12,13 +12,11 @@ import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
-  const { primaryColor, secondaryColor, textColor, mutedColor, backgroundColor, accentColor, fontSize, margins } = config;
+  const { primaryColor, secondaryColor, textColor, mutedColor, backgroundColor, fontSize, margins } = config;
 
   const skillStr = (s: any) => typeof s === 'string' ? s : s.category || s.name || String(s);
   const certStr = (c: any) => typeof c === 'string' ? c : c.name || '';
   const awardStr = (a: any) => typeof a === 'string' ? a : (a.name || '') + (a.date ? ` (${a.date})` : '');
-
-  const tagBg = accentColor || `${primaryColor}18`;
 
   const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <h2 style={{
@@ -46,9 +44,9 @@ export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
       minHeight: '297mm',
       margin: '0 auto',
     }}>
-      {/* Full-width colour band header */}
+      {/* Full-width header */}
       <div style={{
-        backgroundColor: primaryColor,
+        borderBottom: `3px solid ${primaryColor}`,
         padding: `32px ${margins.right}px 28px ${margins.left}px`,
         marginBottom: '0',
         display: 'flex',
@@ -60,13 +58,13 @@ export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
           <h1 style={{
             fontSize: `${fontSize.header + 2}px`,
             fontWeight: 700,
-            color: '#ffffff',
+            color: primaryColor,
             marginBottom: '8px',
             letterSpacing: '0.3px',
           }}>
             {contact.name || 'Your Name'}
           </h1>
-          <div style={{ fontSize: `${fontSize.body}px`, color: 'rgba(255,255,255,0.85)', lineHeight: 1.7 }}>
+          <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.7 }}>
             {[contact.email, contact.phone, contact.location, contact.linkedin, contact.github, contact.website]
               .filter(Boolean)
               .join('  ·  ')}
@@ -124,8 +122,8 @@ export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {(skills as any[]).map((s, i) => (
                 <span key={i} style={{
-                  backgroundColor: tagBg,
                   color: primaryColor,
+                  border: `1px solid ${primaryColor}35`,
                   padding: '3px 9px',
                   borderRadius: '4px',
                   fontSize: `${fontSize.body - 1}px`,
@@ -185,7 +183,7 @@ export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
             <SectionTitle>Languages</SectionTitle>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {languages.map((l, i) => (
-                <span key={i} style={{ backgroundColor: tagBg, color: primaryColor, padding: '3px 9px', borderRadius: '4px', fontSize: `${fontSize.body - 1}px`, fontWeight: 600 }}>{l}</span>
+                <span key={i} style={{ color: primaryColor, border: `1px solid ${primaryColor}35`, padding: '3px 9px', borderRadius: '4px', fontSize: `${fontSize.body - 1}px`, fontWeight: 600 }}>{l}</span>
               ))}
             </div>
           </>

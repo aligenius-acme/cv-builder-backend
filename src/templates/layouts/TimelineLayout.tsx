@@ -77,7 +77,6 @@ export const TimelineLayout: React.FC<LayoutProps> = ({ data, config }) => {
         <div style={{
           marginBottom: '40px',
           padding: '20px',
-          backgroundColor: `${primaryColor}15`,
           borderLeft: `4px solid ${primaryColor}`,
         }}>
           <p style={{
@@ -220,7 +219,6 @@ export const TimelineLayout: React.FC<LayoutProps> = ({ data, config }) => {
                   style={{
                     fontSize: `${fontSize.body}px`,
                     color: textColor,
-                    backgroundColor: `${primaryColor}15`,
                     padding: '6px 14px',
                     borderRadius: '4px',
                     border: `1px solid ${primaryColor}30`,
@@ -344,7 +342,6 @@ export const TimelineLayout: React.FC<LayoutProps> = ({ data, config }) => {
                     display: 'inline-block',
                     fontSize: `${fontSize.body}px`,
                     color: textColor,
-                    backgroundColor: `${primaryColor}15`,
                     padding: '6px 14px',
                     borderRadius: '4px',
                     border: `1px solid ${primaryColor}30`,

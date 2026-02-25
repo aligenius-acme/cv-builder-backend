@@ -115,7 +115,6 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 style={{
                   padding: '20px',
                   border: `2px solid ${index % 2 === 0 ? primaryColor : secondaryColor}`,
-                  backgroundColor: `${index % 2 === 0 ? primaryColor : secondaryColor}08`,
                 }}
               >
                 <h3 style={{
@@ -147,8 +146,8 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
                         key={i}
                         style={{
                           fontSize: `${fontSize.body - 2}px`,
-                          color: '#ffffff',
-                          backgroundColor: index % 2 === 0 ? primaryColor : secondaryColor,
+                          color: index % 2 === 0 ? primaryColor : secondaryColor,
+                          border: `1px solid ${index % 2 === 0 ? primaryColor : secondaryColor}50`,
                           padding: '3px 8px',
                           borderRadius: '3px',
                         }}
@@ -201,7 +200,6 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
                     color: textColor,
                     padding: '12px',
                     textAlign: 'center',
-                    backgroundColor: accentColor || `${primaryColor}15`,
                     border: `1px solid ${primaryColor}30`,
                     fontWeight: 600,
                   }}

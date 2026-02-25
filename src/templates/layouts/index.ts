@@ -15,11 +15,14 @@ import { AcademicLayout, metadata as academicMetadata } from './AcademicLayout';
 import { PortfolioLayout, metadata as portfolioMetadata } from './PortfolioLayout';
 import { ProfessionalLayout, metadata as professionalMetadata } from './ProfessionalLayout';
 import { InfographicLayout, metadata as infographicMetadata } from './InfographicLayout';
+import { BoldModernLayout, metadata as boldModernMetadata } from './BoldModernLayout';
+import { ClassicLayout, metadata as classicMetadata } from './ClassicLayout';
+import { ContemporaryLayout, metadata as contemporaryMetadata } from './ContemporaryLayout';
 import { LayoutType, LayoutProps, LayoutMetadata } from './types';
 import * as React from 'react';
 
 /**
- * Registry of all available layout components (12 unique layouts)
+ * Registry of all available layout components (15 unique layouts)
  */
 export const LAYOUT_REGISTRY: Record<LayoutType, React.FC<LayoutProps>> = {
   // Original 5 layouts
@@ -38,10 +41,10 @@ export const LAYOUT_REGISTRY: Record<LayoutType, React.FC<LayoutProps>> = {
   ProfessionalLayout,
   InfographicLayout,
 
-  // Placeholders (use BaseLayout as fallback)
-  BoldModernLayout: BaseLayout,
-  ClassicLayout: BaseLayout,
-  ContemporaryLayout: BaseLayout,
+  // 3 additional unique layouts
+  BoldModernLayout,
+  ClassicLayout,
+  ContemporaryLayout,
 };
 
 /**
@@ -64,34 +67,10 @@ export const LAYOUT_METADATA: Record<LayoutType, LayoutMetadata> = {
   ProfessionalLayout: professionalMetadata,
   InfographicLayout: infographicMetadata,
 
-  // Placeholders
-  BoldModernLayout: {
-    id: 'BoldModernLayout',
-    name: 'Bold Modern',
-    description: 'Bold modern design with strong typography',
-    suitableFor: ['sales-marketing', 'creative-design'],
-    complexity: 'moderate',
-    atsCompatibility: 'medium',
-    isUnique: false,
-  },
-  ClassicLayout: {
-    id: 'ClassicLayout',
-    name: 'Classic',
-    description: 'Timeless classic layout',
-    suitableFor: ['all'],
-    complexity: 'simple',
-    atsCompatibility: 'high',
-    isUnique: false,
-  },
-  ContemporaryLayout: {
-    id: 'ContemporaryLayout',
-    name: 'Contemporary',
-    description: 'Contemporary modern layout',
-    suitableFor: ['all'],
-    complexity: 'moderate',
-    atsCompatibility: 'high',
-    isUnique: false,
-  },
+  // 3 new unique layouts
+  BoldModernLayout: boldModernMetadata,
+  ClassicLayout: classicMetadata,
+  ContemporaryLayout: contemporaryMetadata,
 };
 
 /**
@@ -150,4 +129,7 @@ export {
   PortfolioLayout,
   ProfessionalLayout,
   InfographicLayout,
+  BoldModernLayout,
+  ClassicLayout,
+  ContemporaryLayout,
 };

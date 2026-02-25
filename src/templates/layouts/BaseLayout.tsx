@@ -38,7 +38,7 @@ export const BaseLayout: React.FC<LayoutProps> = ({ data, config }) => {
         <div style={{ flex: 1 }}>
           <h1 style={{
             fontSize: `${fontSize.header}px`,
-            color: headerStyle === 'banner' ? '#ffffff' : primaryColor,
+            color: primaryColor,
             margin: 0,
             fontWeight: 700,
             letterSpacing: '-0.5px'
@@ -47,7 +47,7 @@ export const BaseLayout: React.FC<LayoutProps> = ({ data, config }) => {
           </h1>
           <div style={{
             fontSize: `${fontSize.body}px`,
-            color: headerStyle === 'banner' ? '#ffffff' : mutedColor,
+            color: mutedColor,
             marginTop: '8px',
             display: 'flex',
             flexWrap: 'wrap',
@@ -76,7 +76,7 @@ export const BaseLayout: React.FC<LayoutProps> = ({ data, config }) => {
     if (headerStyle === 'banner') {
       return (
         <div style={{
-          backgroundColor: primaryColor,
+          borderBottom: `3px solid ${primaryColor}`,
           padding: '30px 40px',
           marginBottom: '30px',
           marginTop: `-${margins.top}px`,
@@ -131,10 +131,8 @@ export const BaseLayout: React.FC<LayoutProps> = ({ data, config }) => {
       return (
         <h2 style={{
           ...baseStyle,
-          backgroundColor: accentColor,
-          padding: '8px 12px',
-          marginLeft: '-12px',
-          marginRight: '-12px',
+          borderLeft: `4px solid ${primaryColor}`,
+          paddingLeft: '12px',
         }}>
           {title}
         </h2>
@@ -191,8 +189,8 @@ export const BaseLayout: React.FC<LayoutProps> = ({ data, config }) => {
             <span
               key={index}
               style={{
-                backgroundColor: accentColor,
                 color: primaryColor,
+                border: `1px solid ${primaryColor}30`,
                 padding: '4px 12px',
                 borderRadius: '12px',
                 fontSize: `${fontSize.body - 1}px`,

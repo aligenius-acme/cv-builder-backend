@@ -5,25 +5,25 @@ import rateLimit from 'express-rate-limit';
  * Protects the API from abuse and DDoS attacks by limiting request frequency
  */
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 // General API rate limiter - applies to all API endpoints
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: isDev ? 10000 : 100,
   message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  // Skip successful requests to allow legitimate users to make more requests
+  standardHeaders: true,
+  legacyHeaders: false,
   skipSuccessfulRequests: false,
 });
 
 // Strict rate limiter for authentication endpoints (login, register, etc.)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per 15 minutes
+  max: isDev ? 10000 : 10, // Relaxed in dev; strict in production
   message: 'Too many login attempts from this IP, please try again after 15 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
-  // Skip successful requests so users can make multiple successful logins
   skipSuccessfulRequests: true,
 });
 

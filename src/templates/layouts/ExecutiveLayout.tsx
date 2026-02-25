@@ -1,8 +1,9 @@
 /**
- * ExecutiveLayout - Traditional, formal, conservative design
+ * ExecutiveLayout - Premium executive design
  *
- * Structure: Classic serif typography, formal spacing, traditional styling
- * Suitable for: Executive, leadership, finance, legal roles
+ * Structure: Elegant serif typography, color accent top-band, full-width name header,
+ *            two-column skills grid, formal spacing
+ * Suitable for: Executive, leadership, finance, legal, board roles
  */
 
 import * as React from 'react';
@@ -10,59 +11,100 @@ import { LayoutProps } from './types';
 import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const ExecutiveLayout: React.FC<LayoutProps> = ({ data, config }) => {
-  const { contact, summary, experience, education, skills, certifications, awards } = data;
-  const {
-    primaryColor,
-    textColor,
-    mutedColor,
-    backgroundColor,
-    fontSize,
-    margins,
-  } = config;
+  const { contact, summary, experience, education, skills, certifications, awards, projects, languages, volunteerWork } = data;
+  const { primaryColor, secondaryColor, textColor, mutedColor, backgroundColor, fontSize, margins } = config;
+
+  const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div style={{ marginBottom: '14px', marginTop: '26px' }}>
+      <h2 style={{
+        fontSize: `${fontSize.subheader + 1}px`,
+        fontWeight: 700,
+        color: primaryColor,
+        fontFamily: "'Georgia', 'Times New Roman', serif",
+        textTransform: 'uppercase',
+        letterSpacing: '2px',
+        margin: 0,
+        paddingBottom: '8px',
+      }}>
+        {children}
+      </h2>
+      <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ flex: 1, height: '2px', backgroundColor: primaryColor }} />
+        <div style={{ flex: 3, height: '2px', backgroundColor: `${primaryColor}30` }} />
+      </div>
+    </div>
+  );
+
+  const contactItems = [
+    contact.email && { label: 'Email', val: contact.email },
+    contact.phone && { label: 'Phone', val: contact.phone },
+    contact.location && { label: 'Location', val: contact.location },
+    contact.linkedin && { label: 'LinkedIn', val: contact.linkedin },
+    contact.website && { label: 'Web', val: contact.website },
+  ].filter(Boolean) as { label: string; val: string }[];
 
   return (
-    <div
-      style={{
-        fontFamily: "'Georgia', 'Times New Roman', serif",
-        fontSize: `${fontSize.body}px`,
-        color: textColor,
-        backgroundColor: backgroundColor,
-        padding: `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`,
-        maxWidth: '210mm',
-        minHeight: '297mm',
-        margin: '0 auto',
-      }}
-    >
-      {/* Header - Traditional & Formal */}
+    <div style={{
+      fontFamily: "'Georgia', 'Times New Roman', serif",
+      fontSize: `${fontSize.body}px`,
+      color: textColor,
+      backgroundColor,
+      maxWidth: '210mm',
+      minHeight: '297mm',
+      margin: '0 auto',
+      borderTop: `8px solid ${primaryColor}`,
+    }}>
+
+      {/* Header Area */}
       <div style={{
-        borderBottom: `3px solid ${primaryColor}`,
-        paddingBottom: '20px',
-        marginBottom: '30px',
+        padding: `28px ${margins.right}px 22px ${margins.left}px`,
+        borderBottom: `1px solid ${primaryColor}30`,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
             <h1 style={{
-              fontSize: `${fontSize.header + 4}px`,
+              fontSize: `${fontSize.header + 8}px`,
               color: primaryColor,
               margin: 0,
               fontWeight: 700,
-              marginBottom: '8px',
-              fontFamily: "'Georgia', serif",
+              letterSpacing: '0.5px',
+              lineHeight: 1.15,
+              fontFamily: "'Georgia', 'Times New Roman', serif",
             }}>
               {contact.name || 'Your Name'}
             </h1>
-            <div style={{
-              fontSize: `${fontSize.body}px`,
-              color: mutedColor,
-              lineHeight: 1.6,
-            }}>
-              {contact.email && <div>{contact.email}</div>}
-              {contact.phone && <div>{contact.phone}</div>}
-              {contact.location && <div>{contact.location}</div>}
-            </div>
+            {experience && experience[0]?.title && (
+              <div style={{
+                fontSize: `${fontSize.body + 1}px`,
+                color: secondaryColor,
+                fontWeight: 600,
+                marginTop: '8px',
+                fontFamily: 'Arial, sans-serif',
+                letterSpacing: '0.5px',
+              }}>
+                {experience[0].title}
+              </div>
+            )}
+
+            {/* Contact row */}
+            {contactItems.length > 0 && (
+              <div style={{
+                marginTop: '14px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '4px 24px',
+                fontFamily: 'Arial, sans-serif',
+              }}>
+                {contactItems.map((item, i) => (
+                  <span key={i} style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
+                    {item.val}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           {contact.photoUrl && (
-            <div style={{ marginLeft: '30px' }}>
+            <div style={{ marginLeft: '30px', flexShrink: 0 }}>
               <PhotoCircle
                 photoUrl={contact.photoUrl}
                 name={contact.name || 'User'}
@@ -75,49 +117,30 @@ export const ExecutiveLayout: React.FC<LayoutProps> = ({ data, config }) => {
         </div>
       </div>
 
-      {/* Executive Summary */}
-      {summary && (
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{
-            fontSize: `${fontSize.subheader + 2}px`,
-            color: primaryColor,
-            fontWeight: 700,
-            marginBottom: '16px',
-            fontFamily: "'Georgia', serif",
-            borderBottom: `2px solid ${mutedColor}`,
-            paddingBottom: '8px',
-          }}>
-            EXECUTIVE SUMMARY
-          </h2>
-          <p style={{
-            fontSize: `${fontSize.body}px`,
-            color: textColor,
-            lineHeight: 1.8,
-            margin: 0,
-            textAlign: 'justify',
-          }}>
-            {summary}
-          </p>
-        </div>
-      )}
+      {/* Body */}
+      <div style={{ padding: `0 ${margins.right}px ${margins.bottom}px ${margins.left}px` }}>
 
-      {/* Professional Experience */}
-      {experience && experience.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{
-            fontSize: `${fontSize.subheader + 2}px`,
-            color: primaryColor,
-            fontWeight: 700,
-            marginBottom: '16px',
-            fontFamily: "'Georgia', serif",
-            borderBottom: `2px solid ${mutedColor}`,
-            paddingBottom: '8px',
-          }}>
-            PROFESSIONAL EXPERIENCE
-          </h2>
-          {experience.map((exp, index) => (
-            <div key={index} style={{ marginBottom: '24px' }}>
-              <div style={{ marginBottom: '8px' }}>
+        {summary && (
+          <>
+            <SectionHeader>Executive Summary</SectionHeader>
+            <p style={{
+              fontSize: `${fontSize.body}px`,
+              color: textColor,
+              lineHeight: 1.85,
+              margin: 0,
+              textAlign: 'justify',
+              fontFamily: "'Georgia', serif",
+            }}>
+              {summary}
+            </p>
+          </>
+        )}
+
+        {experience && experience.length > 0 && (
+          <>
+            <SectionHeader>Professional Experience</SectionHeader>
+            {experience.map((exp, index) => (
+              <div key={index} style={{ marginBottom: '22px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <h3 style={{
                     fontSize: `${fontSize.subheader + 1}px`,
@@ -133,6 +156,7 @@ export const ExecutiveLayout: React.FC<LayoutProps> = ({ data, config }) => {
                     color: mutedColor,
                     fontStyle: 'italic',
                     whiteSpace: 'nowrap',
+                    fontFamily: 'Arial, sans-serif',
                   }}>
                     {exp.startDate} – {exp.current ? 'Present' : exp.endDate}
                   </span>
@@ -142,168 +166,138 @@ export const ExecutiveLayout: React.FC<LayoutProps> = ({ data, config }) => {
                   color: primaryColor,
                   fontWeight: 600,
                   marginTop: '4px',
+                  marginBottom: '8px',
+                  fontFamily: 'Arial, sans-serif',
                 }}>
-                  {exp.company}
-                  {exp.location && ` | ${exp.location}`}
+                  {exp.company}{exp.location && ` | ${exp.location}`}
                 </div>
+                <ul style={{ margin: 0, paddingLeft: '24px', listStyleType: 'square' }}>
+                  {exp.description?.map((desc, i) => (
+                    <li key={i} style={{
+                      fontSize: `${fontSize.body}px`,
+                      color: textColor,
+                      lineHeight: 1.75,
+                      marginBottom: '5px',
+                      fontFamily: "'Georgia', serif",
+                    }}>
+                      {desc}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul style={{
-                margin: 0,
-                paddingLeft: '24px',
-                listStyleType: 'square',
-              }}>
-                {exp.description?.map((desc, i) => (
-                  <li key={i} style={{
-                    fontSize: `${fontSize.body}px`,
-                    color: textColor,
-                    lineHeight: 1.7,
-                    marginBottom: '6px',
-                  }}>
-                    {desc}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </>
+        )}
 
-      {/* Education */}
-      {education && education.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{
-            fontSize: `${fontSize.subheader + 2}px`,
-            color: primaryColor,
-            fontWeight: 700,
-            marginBottom: '16px',
-            fontFamily: "'Georgia', serif",
-            borderBottom: `2px solid ${mutedColor}`,
-            paddingBottom: '8px',
-          }}>
-            EDUCATION
-          </h2>
-          {education.map((edu, index) => (
-            <div key={index} style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <h3 style={{
-                  fontSize: `${fontSize.subheader}px`,
-                  color: textColor,
-                  fontWeight: 700,
-                  margin: 0,
-                  fontFamily: "'Georgia', serif",
-                }}>
-                  {edu.degree}
-                </h3>
-                <span style={{
-                  fontSize: `${fontSize.body - 1}px`,
-                  color: mutedColor,
-                  fontStyle: 'italic',
-                }}>
+        {education && education.length > 0 && (
+          <>
+            <SectionHeader>Education</SectionHeader>
+            {education.map((edu, index) => (
+              <div key={index} style={{ marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div>
+                  <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, fontFamily: "'Georgia', serif" }}>
+                    {edu.degree}
+                  </h3>
+                  <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, marginTop: '3px', fontFamily: 'Arial, sans-serif' }}>
+                    {edu.institution}{edu.location && ` | ${edu.location}`}{edu.gpa && ` | GPA: ${edu.gpa}`}
+                  </div>
+                </div>
+                <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, fontStyle: 'italic', whiteSpace: 'nowrap', fontFamily: 'Arial, sans-serif' }}>
                   {edu.graduationDate}
                 </span>
               </div>
-              <div style={{
-                fontSize: `${fontSize.body}px`,
-                color: mutedColor,
-                marginTop: '4px',
-              }}>
-                {edu.institution}
-                {edu.location && ` | ${edu.location}`}
-                {edu.gpa && ` | GPA: ${edu.gpa}`}
+            ))}
+          </>
+        )}
+
+        {skills && skills.length > 0 && (
+          <>
+            <SectionHeader>Core Competencies</SectionHeader>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px 20px', fontFamily: 'Arial, sans-serif' }}>
+              {(skills as any[]).map((skill, index) => {
+                const skillText = typeof skill === 'string' ? skill : (skill as any).category || (skill as any).name || String(skill);
+                return (
+                  <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, paddingLeft: '12px', borderLeft: `2px solid ${primaryColor}40` }}>
+                    {skillText}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {certifications && certifications.length > 0 && (
+          <>
+            <SectionHeader>Professional Certifications</SectionHeader>
+            {(certifications as any[]).map((cert, index) => (
+              <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '6px', fontFamily: 'Arial, sans-serif' }}>
+                ◆ {typeof cert === 'string' ? cert : `${cert.name}${cert.issuer ? ` | ${cert.issuer}` : ''}${cert.date ? ` | ${cert.date}` : ''}`}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </>
+        )}
 
-      {/* Core Competencies / Skills */}
-      {skills && skills.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{
-            fontSize: `${fontSize.subheader + 2}px`,
-            color: primaryColor,
-            fontWeight: 700,
-            marginBottom: '16px',
-            fontFamily: "'Georgia', serif",
-            borderBottom: `2px solid ${mutedColor}`,
-            paddingBottom: '8px',
-          }}>
-            CORE COMPETENCIES
-          </h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '8px 20px',
-          }}>
-            {skills.map((skill, index) => {
-              const skillText = typeof skill === 'string' ? skill : (skill as any).category || (skill as any).name || String(skill);
-              return (
-                <div
-                  key={index}
-                  style={{
-                    fontSize: `${fontSize.body}px`,
-                    color: textColor,
-                  }}
-                >
-                  • {skillText}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+        {projects && projects.length > 0 && (
+          <>
+            <SectionHeader>Key Initiatives & Projects</SectionHeader>
+            {projects.map((p, i) => (
+              <div key={i} style={{ marginBottom: '12px' }}>
+                <div style={{ fontWeight: 700, fontSize: `${fontSize.subheader - 1}px`, fontFamily: "'Georgia', serif" }}>{p.name}</div>
+                {p.description && <div style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, marginTop: '3px' }}>{p.description}</div>}
+              </div>
+            ))}
+          </>
+        )}
 
-      {/* Professional Certifications */}
-      {certifications && certifications.length > 0 && (
-        <div style={{ marginBottom: '30px' }}>
-          <h2 style={{
-            fontSize: `${fontSize.subheader + 2}px`,
-            color: primaryColor,
-            fontWeight: 700,
-            marginBottom: '16px',
-            fontFamily: "'Georgia', serif",
-            borderBottom: `2px solid ${mutedColor}`,
-            paddingBottom: '8px',
-          }}>
-            PROFESSIONAL CERTIFICATIONS
-          </h2>
-          {certifications.map((cert, index) => (
-            <div key={index} style={{
-              fontSize: `${fontSize.body}px`,
-              color: textColor,
-              marginBottom: '8px',
-            }}>
-              • {typeof cert === 'string' ? cert : `${cert.name}${cert.issuer ? ` | ${cert.issuer}` : ''}${cert.date ? ` | ${cert.date}` : ''}`}
-            </div>
-          ))}
-        </div>
-      )}
+        {awards && awards.length > 0 && (
+          <>
+            <SectionHeader>Awards & Honours</SectionHeader>
+            {(awards as any[]).map((award, index) => (
+              <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '6px', fontFamily: 'Arial, sans-serif' }}>
+                ◆ {typeof award === 'string' ? award : award.name}
+                {typeof award === 'object' && award.date && <span style={{ color: mutedColor, marginLeft: '8px', fontStyle: 'italic' }}>({award.date})</span>}
+              </div>
+            ))}
+          </>
+        )}
 
-      {/* Awards & Honors */}
-      {awards && awards.length > 0 && (
-        <div>
-          <h2 style={{
-            fontSize: `${fontSize.subheader + 2}px`,
-            color: primaryColor,
-            fontWeight: 700,
-            marginBottom: '16px',
-            fontFamily: "'Georgia', serif",
-            borderBottom: `2px solid ${mutedColor}`,
-            paddingBottom: '8px',
-          }}>
-            AWARDS & HONORS
-          </h2>
-          {awards.map((award, index) => (
-            <div key={index} style={{
-              fontSize: `${fontSize.body}px`,
-              color: textColor,
-              marginBottom: '8px',
-            }}>
-              • {typeof award === 'string' ? award : award.name}
+        {languages && languages.length > 0 && (
+          <>
+            <SectionHeader>Languages</SectionHeader>
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontFamily: 'Arial, sans-serif' }}>
+              {languages.map((lang, index) => (
+                <span key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor }}>◆ {lang}</span>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </>
+        )}
+
+        {volunteerWork && volunteerWork.length > 0 && (
+          <>
+            <SectionHeader>Board & Civic Engagement</SectionHeader>
+            {volunteerWork.map((v, i) => (
+              <div key={i} style={{ marginBottom: '10px', fontFamily: 'Arial, sans-serif' }}>
+                {typeof v === 'string' ? (
+                  <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>◆ {v}</div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 700, fontFamily: "'Georgia', serif" }}>{v.role}</span>
+                      <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, fontStyle: 'italic' }}>
+                        {v.startDate}{v.current ? ' – Present' : v.endDate ? ` – ${v.endDate}` : ''}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: `${fontSize.body}px`, color: primaryColor, fontWeight: 600 }}>{v.organization}</div>
+                  </>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Premium Bottom Accent */}
+      <div style={{ borderTop: `5px solid ${primaryColor}` }} />
     </div>
   );
 };
@@ -311,7 +305,7 @@ export const ExecutiveLayout: React.FC<LayoutProps> = ({ data, config }) => {
 export const metadata = {
   id: 'ExecutiveLayout' as const,
   name: 'Executive',
-  description: 'Traditional, formal layout with serif typography for senior roles',
+  description: 'Premium serif layout with accent bands, formal spacing, and three-column competencies grid',
   suitableFor: ['executive-leadership', 'finance-banking', 'legal-law'],
   complexity: 'simple' as const,
   atsCompatibility: 'high' as const,

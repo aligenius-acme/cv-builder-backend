@@ -1,8 +1,9 @@
 /**
- * CreativeLayout - Bold, asymmetric, artistic design
+ * CreativeLayout - Bold, artistic asymmetric design
  *
- * Structure: Large color block header, asymmetric sections, bold typography
- * Suitable for: Creative design, marketing, arts roles
+ * Structure: Full-height left color sidebar (38%) with contact/skills/education,
+ *            right main content (62%) with name band header at top
+ * Suitable for: Creative design, marketing, arts, UX/brand roles
  */
 
 import * as React from 'react';
@@ -11,363 +12,278 @@ import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const CreativeLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, projects, certifications, languages, awards, volunteerWork } = data;
-  const {
-    primaryColor,
-    secondaryColor,
-    textColor,
-    mutedColor,
-    backgroundColor,
-    accentColor,
-    fontSize,
-    margins,
-  } = config;
+  const { primaryColor, secondaryColor, textColor, mutedColor, backgroundColor, fontSize, margins } = config;
+
+  const SideLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div style={{ marginBottom: '14px', marginTop: '22px' }}>
+      <h3 style={{
+        fontSize: `${fontSize.body}px`,
+        fontWeight: 800,
+        color: primaryColor,
+        textTransform: 'uppercase',
+        letterSpacing: '2px',
+        margin: 0,
+        paddingBottom: '6px',
+        borderBottom: `2px solid ${primaryColor}35`,
+      }}>
+        {children}
+      </h3>
+    </div>
+  );
+
+  const MainSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div style={{ marginBottom: '24px' }}>
+      <h2 style={{
+        fontSize: `${fontSize.subheader + 1}px`,
+        fontWeight: 900,
+        color: primaryColor,
+        textTransform: 'uppercase',
+        letterSpacing: '1px',
+        margin: '0 0 14px 0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+      }}>
+        <span style={{ width: '4px', height: '18px', borderLeft: `4px solid ${secondaryColor}`, display: 'inline-block', flexShrink: 0 }} />
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+
+  const skillText = (s: any) => typeof s === 'string' ? s : (s as any).category || (s as any).name || String(s);
 
   return (
-    <div
-      style={{
-        fontFamily: "'Montserrat', 'Helvetica Neue', sans-serif",
-        fontSize: `${fontSize.body}px`,
-        color: textColor,
-        backgroundColor: backgroundColor,
-        maxWidth: '210mm',
-        minHeight: '297mm',
-        margin: '0 auto',
-        position: 'relative',
-      }}
-    >
-      {/* Bold Color Block Header */}
+    <div style={{
+      fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+      fontSize: `${fontSize.body}px`,
+      color: textColor,
+      backgroundColor,
+      maxWidth: '210mm',
+      minHeight: '297mm',
+      margin: '0 auto',
+      display: 'flex',
+    }}>
+      {/* LEFT SIDEBAR */}
       <div style={{
-        backgroundColor: primaryColor,
-        padding: '50px 40px',
-        marginBottom: '40px',
-        position: 'relative',
-        clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)',
+        width: '38%',
+        borderRight: `3px solid ${primaryColor}20`,
+        padding: `${margins.top}px 22px ${margins.bottom}px 22px`,
+        display: 'flex',
+        flexDirection: 'column',
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '30px' }}>
-          {contact.photoUrl && (
-            <div>
-              <PhotoCircle
-                photoUrl={contact.photoUrl}
-                name={contact.name || 'User'}
-                size="large"
-                position="left"
-                primaryColor={secondaryColor}
-              />
-            </div>
-          )}
-          <div style={{ flex: 1 }}>
-            <h1 style={{
-              fontSize: `${fontSize.header + 10}px`,
-              color: '#ffffff',
-              margin: 0,
-              fontWeight: 900,
-              letterSpacing: '-1px',
-              lineHeight: 1.1,
-              marginBottom: '16px',
-            }}>
-              {contact.name?.toUpperCase() || 'YOUR NAME'}
-            </h1>
-            <div style={{
-              fontSize: `${fontSize.body + 1}px`,
-              color: '#ffffff',
-              opacity: 0.95,
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '16px',
-            }}>
-              {contact.email && <span>{contact.email}</span>}
-              {contact.phone && <span>|</span>}
-              {contact.phone && <span>{contact.phone}</span>}
-              {contact.location && <span>|</span>}
-              {contact.location && <span>{contact.location}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: `0 ${margins.left}px ${margins.bottom}px` }}>
-        {/* Summary - Full Width */}
-        {summary && (
-          <div style={{
-            marginBottom: '40px',
-            padding: '30px',
-            backgroundColor: accentColor || '#f8f9fa',
-            borderLeft: `6px solid ${primaryColor}`,
-          }}>
-            <p style={{
-              fontSize: `${fontSize.body + 2}px`,
-              color: textColor,
-              lineHeight: 1.7,
-              margin: 0,
-              fontWeight: 500,
-            }}>
-              {summary}
-            </p>
+        {/* Photo */}
+        {contact.photoUrl && (
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <PhotoCircle
+              photoUrl={contact.photoUrl}
+              name={contact.name || 'User'}
+              size="large"
+              position="center"
+              primaryColor={secondaryColor}
+            />
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '30px' }}>
-          {/* Left Column - 60% */}
-          <div style={{ flex: '0 0 60%' }}>
-            {/* Experience */}
-            {experience && experience.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{
-                  fontSize: `${fontSize.subheader + 4}px`,
-                  color: primaryColor,
-                  fontWeight: 900,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  marginBottom: '24px',
-                  position: 'relative',
-                  paddingLeft: '16px',
+        {/* Name (in sidebar for creative layouts) */}
+        <div style={{ marginBottom: '10px' }}>
+          <h1 style={{
+            fontSize: `${fontSize.header + 4}px`,
+            fontWeight: 900,
+            color: primaryColor,
+            margin: 0,
+            lineHeight: 1.1,
+            letterSpacing: '-0.5px',
+          }}>
+            {contact.name || 'Your Name'}
+          </h1>
+          {experience && experience[0]?.title && (
+            <div style={{
+              fontSize: `${fontSize.body}px`,
+              color: mutedColor,
+              marginTop: '8px',
+              fontWeight: 500,
+            }}>
+              {experience[0].title}
+            </div>
+          )}
+          <div style={{ height: '2px', backgroundColor: `${primaryColor}30`, marginTop: '14px', borderRadius: '2px' }} />
+        </div>
+
+        {/* Contact */}
+        <SideLabel>Contact</SideLabel>
+        <div style={{ fontSize: `${fontSize.body - 1}px`, lineHeight: 2, color: textColor }}>
+          {contact.email && <div style={{ marginBottom: '4px', wordBreak: 'break-word' }}>{contact.email}</div>}
+          {contact.phone && <div style={{ marginBottom: '4px' }}>{contact.phone}</div>}
+          {contact.location && <div style={{ marginBottom: '4px' }}>{contact.location}</div>}
+          {contact.linkedin && <div style={{ marginBottom: '4px', wordBreak: 'break-word' }}>{contact.linkedin}</div>}
+          {contact.github && <div style={{ marginBottom: '4px', wordBreak: 'break-word' }}>{contact.github}</div>}
+          {contact.website && <div style={{ marginBottom: '4px', wordBreak: 'break-word' }}>{contact.website}</div>}
+        </div>
+
+        {/* Skills */}
+        {skills && skills.length > 0 && (
+          <>
+            <SideLabel>Skills</SideLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              {(skills as any[]).map((s, i) => (
+                <div key={i} style={{
+                  color: textColor,
+                  border: `1px solid ${primaryColor}30`,
+                  padding: '5px 12px',
+                  borderRadius: '3px',
+                  fontSize: `${fontSize.body - 1}px`,
+                  fontWeight: 600,
                 }}>
-                  <span style={{
-                    content: '""',
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '6px',
-                    backgroundColor: secondaryColor,
-                    display: 'inline-block',
-                    marginRight: '16px',
-                  }}></span>
-                  Experience
-                </h2>
-                {experience.map((exp, index) => (
-                  <div key={index} style={{ marginBottom: '28px' }}>
-                    <h3 style={{
-                      fontSize: `${fontSize.subheader + 1}px`,
-                      color: textColor,
-                      fontWeight: 700,
-                      margin: 0,
-                      marginBottom: '6px',
-                    }}>
+                  {skillText(s)}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Education */}
+        {education && education.length > 0 && (
+          <>
+            <SideLabel>Education</SideLabel>
+            {education.map((edu, i) => (
+              <div key={i} style={{ marginBottom: '14px' }}>
+                <div style={{ fontSize: `${fontSize.body - 1}px`, fontWeight: 700, color: textColor, lineHeight: 1.3 }}>{edu.degree}</div>
+                <div style={{ fontSize: `${fontSize.body - 2}px`, color: mutedColor, marginTop: '3px' }}>
+                  {edu.institution}{edu.graduationDate ? ` · ${edu.graduationDate}` : ''}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Languages */}
+        {languages && languages.length > 0 && (
+          <>
+            <SideLabel>Languages</SideLabel>
+            {languages.map((lang, i) => (
+              <div key={i} style={{ fontSize: `${fontSize.body - 1}px`, color: textColor, marginBottom: '4px' }}>• {lang}</div>
+            ))}
+          </>
+        )}
+
+        {/* Certifications */}
+        {certifications && certifications.length > 0 && (
+          <>
+            <SideLabel>Certifications</SideLabel>
+            {(certifications as any[]).map((cert, i) => (
+              <div key={i} style={{ fontSize: `${fontSize.body - 2}px`, color: textColor, marginBottom: '6px', lineHeight: 1.4 }}>
+                ◆ {typeof cert === 'string' ? cert : cert.name}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Awards */}
+        {awards && awards.length > 0 && (
+          <>
+            <SideLabel>Awards</SideLabel>
+            {(awards as any[]).map((award, i) => (
+              <div key={i} style={{ fontSize: `${fontSize.body - 2}px`, color: textColor, marginBottom: '6px', lineHeight: 1.4 }}>
+                ★ {typeof award === 'string' ? award : award.name}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* RIGHT MAIN CONTENT */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: `${margins.top}px ${margins.right}px ${margins.bottom}px 30px`, flex: 1 }}>
+
+          {/* Summary */}
+          {summary && (
+            <MainSection title="Profile">
+              <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, margin: 0, fontWeight: 500 }}>
+                {summary}
+              </p>
+            </MainSection>
+          )}
+
+          {/* Experience */}
+          {experience && experience.length > 0 && (
+            <MainSection title="Experience">
+              {experience.map((exp, index) => (
+                <div key={index} style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0 }}>
                       {exp.title}
                     </h3>
-                    <div style={{
-                      fontSize: `${fontSize.body}px`,
-                      color: primaryColor,
-                      fontWeight: 600,
-                      marginBottom: '4px',
-                    }}>
-                      {exp.company}
-                    </div>
-                    <div style={{
-                      fontSize: `${fontSize.body - 1}px`,
-                      color: mutedColor,
-                      marginBottom: '12px',
-                    }}>
-                      {exp.startDate} - {exp.current ? 'Present' : exp.endDate}
-                      {exp.location && ` • ${exp.location}`}
-                    </div>
-                    {exp.description?.map((desc, i) => (
-                      <p key={i} style={{
-                        fontSize: `${fontSize.body}px`,
-                        color: textColor,
-                        lineHeight: 1.6,
-                        margin: '0 0 8px 0',
-                        paddingLeft: '16px',
-                        borderLeft: `2px solid ${accentColor}`,
-                      }}>
-                        {desc}
-                      </p>
-                    ))}
+                    <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, whiteSpace: 'nowrap' }}>
+                      {exp.startDate} – {exp.current ? 'Present' : exp.endDate}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Projects */}
-            {projects && projects.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{
-                  fontSize: `${fontSize.subheader + 4}px`,
-                  color: primaryColor,
-                  fontWeight: 900,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  marginBottom: '24px',
-                  paddingLeft: '16px',
-                }}>
-                  <span style={{
-                    content: '""',
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '6px',
-                    backgroundColor: secondaryColor,
-                    display: 'inline-block',
-                    marginRight: '16px',
-                  }}></span>
-                  Projects
-                </h2>
-                {projects.map((project, index) => (
-                  <div key={index} style={{ marginBottom: '20px' }}>
-                    <h3 style={{
-                      fontSize: `${fontSize.subheader}px`,
-                      color: textColor,
-                      fontWeight: 700,
-                      margin: 0,
-                      marginBottom: '8px',
-                    }}>
-                      {project.name}
-                    </h3>
-                    <p style={{
+                  <div style={{ fontSize: `${fontSize.body}px`, color: primaryColor, fontWeight: 700, margin: '4px 0 8px' }}>
+                    {exp.company}{exp.location && ` · ${exp.location}`}
+                  </div>
+                  {exp.description?.map((desc, i) => (
+                    <div key={i} style={{
                       fontSize: `${fontSize.body}px`,
                       color: textColor,
                       lineHeight: 1.6,
-                      margin: 0,
-                      marginBottom: '6px',
+                      margin: '0 0 5px 0',
+                      paddingLeft: '14px',
+                      borderLeft: `2px solid ${secondaryColor}60`,
                     }}>
-                      {project.description}
-                    </p>
-                    {project.technologies && (
-                      <div style={{
-                        fontSize: `${fontSize.body - 1}px`,
-                        color: primaryColor,
-                        fontWeight: 600,
-                      }}>
-                        {project.technologies.join(' • ')}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Right Column - 40% */}
-          <div style={{ flex: '0 0 40%' }}>
-            {/* Skills */}
-            {skills && skills.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{
-                  fontSize: `${fontSize.subheader + 2}px`,
-                  color: primaryColor,
-                  fontWeight: 900,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  marginBottom: '20px',
-                }}>
-                  Skills
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {skills.map((skill, index) => {
-                    const skillText = typeof skill === 'string' ? skill : (skill as any).category || (skill as any).name || String(skill);
-                    return (
-                      <div
-                        key={index}
-                        style={{
-                          fontSize: `${fontSize.body}px`,
-                          color: '#ffffff',
-                          backgroundColor: primaryColor,
-                          padding: '10px 16px',
-                          fontWeight: 600,
-                          transform: index % 2 === 0 ? 'translateX(0)' : 'translateX(10px)',
-                        }}
-                      >
-                        {skillText}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Education */}
-            {education && education.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{
-                  fontSize: `${fontSize.subheader + 2}px`,
-                  color: primaryColor,
-                  fontWeight: 900,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  marginBottom: '20px',
-                }}>
-                  Education
-                </h2>
-                {education.map((edu, index) => (
-                  <div key={index} style={{ marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, marginBottom: '6px', lineHeight: 1.3 }}>
-                      {edu.degree}
-                    </h3>
-                    <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, lineHeight: 1.5 }}>
-                      {edu.institution}<br />{edu.graduationDate}{edu.gpa && <><br />GPA: {edu.gpa}</>}
+                      {desc}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              ))}
+            </MainSection>
+          )}
 
-            {/* Certifications */}
-            {certifications && certifications.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
-                  Certifications
-                </h2>
-                {certifications.map((cert, index) => (
-                  <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '10px', paddingLeft: '12px', borderLeft: `3px solid ${accentColor}` }}>
-                    {typeof cert === 'string' ? cert : cert.name}
-                    {typeof cert === 'object' && cert.date && <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>{cert.date}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Projects */}
+          {projects && projects.length > 0 && (
+            <MainSection title="Projects">
+              {projects.map((project, index) => (
+                <div key={index} style={{ marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: '0 0 6px 0' }}>
+                    {project.name}
+                    {project.url && <span style={{ fontSize: `${fontSize.body - 1}px`, fontWeight: 400, color: primaryColor, marginLeft: '8px' }}>{project.url}</span>}
+                  </h3>
+                  <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 6px 0' }}>
+                    {project.description}
+                  </p>
+                  {project.technologies && (
+                    <div style={{ fontSize: `${fontSize.body - 1}px`, color: secondaryColor, fontWeight: 700 }}>
+                      {project.technologies.join(' · ')}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </MainSection>
+          )}
 
-            {/* Languages */}
-            {languages && languages.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
-                  Languages
-                </h2>
-                {languages.map((lang, index) => (
-                  <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '8px', fontWeight: 600 }}>
-                    {lang}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Awards */}
-            {awards && awards.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
-                  Awards
-                </h2>
-                {awards.map((award, index) => (
-                  <div key={index} style={{ fontSize: `${fontSize.body}px`, color: textColor, marginBottom: '10px', paddingLeft: '12px', borderLeft: `3px solid ${accentColor}` }}>
-                    {typeof award === 'string' ? award : award.name}
-                    {typeof award === 'object' && award.date && <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>{award.date}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Volunteer Work */}
-            {volunteerWork && volunteerWork.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: `${fontSize.subheader + 2}px`, color: primaryColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
-                  Volunteer Work
-                </h2>
-                {volunteerWork.map((vol, index) => (
-                  <div key={index} style={{ marginBottom: '12px' }}>
-                    {typeof vol === 'string' ? (
-                      <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>{vol}</div>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: `${fontSize.body}px`, color: textColor, fontWeight: 700 }}>{vol.role}</div>
-                        <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>{vol.organization}</div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Volunteer */}
+          {volunteerWork && volunteerWork.length > 0 && (
+            <MainSection title="Volunteer Work">
+              {volunteerWork.map((vol, i) => (
+                <div key={i} style={{ marginBottom: '12px' }}>
+                  {typeof vol === 'string' ? (
+                    <div style={{ fontSize: `${fontSize.body}px`, color: textColor }}>• {vol}</div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700 }}>{vol.role}</span>
+                        <span style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
+                          {vol.startDate}{vol.current ? ' – Present' : vol.endDate ? ` – ${vol.endDate}` : ''}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: `${fontSize.body}px`, color: primaryColor, fontWeight: 600 }}>
+                        {vol.organization}{vol.location && ` · ${vol.location}`}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </MainSection>
+          )}
         </div>
       </div>
     </div>
@@ -377,7 +293,7 @@ export const CreativeLayout: React.FC<LayoutProps> = ({ data, config }) => {
 export const metadata = {
   id: 'CreativeLayout' as const,
   name: 'Creative',
-  description: 'Bold, asymmetric design with large color blocks and modern typography',
+  description: 'Full-height color sidebar with white text, accent-bar section headers for visual impact',
   suitableFor: ['creative-design', 'sales-marketing', 'tech-startup'],
   complexity: 'complex' as const,
   atsCompatibility: 'low' as const,

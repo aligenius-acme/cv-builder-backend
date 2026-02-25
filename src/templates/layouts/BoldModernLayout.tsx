@@ -47,9 +47,9 @@ export const BoldModernLayout: React.FC<LayoutProps> = ({ data, config }) => {
       minHeight: '297mm',
       margin: '0 auto',
     }}>
-      {/* Full-Width Dark Header */}
+      {/* Full-Width Header */}
       <div style={{
-        backgroundColor: primaryColor,
+        borderBottom: `3px solid ${primaryColor}`,
         padding: `${margins.top + 10}px ${margins.left}px 20px`,
         display: 'flex',
         alignItems: 'center',
@@ -60,7 +60,7 @@ export const BoldModernLayout: React.FC<LayoutProps> = ({ data, config }) => {
           <h1 style={{
             fontSize: `${fontSize.header + 12}px`,
             fontWeight: 900,
-            color: '#ffffff',
+            color: primaryColor,
             letterSpacing: '-1px',
             lineHeight: 1.05,
             margin: 0,
@@ -71,8 +71,7 @@ export const BoldModernLayout: React.FC<LayoutProps> = ({ data, config }) => {
           {experience && experience[0]?.title && (
             <div style={{
               fontSize: `${fontSize.body + 1}px`,
-              color: '#ffffff',
-              opacity: 0.8,
+              color: mutedColor,
               marginTop: '8px',
               fontWeight: 400,
               letterSpacing: '0.5px',
@@ -94,12 +93,8 @@ export const BoldModernLayout: React.FC<LayoutProps> = ({ data, config }) => {
         )}
       </div>
 
-      {/* Accent Stripe */}
-      <div style={{ height: '6px', backgroundColor: secondaryColor }} />
-
       {/* Contact Bar */}
       <div style={{
-        backgroundColor: `${primaryColor}12`,
         padding: '10px 40px',
         borderBottom: `1px solid ${primaryColor}20`,
       }}>
@@ -132,8 +127,7 @@ export const BoldModernLayout: React.FC<LayoutProps> = ({ data, config }) => {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {(skills as any[]).map((s, i) => (
                 <span key={i} style={{
-                  backgroundColor: i % 3 === 0 ? primaryColor : `${primaryColor}18`,
-                  color: i % 3 === 0 ? '#ffffff' : primaryColor,
+                  color: primaryColor,
                   padding: '5px 14px',
                   borderRadius: '16px',
                   fontSize: `${fontSize.body - 1}px`,
@@ -221,7 +215,7 @@ export const BoldModernLayout: React.FC<LayoutProps> = ({ data, config }) => {
             <SectionTitle>Languages</SectionTitle>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {languages.map((l, i) => (
-                <span key={i} style={{ backgroundColor: `${primaryColor}18`, color: primaryColor, padding: '5px 14px', borderRadius: '16px', fontSize: `${fontSize.body - 1}px`, fontWeight: 700, border: `1.5px solid ${primaryColor}40` }}>{l}</span>
+                <span key={i} style={{ color: primaryColor, padding: '5px 14px', borderRadius: '16px', fontSize: `${fontSize.body - 1}px`, fontWeight: 700, border: `1.5px solid ${primaryColor}40` }}>{l}</span>
               ))}
             </div>
           </>

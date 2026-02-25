@@ -731,7 +731,7 @@ function chooseThumbnailData(layoutType: string | undefined): ParsedResumeData {
   return THUMBNAIL_DATA_NARROW;
 }
 
-/** In-memory thumbnail cache — cleared on server restart. v6: deadlock fix + correct height */
+/** In-memory thumbnail cache — cleared on server restart. v7: per-op 25s timeout prevents hung slots */
 const thumbnailCache = new Map<string, Buffer>();
 /** Pending thumbnail promises — deduplicates concurrent requests for the same template */
 const thumbnailPending = new Map<string, Promise<Buffer>>();
@@ -859,6 +859,12 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
 
     const browser = await getBrowser();
     page = await browser.newPage();
+    // Hard timeout on every page operation — prevents page.evaluate() and
+    // page.screenshot() from blocking the concurrency slot indefinitely.
+    // When any operation exceeds this limit, Puppeteer throws a TimeoutError
+    // which propagates to the finally block and always releases the slot.
+    page.setDefaultTimeout(25_000);
+    page.setDefaultNavigationTimeout(25_000);
 
     const A4_W = 794;
     // Maximum capture height — tall enough for rich content, short enough to avoid empty space

@@ -606,74 +606,66 @@ export async function getTemplateConfigFromDB(templateId: string): Promise<Exten
     throw new Error(`Template not found: ${templateId}`);
   }
 
-  // Extract configuration from database
   const config = template.templateConfig as any || {};
 
-  // Determine layout based on template name patterns (two-column templates)
+  // Use explicit layoutType from DB config; fall back to legacy heuristics
   const nameLower = template.name.toLowerCase();
-  const isTwoColumn =
-    nameLower.includes('bold') ||
-    nameLower.includes('casual') ||
-    nameLower.includes('pro') ||
-    nameLower.includes('portfolio') ||
+  const legacyTwoCol =
     nameLower.includes('sidebar') ||
-    nameLower.includes('modern') && template.primaryCategory === 'tech-startup';
+    nameLower.includes('portfolio') ||
+    (nameLower.includes('modern') && template.primaryCategory === 'tech-startup');
 
-  const layoutType = config.layout || (isTwoColumn ? 'two-column' : 'single-column');
-  const hasSidebar = layoutType === 'two-column';
+  const layoutType: string = config.layoutType ||
+    (legacyTwoCol ? 'two-sidebar' :
+     template.primaryCategory === 'academic-research' ? 'academic' : 'single-standard');
 
-  // Determine header style from template name and category
-  let headerStyle: 'centered' | 'left-aligned' | 'boxed' | 'banner' | 'split' = 'left-aligned';
+  const hasSidebar = layoutType === 'two-sidebar';
+  const isAcademic = layoutType === 'academic';
+  const isExecutive = layoutType === 'executive';
+  const isClassic = layoutType === 'classic';
 
-  if (hasSidebar) {
-    headerStyle = 'split';
-  } else if (template.primaryCategory === 'executive-leadership' || nameLower.includes('executive') || nameLower.includes('elite') || nameLower.includes('c-suite') || nameLower.includes('ceo') || nameLower.includes('cfo') || nameLower.includes('cto')) {
-    headerStyle = 'banner';
-  } else if (template.primaryCategory === 'academic-research' || nameLower.includes('academic') || nameLower.includes('research') || nameLower.includes('professor') || nameLower.includes('phd')) {
-    headerStyle = 'centered';
-  } else if (template.primaryCategory === 'creative-design' && (nameLower.includes('bold') || nameLower.includes('creative') || nameLower.includes('portfolio'))) {
-    headerStyle = 'boxed';
-  }
+  // Derive header/section/skills style from layoutType
+  let headerStyle: 'centered' | 'left-aligned' | 'boxed' | 'banner' | 'split' =
+    hasSidebar ? 'split' :
+    (isAcademic || isClassic) ? 'centered' :
+    (isExecutive || layoutType === 'contemporary') ? 'banner' :
+    'left-aligned';
 
-  // Determine section style
-  let sectionStyle: 'underlined' | 'boxed' | 'plain' | 'highlighted' | 'accent-bar' | 'dotted' = 'underlined';
-  if (template.primaryCategory === 'creative-design') {
-    sectionStyle = 'boxed';
-  } else if (nameLower.includes('minimal') || nameLower.includes('clean')) {
-    sectionStyle = 'plain';
-  } else if (template.primaryCategory === 'tech-startup') {
-    sectionStyle = 'accent-bar';
-  }
+  let sectionStyle: 'underlined' | 'boxed' | 'plain' | 'highlighted' | 'accent-bar' | 'dotted' =
+    layoutType === 'minimal' ? 'plain' :
+    layoutType === 'bold-modern' ? 'highlighted' :
+    layoutType === 'contemporary' ? 'accent-bar' :
+    'underlined';
 
-  // Determine skills style
-  let skillsStyle: 'inline' | 'pills' | 'list' | 'grid' | 'bars' | 'tags' = 'inline';
-  if (template.primaryCategory === 'tech-startup' || nameLower.includes('developer') || nameLower.includes('engineer')) {
-    skillsStyle = 'pills';
-  } else if (template.primaryCategory === 'creative-design') {
-    skillsStyle = 'tags';
-  } else if (hasSidebar) {
-    skillsStyle = 'list';
-  }
+  let skillsStyle: 'inline' | 'pills' | 'list' | 'grid' | 'bars' | 'tags' =
+    (layoutType === 'bold-modern' || layoutType === 'contemporary' || hasSidebar) ? 'pills' :
+    (isAcademic || isClassic || isExecutive || layoutType === 'minimal') ? 'inline' :
+    'pills';
 
-  // Get color palette - extract from template name or use default
-  const colorMatch = template.name.match(/(Navy|Ocean|Teal|Emerald|Forest|Indigo|Purple|Slate|Charcoal|Crimson|Ruby|Amber)/i);
-  const colorName = colorMatch ? colorMatch[1].toLowerCase() : 'navy';
-  const color = COLOR_PALETTES.find(c => c.id === colorName) || COLOR_PALETTES[0];
+  // Resolve color palette from DB config, then name-match, then category default
+  const paletteId: string = config.colorPalette ||
+    (() => {
+      const colorMatch = template.name.match(/(Navy|Ocean|Royal|Teal|Emerald|Forest|Indigo|Violet|Slate|Charcoal|Graphite|Stone|Burgundy|Rust|Wine|Plum)/i);
+      if (colorMatch) return colorMatch[1].toLowerCase();
+      const catMap: Record<string, string> = {
+        'ats-professional': 'navy',
+        'tech-startup': 'indigo',
+        'creative-design': 'wine',
+        'academic-research': 'teal',
+        'entry-student': 'royal',
+        'executive-leadership': 'charcoal',
+      };
+      return catMap[template.primaryCategory || ''] || 'navy';
+    })();
 
-  console.log(`🎨 Template Config for "${template.name}" (${template.id}):`, {
-    category: template.primaryCategory,
-    layoutType,
-    headerStyle,
-    sectionStyle,
-    skillsStyle,
-    hasSidebar,
-    fontFamily: template.primaryCategory === 'academic-research' ? 'Times-Roman' : 'Helvetica',
-  });
+  const color = COLOR_PALETTES.find(c => c.id === paletteId) || COLOR_PALETTES[0];
+
+  console.log(`🎨 Template "${template.name}" → layout:${layoutType} palette:${paletteId}`);
 
   return {
     name: template.name,
-    layout: layoutType,
-    layoutType: template.id,
+    layout: hasSidebar ? 'two-column' : 'single-column',
+    layoutType,
     headerStyle,
     sectionStyle,
     skillsStyle,
@@ -681,18 +673,18 @@ export async function getTemplateConfigFromDB(templateId: string): Promise<Exten
     bulletStyle: hasSidebar ? 'dot' : 'dash',
     hasSidebar,
     sidebarPosition: hasSidebar ? 'left' : undefined,
-    sidebarWidth: hasSidebar ? 280 : undefined,
+    sidebarWidth: hasSidebar ? 260 : undefined,
     primaryColor: color.primary,
     secondaryColor: color.secondary,
     accentColor: color.accent,
     textColor: color.text,
     mutedColor: color.muted,
     backgroundColor: color.background,
-    fontFamily: template.primaryCategory === 'academic-research' ? 'Times-Roman' : 'Helvetica',
+    fontFamily: isAcademic || isClassic ? 'Times-Roman' : 'Helvetica',
     fontSize: {
-      header: template.primaryCategory === 'executive-leadership' ? 28 : 24,
+      header: isExecutive ? 28 : 24,
       subheader: 11,
-      body: template.primaryCategory === 'academic-research' ? 9 : 10,
+      body: isAcademic ? 9 : 10,
     },
     margins: hasSidebar
       ? { top: 0, right: 0, bottom: 0, left: 0 }

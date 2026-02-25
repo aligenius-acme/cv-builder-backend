@@ -69,8 +69,8 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
       {/* Left Sidebar - 35% */}
       <div style={{
         width: '35%',
-        backgroundColor: `${primaryColor}15`,
         padding: '40px 30px',
+        borderRight: `2px solid ${primaryColor}20`,
       }}>
         {/* Photo */}
         {contact.photoUrl && (
@@ -238,7 +238,6 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
           <div style={{
             marginBottom: '30px',
             padding: '20px',
-            backgroundColor: `${secondaryColor}15`,
             borderLeft: `4px solid ${secondaryColor}`,
           }}>
             <p style={{
