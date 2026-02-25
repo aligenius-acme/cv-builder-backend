@@ -26,30 +26,30 @@ export interface ColorPalette {
 
 export const COLOR_PALETTES: ColorPalette[] = [
   // Blues
-  { id: 'navy', name: 'Navy', primary: '#1e3a5f', secondary: '#0f2744', accent: '#e8f4fc', text: '#1a1a2e', muted: '#64748b', background: '#f8fafc' },
-  { id: 'ocean', name: 'Ocean', primary: '#0369a1', secondary: '#075985', accent: '#e0f2fe', text: '#0c4a6e', muted: '#64748b', background: '#f0f9ff' },
-  { id: 'royal', name: 'Royal', primary: '#1d4ed8', secondary: '#1e40af', accent: '#dbeafe', text: '#1e3a8a', muted: '#6b7280', background: '#eff6ff' },
-  { id: 'slate', name: 'Slate', primary: '#334155', secondary: '#1e293b', accent: '#f1f5f9', text: '#0f172a', muted: '#64748b', background: '#f8fafc' },
+  { id: 'navy', name: 'Navy', primary: '#1e3a5f', secondary: '#0f2744', accent: '#e8f4fc', text: '#1a1a2e', muted: '#64748b', background: '#ffffff' },
+  { id: 'ocean', name: 'Ocean', primary: '#0369a1', secondary: '#075985', accent: '#e0f2fe', text: '#0c4a6e', muted: '#64748b', background: '#ffffff' },
+  { id: 'royal', name: 'Royal', primary: '#1d4ed8', secondary: '#1e40af', accent: '#dbeafe', text: '#1e3a8a', muted: '#6b7280', background: '#ffffff' },
+  { id: 'slate', name: 'Slate', primary: '#334155', secondary: '#1e293b', accent: '#f1f5f9', text: '#0f172a', muted: '#64748b', background: '#ffffff' },
 
   // Greens
-  { id: 'emerald', name: 'Emerald', primary: '#059669', secondary: '#047857', accent: '#d1fae5', text: '#064e3b', muted: '#6b7280', background: '#ecfdf5' },
-  { id: 'forest', name: 'Forest', primary: '#166534', secondary: '#14532d', accent: '#dcfce7', text: '#14532d', muted: '#6b7280', background: '#f0fdf4' },
-  { id: 'teal', name: 'Teal', primary: '#0d9488', secondary: '#0f766e', accent: '#ccfbf1', text: '#134e4a', muted: '#64748b', background: '#f0fdfa' },
+  { id: 'emerald', name: 'Emerald', primary: '#059669', secondary: '#047857', accent: '#d1fae5', text: '#064e3b', muted: '#6b7280', background: '#ffffff' },
+  { id: 'forest', name: 'Forest', primary: '#166534', secondary: '#14532d', accent: '#dcfce7', text: '#14532d', muted: '#6b7280', background: '#ffffff' },
+  { id: 'teal', name: 'Teal', primary: '#0d9488', secondary: '#0f766e', accent: '#ccfbf1', text: '#134e4a', muted: '#64748b', background: '#ffffff' },
 
   // Warm tones
-  { id: 'burgundy', name: 'Burgundy', primary: '#881337', secondary: '#701a3c', accent: '#fce7f3', text: '#500724', muted: '#6b7280', background: '#fdf2f8' },
-  { id: 'rust', name: 'Rust', primary: '#c2410c', secondary: '#9a3412', accent: '#ffedd5', text: '#7c2d12', muted: '#78716c', background: '#fff7ed' },
-  { id: 'wine', name: 'Wine', primary: '#7f1d1d', secondary: '#991b1b', accent: '#fee2e2', text: '#450a0a', muted: '#78716c', background: '#fef2f2' },
+  { id: 'burgundy', name: 'Burgundy', primary: '#881337', secondary: '#701a3c', accent: '#fce7f3', text: '#500724', muted: '#6b7280', background: '#ffffff' },
+  { id: 'rust', name: 'Rust', primary: '#c2410c', secondary: '#9a3412', accent: '#ffedd5', text: '#7c2d12', muted: '#78716c', background: '#ffffff' },
+  { id: 'wine', name: 'Wine', primary: '#7f1d1d', secondary: '#991b1b', accent: '#fee2e2', text: '#450a0a', muted: '#78716c', background: '#ffffff' },
 
   // Neutrals & Modern
-  { id: 'charcoal', name: 'Charcoal', primary: '#18181b', secondary: '#27272a', accent: '#f4f4f5', text: '#09090b', muted: '#71717a', background: '#fafafa' },
-  { id: 'graphite', name: 'Graphite', primary: '#374151', secondary: '#1f2937', accent: '#f3f4f6', text: '#111827', muted: '#6b7280', background: '#f9fafb' },
-  { id: 'stone', name: 'Stone', primary: '#44403c', secondary: '#292524', accent: '#f5f5f4', text: '#1c1917', muted: '#78716c', background: '#fafaf9' },
+  { id: 'charcoal', name: 'Charcoal', primary: '#18181b', secondary: '#27272a', accent: '#f4f4f5', text: '#09090b', muted: '#71717a', background: '#ffffff' },
+  { id: 'graphite', name: 'Graphite', primary: '#374151', secondary: '#1f2937', accent: '#f3f4f6', text: '#111827', muted: '#6b7280', background: '#ffffff' },
+  { id: 'stone', name: 'Stone', primary: '#44403c', secondary: '#292524', accent: '#f5f5f4', text: '#1c1917', muted: '#78716c', background: '#ffffff' },
 
   // Purples & Creative
-  { id: 'violet', name: 'Violet', primary: '#7c3aed', secondary: '#6d28d9', accent: '#ede9fe', text: '#4c1d95', muted: '#6b7280', background: '#f5f3ff' },
-  { id: 'indigo', name: 'Indigo', primary: '#4f46e5', secondary: '#4338ca', accent: '#e0e7ff', text: '#312e81', muted: '#6b7280', background: '#eef2ff' },
-  { id: 'plum', name: 'Plum', primary: '#a21caf', secondary: '#86198f', accent: '#fae8ff', text: '#701a75', muted: '#6b7280', background: '#fdf4ff' },
+  { id: 'violet', name: 'Violet', primary: '#7c3aed', secondary: '#6d28d9', accent: '#ede9fe', text: '#4c1d95', muted: '#6b7280', background: '#ffffff' },
+  { id: 'indigo', name: 'Indigo', primary: '#4f46e5', secondary: '#4338ca', accent: '#e0e7ff', text: '#312e81', muted: '#6b7280', background: '#ffffff' },
+  { id: 'plum', name: 'Plum', primary: '#a21caf', secondary: '#86198f', accent: '#fae8ff', text: '#701a75', muted: '#6b7280', background: '#ffffff' },
 ];
 
 // ============================================================================
