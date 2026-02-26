@@ -281,6 +281,7 @@ export interface CustomizationResult {
   missingKeywords: string[];
   atsScore: number;
   atsDetails: ATSAnalysis;
+  jobData: JobData;
   truthGuardWarnings: TruthGuardWarning[];
   beforeAfterComparisons?: BeforeAfterComparison[];
   keywordDensity?: KeywordDensity;

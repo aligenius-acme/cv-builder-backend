@@ -38,9 +38,11 @@ CRITICAL RULES:
 6. SEPARATE domain-specific hard skills from generic soft skills — this is critical for accurate scoring
 
 KEYWORD CLASSIFICATION:
-- "keywords" = domain-specific technical skills, tools, platforms, methodologies that are unique to this field (e.g. for marketing: SEO, PPC, Google Analytics, Mailchimp; for engineering: React, Kubernetes, CI/CD; for finance: DCF, GAAP, Bloomberg)
-- Generic soft skills like "communication", "teamwork", "analytical thinking", "project management", "problem solving" are NOT domain keywords — do NOT include them in keywords array
-- The "keywords" array is used for ATS keyword matching — only include skills where the absence would immediately disqualify a candidate
+- "keywords" = ALL specific technical skills, tools, platforms, languages, frameworks, methodologies, and domain-specific concepts explicitly named in the job description
+- Include EVERY named technology, language, tool, platform, or domain-specific skill — even if listed as preferred rather than required
+- Generic soft skills (e.g. communication, teamwork, problem solving) are NOT domain keywords — exclude them
+- Err on the side of INCLUSION: if a named skill or technology appears in the JD, include it
+- A non-trivial job description should yield at least 8 keywords; include all named tools and technologies
 
 Job Description:
 {job_description}
@@ -142,11 +144,11 @@ Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
   "matchedKeywords": [...keywords ACTUALLY found - must exist verbatim or as clear synonyms],
   "missingKeywords": [...keywords NOT in resume - be thorough],
   "sectionScores": {
-    "summary": 0-100 (0 if missing, 20-40 if generic/vague with no keywords, 60+ if specific with relevant keywords),
-    "experience": 0-100 (penalize lack of metrics and irrelevant roles; reward quantified achievements and keyword-rich bullets),
-    "skills": 0-100 (only count RELEVANT skills that match job requirements; missing critical skills = low score),
-    "education": 0-100 (based on job requirements match),
-    "formatting": 0-100 (structure, readability, ATS-friendliness)
+    "summary": 0-100 (score based on job keyword presence — 0 if missing, 10-30 if no job keywords appear, 40-60 if 1-2 keywords, 70+ only if multiple job keywords appear naturally),
+    "experience": 0-100 (score based on relevance to THIS job — irrelevant experience from a different domain scores 10-25 regardless of quality; quantified achievements in the right domain score higher),
+    "skills": 0-100 (count ONLY skills that match job requirements — a skills list of 20 unrelated technologies scores 10-20; only relevant matching skills contribute to this score),
+    "education": 0-100 (relevant degree/field scores higher; unrelated degree scores 20-40; missing preferred certifications reduce score),
+    "formatting": 0-100 (structure, readability, ATS-friendliness — this is the only section scored purely on quality, not domain relevance)
   },
   "formattingIssues": [...any formatting problems with specific line/section references],
   "recommendations": [
@@ -571,7 +573,7 @@ export async function analyzeJobDescription(
   const promptTemplate = await getPrompt('job_analysis');
   const prompt = promptTemplate.replace('{job_description}', jobDescription);
 
-  const { content } = await callAI(prompt, userId, organizationId, 'job_analysis', 1500);
+  const { content } = await callAI(prompt, userId, organizationId, 'job_analysis', 2500);
 
   return parseAIJSON<JobData>(content);
 }
@@ -595,7 +597,7 @@ export async function customizeResume(
   userId: string,
   organizationId?: string | null,
   jobDescription?: string
-): Promise<Omit<CustomizationResult, 'atsScore' | 'atsDetails' | 'truthGuardWarnings'>> {
+): Promise<Omit<CustomizationResult, 'atsScore' | 'atsDetails' | 'jobData' | 'truthGuardWarnings'>> {
   // Build the inline prompt directly (mirrors getDefaultPrompt('resume_customize') pattern
   // but includes the runtime variables and the full schema for all resume sections)
   const prompt = `You are a world-class resume strategist and ATS optimization expert. Your task is to tailor this resume to maximise its match for a specific job posting while maintaining 100% factual accuracy.
@@ -614,7 +616,14 @@ ABSOLUTE RULES — VIOLATION MEANS FAILURE:
 8. If a required skill is genuinely absent, put it in missingKeywords — do NOT invent it
 9. Be brutally honest about the match quality in matchStrength and changesExplanation
 10. YOUR JOB IS ADDITIVE — add keywords, strengthen verbs, improve framing. Never remove or water down existing facts to make room for keywords
-11. DOMAIN MISMATCH DETECTION — If the resume is from a completely different field than the job (e.g. software engineer applying to a marketing role, nurse applying to a finance role), set matchStrength to "poor" and clearly explain the domain mismatch in changesExplanation. Generic skills like "communication" or "analytics" do NOT bridge a domain gap.
+11. DOMAIN MISMATCH DETECTION — If the resume is from a completely different field than the job, set matchStrength to "poor" and clearly explain the domain mismatch in changesExplanation. Generic skills do NOT bridge a domain gap.
+
+MANDATORY KEYWORD INJECTION — NON-NEGOTIABLE:
+Read the FULL JOB DESCRIPTION below carefully. For every specific skill, technology, tool, or domain concept named in it:
+A. Already present in the original resume → preserve it verbatim in the tailored version.
+B. Not present verbatim but the candidate has demonstrably related experience → inject the keyword naturally into the most relevant bullet point or the skills list.
+C. Completely outside the candidate's experience → add to missingKeywords only.
+RULE: Every named skill or technology from the job description must either appear verbatim in tailoredData OR appear in missingKeywords. No keyword may silently disappear from both.
 
 METRIC PRESERVATION — NON-NEGOTIABLE:
 Before writing the tailored version, identify every number, percentage, dollar amount, ratio, headcount, and team size in the original resume. Every single one MUST appear verbatim in the tailored version.
@@ -1198,16 +1207,32 @@ export async function fullCustomizationPipeline(
   );
 
   // Step 3: Code-level domain mismatch detection (reliable, not dependent on AI self-assessment)
-  // Count how many job required-skills/keywords appear verbatim in the ORIGINAL resume text.
-  // If fewer than 15% of domain-specific job keywords actually appear, it's a cross-domain application.
+  // Fix 2: Exclude generic soft skills from keyword matching — they appear in any resume and would
+  // bypass domain mismatch detection even when 0 technical/domain keywords match.
+  const GENERIC_SOFT_SKILLS = new Set([
+    'communication', 'communication skills', 'written communication', 'verbal communication',
+    'teamwork', 'team collaboration', 'team player', 'collaboration',
+    'problem solving', 'problem-solving', 'problem-solving skills',
+    'leadership', 'analytical thinking', 'critical thinking',
+    'attention to detail', 'detail-oriented', 'detail oriented',
+    'time management', 'organizational skills', 'interpersonal skills',
+    'adaptability', 'creativity', 'work ethic', 'multitasking',
+    'fast learner', 'self-motivated', 'self motivated', 'motivated',
+    'organized', 'innovative', 'strategic thinking', 'presentation skills',
+  ]);
+
   const jobKeywords = [...jobData.requiredSkills, ...jobData.keywords];
   const resumeTextLower = resumeText.toLowerCase();
-  const literalMatches = jobKeywords.filter(kw => kw && resumeTextLower.includes(kw.toLowerCase()));
-  const literalMatchRate = jobKeywords.length > 0 ? literalMatches.length / jobKeywords.length : 1;
-  const isDomainMismatch = literalMatchRate < 0.15; // < 15% of job keywords appear in original resume
+
+  // Only count domain-specific keywords for mismatch detection — soft skills are excluded
+  const domainKeywords = jobKeywords.filter(
+    kw => kw && kw.trim().length > 2 && !GENERIC_SOFT_SKILLS.has(kw.toLowerCase().trim())
+  );
+  const domainMatches = domainKeywords.filter(kw => resumeTextLower.includes(kw.toLowerCase()));
+  const domainMatchRate = domainKeywords.length > 0 ? domainMatches.length / domainKeywords.length : 1;
+  const isDomainMismatch = domainMatchRate < 0.15; // < 15% of domain-specific keywords appear
 
   if (isDomainMismatch) {
-    // Force matchStrength to poor before ATS step so ceiling logic applies correctly
     (customization as any).matchStrength = 'poor';
   }
 
@@ -1217,24 +1242,23 @@ export async function fullCustomizationPipeline(
     jobKeywords,
     userId,
     organizationId,
-    customization.missingKeywords,  // inject verified missing keywords
-    jobData.jobField                // domain mismatch hint for prompt
+    customization.missingKeywords,
+    jobData.jobField
   );
 
-  // Fix 4: Domain mismatch hard cap — applied in code, not left to AI discretion
+  // Domain mismatch hard cap
   if (isDomainMismatch) {
     atsDetails.score = Math.min(atsDetails.score, 25);
     (customization as any).matchStrength = 'poor';
     if (!atsDetails.honestAssessment) {
       atsDetails.honestAssessment =
         `Domain mismatch: your resume background does not align with the core requirements of this ${jobData.jobField ?? 'role'}. ` +
-        `Only ${Math.round(literalMatchRate * 100)}% of the job's required skills appear in your resume. ` +
+        `Only ${Math.round(domainMatchRate * 100)}% of the job's domain-specific skills appear in your resume. ` +
         `Consider applying to roles that match your actual skill set.`;
     }
   }
 
   // Enforce hard score ceiling based on match strength
-  // The LLM optimizes the resume text first, which inflates ATS scores — correct for this
   const matchStrengthCeiling: Record<string, number> = {
     strong: 100,
     moderate: 78,
@@ -1246,7 +1270,7 @@ export async function fullCustomizationPipeline(
     atsDetails.score = ceiling;
   }
 
-  // Also enforce keyword-based ceiling independently
+  // Enforce keyword-based ceiling independently
   const totalKeywords = jobKeywords.length;
   const missingCount = customization.missingKeywords.length;
   if (totalKeywords > 0) {
@@ -1260,13 +1284,23 @@ export async function fullCustomizationPipeline(
     }
   }
 
-  // Always reconcile section scores with the overall score.
-  // The AI sometimes gives inconsistent results (sections 80/80/60 but overall 20).
-  // Compute the implied section average and rescale so they match the overall.
+  // Fix 1: Weighted score formula — keyword match drives 60% of the final score.
+  // This prevents a beautifully formatted but domain-mismatched resume from scoring above ~35
+  // even when the domain mismatch cap doesn't fire (e.g. soft-skill inflation bypassed the cap).
+  if (atsDetails.sectionScores) {
+    const sectionVals = Object.values(atsDetails.sectionScores);
+    const sectionQualityAvg = sectionVals.reduce((a, b) => a + b, 0) / sectionVals.length;
+    const kwMatchPct = atsDetails.keywordMatchPercentage ?? 0;
+    const weightedScore = Math.round((sectionQualityAvg * 0.4) + (kwMatchPct * 0.6));
+    if (weightedScore < atsDetails.score) {
+      atsDetails.score = weightedScore;
+    }
+  }
+
+  // Reconcile section scores with the overall score so they are internally consistent.
   if (atsDetails.sectionScores) {
     const sectionKeys = Object.keys(atsDetails.sectionScores) as Array<keyof typeof atsDetails.sectionScores>;
     const sectionAvg = sectionKeys.reduce((sum, k) => sum + atsDetails.sectionScores[k], 0) / sectionKeys.length;
-    // Only rescale if there is a meaningful gap (>10 pts) between section avg and overall
     if (sectionAvg > 0 && Math.abs(sectionAvg - atsDetails.score) > 10) {
       const scaleFactor = atsDetails.score / sectionAvg;
       sectionKeys.forEach(key => {
@@ -1287,6 +1321,7 @@ export async function fullCustomizationPipeline(
     ...customization,
     atsScore: atsDetails.score,
     atsDetails,
+    jobData,
     truthGuardWarnings,
   };
 }

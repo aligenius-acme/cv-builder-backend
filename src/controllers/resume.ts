@@ -445,7 +445,7 @@ export const customizeResume = async (
         jobTitle,
         companyName,
         jobDescription,
-        jobData: result.atsDetails as any,
+        jobData: result.jobData as any,
         tailoredData: result.tailoredData as any,
         tailoredText: result.tailoredText,
         changesExplanation: result.changesExplanation,
