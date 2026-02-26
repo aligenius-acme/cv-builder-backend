@@ -31,3 +31,6 @@ nul
 *.tmp
 *.temp
 .cache
+
+# Thumbnail cache (runtime generated)
+/thumbnails
