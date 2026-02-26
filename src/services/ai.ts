@@ -381,7 +381,6 @@ async function callAI(
     await prisma.aIUsageLog.create({
       data: {
         userId,
-        organizationId,
         operation,
         provider: 'openai',
         model: config.ai.openaiModel,
@@ -409,7 +408,6 @@ async function callAI(
     await prisma.aIUsageLog.create({
       data: {
         userId,
-        organizationId,
         operation,
         provider: 'openai',
         model: config.ai.openaiModel,
@@ -476,7 +474,6 @@ export async function callAIRaw(
     await prisma.aIUsageLog.create({
       data: {
         userId,
-        organizationId: null,
         operation,
         provider: 'openai',
         model: config.ai.openaiModel,
@@ -503,7 +500,6 @@ export async function callAIRaw(
     await prisma.aIUsageLog.create({
       data: {
         userId,
-        organizationId: null,
         operation,
         provider: 'openai',
         model: config.ai.openaiModel,

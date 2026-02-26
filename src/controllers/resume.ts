@@ -778,6 +778,11 @@ export const simulateATS = async (
         recommendations: atsResult.recommendations,
         atsExtractedView: atsResult.atsExtractedView,
         riskyElements: atsResult.riskyElements,
+        honestAssessment: atsResult.honestAssessment,
+        competitorComparison: atsResult.competitorComparison,
+        detailedRecommendations: atsResult.detailedRecommendations,
+        quickWins: atsResult.quickWins,
+        actionPlan: atsResult.actionPlan,
       },
     });
   } catch (error) {
