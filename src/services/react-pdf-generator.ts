@@ -1,6 +1,9 @@
 import * as ReactDOMServer from 'react-dom/server';
 import * as React from 'react';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import path from 'path';
+import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import { ParsedResumeData } from '../types';
 import { getTemplateConfig, ExtendedTemplateConfig } from './templates';
 import { BaseTemplate } from '../templates/shared/components/BaseTemplate';
@@ -732,6 +735,42 @@ function chooseThumbnailData(layoutType: string | undefined): ParsedResumeData {
 }
 
 /** In-memory thumbnail cache — cleared on server restart. v7: per-op 25s timeout prevents hung slots */
+// ─── Disk thumbnail cache ──────────────────────────────────────────────────────
+// Thumbnails are saved as JPEG files under backend/thumbnails/ so they survive
+// server restarts. In-memory cache is still used for speed; disk is the fallback.
+
+const THUMB_CACHE_DIR = path.join(__dirname, '../../thumbnails');
+
+async function ensureThumbDir(): Promise<void> {
+  await fs.mkdir(THUMB_CACHE_DIR, { recursive: true });
+}
+
+function thumbFilePath(templateId: string): string {
+  // Sanitize to prevent path traversal
+  const safe = templateId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return path.join(THUMB_CACHE_DIR, `${safe}.jpg`);
+}
+
+async function readDiskThumb(templateId: string): Promise<Buffer | null> {
+  const fp = thumbFilePath(templateId);
+  if (!existsSync(fp)) return null;
+  try {
+    return await fs.readFile(fp);
+  } catch {
+    return null;
+  }
+}
+
+async function writeDiskThumb(templateId: string, buf: Buffer): Promise<void> {
+  try {
+    await ensureThumbDir();
+    await fs.writeFile(thumbFilePath(templateId), buf);
+  } catch (err) {
+    console.warn(`Failed to persist thumbnail for ${templateId}:`, err);
+  }
+}
+
+// ─── In-memory thumbnail cache ────────────────────────────────────────────────
 const thumbnailCache = new Map<string, Buffer>();
 /** Pending thumbnail promises — deduplicates concurrent requests for the same template */
 const thumbnailPending = new Map<string, Promise<Buffer>>();
@@ -953,15 +992,24 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
  * match the PDF preview exactly. Results are cached in memory.
  */
 export async function generateTemplateThumbnail(templateId: string): Promise<Buffer> {
+  // 1. In-memory cache (fastest)
   const cached = thumbnailCache.get(templateId);
   if (cached) return cached;
 
-  // Deduplicate concurrent requests for the same template
+  // 2. Disk cache (survives server restarts)
+  const diskBuf = await readDiskThumb(templateId);
+  if (diskBuf) {
+    thumbnailCache.set(templateId, diskBuf); // warm in-memory cache
+    return diskBuf;
+  }
+
+  // 3. Generate via Puppeteer — deduplicate concurrent requests for the same template
   let pending = thumbnailPending.get(templateId);
   if (!pending) {
     pending = _doGenerateThumbnail(templateId)
       .then(buf => {
         thumbnailCache.set(templateId, buf);
+        writeDiskThumb(templateId, buf); // persist to disk (non-blocking)
         thumbnailPending.delete(templateId);
         return buf;
       })
@@ -1011,9 +1059,15 @@ export async function warmupThumbnails(): Promise<void> {
 export function clearThumbnailCache(templateId?: string): void {
   if (templateId) {
     thumbnailCache.delete(templateId);
+    // Also remove from disk so next request regenerates
+    fs.unlink(thumbFilePath(templateId)).catch(() => {});
     console.log(`Thumbnail cache cleared for: ${templateId}`);
   } else {
     thumbnailCache.clear();
+    // Wipe and recreate the disk cache directory
+    fs.rm(THUMB_CACHE_DIR, { recursive: true, force: true })
+      .then(() => ensureThumbDir())
+      .catch(() => {});
     console.log('All thumbnail caches cleared');
   }
 }

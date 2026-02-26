@@ -296,9 +296,16 @@ export const getThumbnail = async (req: Request, res: Response): Promise<void> =
     ]);
 
     res.setHeader('Content-Type', 'image/jpeg');
-    // Server-side in-memory cache is authoritative; tell browsers to always revalidate
-    // so they pick up freshly-generated screenshots after server restarts
-    res.setHeader('Cache-Control', 'no-cache');
+    // Cache in browser for 24 h; stale-while-revalidate lets subsequent requests
+    // be served instantly while a fresh copy is fetched in background.
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
+    // ETag lets browsers skip the body on repeat visits when nothing changed
+    const etag = `"${templateId}-${thumbnailBuffer.length}"`;
+    res.setHeader('ETag', etag);
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
     res.send(thumbnailBuffer);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
