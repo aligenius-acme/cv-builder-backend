@@ -2351,7 +2351,7 @@ function buildCompactDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | 
     data.experience.forEach((exp: any) => {
       main.push(new Paragraph({ children: [new TextRun({ text: exp.title || '', bold: true, size: 21, font: p.font }), new TextRun({ text: exp.company ? `  —  ${exp.company}` : '', color: hex(p.primary), size: 20, font: p.font })], spacing: { before: 120, after: 30 } }));
       main.push(new Paragraph({ children: [new TextRun({ text: `${exp.startDate || ''} – ${exp.current ? 'Present' : exp.endDate || ''}`, italics: true, color: hex(p.muted), size: 18, font: p.font })], spacing: { after: 50 } }));
-      ((exp.description || []) as string[]).slice(0, 3).forEach((desc: string) => main.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(desc)}`, size: 19, font: p.font })], indent: { left: 160 }, spacing: { after: 30 } })));
+      ((exp.description || []) as string[]).forEach((desc: string) => main.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(desc)}`, size: 19, font: p.font })], indent: { left: 160 }, spacing: { after: 30 } })));
       main.push(new Paragraph({ text: '', spacing: { after: 80 } }));
     });
   }
@@ -2361,6 +2361,17 @@ function buildCompactDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | 
       main.push(new Paragraph({ children: [new TextRun({ text: pr.name || '', bold: true, size: 21, font: p.font })], spacing: { before: 80, after: 30 } }));
       if (pr.description) main.push(new Paragraph({ children: [new TextRun({ text: pr.description, size: 19, font: p.font })], spacing: { after: 30 } }));
       if (pr.technologies?.length) main.push(new Paragraph({ children: [new TextRun({ text: pr.technologies.join(', '), italics: true, color: hex(p.muted), size: 18, font: p.font })], spacing: { after: 40 } }));
+    });
+  }
+  if (data.volunteerWork?.length) {
+    main.push(makeSectionTitle('Volunteer Work', mainTs));
+    data.volunteerWork.forEach((v: any) => {
+      if (typeof v === 'string') {
+        main.push(new Paragraph({ children: [new TextRun({ text: `• ${v}`, size: 19, font: p.font })], spacing: { after: 30 } }));
+      } else {
+        main.push(new Paragraph({ children: [new TextRun({ text: v.role || '', bold: true, size: 20, font: p.font }), new TextRun({ text: v.organization ? ` — ${v.organization}` : '', size: 19, font: p.font })], spacing: { before: 80, after: 20 } }));
+        main.push(new Paragraph({ children: [new TextRun({ text: v.period || `${v.startDate || ''}${v.current ? ' – Present' : v.endDate ? ` – ${v.endDate}` : ''}`, italics: true, color: hex(p.muted), size: 18, font: p.font })], spacing: { after: 40 } }));
+      }
     });
   }
   const side: Paragraph[] = [];
@@ -2425,6 +2436,17 @@ function buildInfographicDocx(data: ParsedResumeData, p: DocxPalette): (Paragrap
     right.push(makeSectionTitle('Awards', rightTs));
     data.awards.forEach((a: any) => { const n = typeof a === 'string' ? a : (a as any).name || ''; right.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(n)}`, font: p.font })], spacing: { after: 60 } })); });
   }
+  if (data.volunteerWork?.length) {
+    right.push(makeSectionTitle('Volunteer Work', rightTs));
+    data.volunteerWork.forEach((v: any) => {
+      if (typeof v === 'string') {
+        right.push(new Paragraph({ children: [new TextRun({ text: `→ ${v}`, font: p.font })], spacing: { after: 60 } }));
+      } else {
+        right.push(new Paragraph({ children: [new TextRun({ text: v.role || '', bold: true, font: p.font }), new TextRun({ text: v.organization ? ` — ${v.organization}` : '', font: p.font })], spacing: { before: 100, after: 30 } }));
+        right.push(new Paragraph({ children: [new TextRun({ text: v.period || `${v.startDate || ''}${v.current ? ' – Present' : v.endDate ? ` – ${v.endDate}` : ''}`, italics: true, color: hex(p.muted), size: 20, font: p.font })], spacing: { after: 40 } }));
+      }
+    });
+  }
   return [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [
     new TableCell({ width: { size: 35, type: WidthType.PERCENTAGE }, children: left, borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: { style: BorderStyle.SINGLE, size: 8, color: blendWithWhite(p.primary, 0.3) } }, margins: { top: 80, bottom: 80, left: 0, right: 200 } }),
     new TableCell({ width: { size: 65, type: WidthType.PERCENTAGE }, children: right, borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }, margins: { top: 80, bottom: 80, left: 200, right: 0 } }),
@@ -2488,7 +2510,32 @@ function buildPortfolioDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph 
     out.push(new Paragraph({ text: '', spacing: { after: 200 } }));
   }
   if (data.education?.length) { out.push(makeSectionTitle('Education', ts)); data.education.forEach((e: any) => out.push(...makeEduBlock(e, p))); }
-  out.push(...makeOptionalSections(data, ts, '•', p));
+  // Remaining sections — explicitly listed to avoid duplicating projects (already shown above)
+  if (data.certifications?.length) {
+    out.push(makeSectionTitle('Certifications', ts));
+    data.certifications.forEach((c: any) => { const n = typeof c === 'string' ? c : c.name || ''; const d = typeof c === 'object' && c.date ? ` (${c.date})` : ''; out.push(new Paragraph({ text: `• ${cleanBullet(n)}${d}`, spacing: { after: 60 } })); });
+    out.push(new Paragraph({ text: '', spacing: { after: 120 } }));
+  }
+  if (data.languages?.length) {
+    out.push(makeSectionTitle('Languages', ts));
+    out.push(new Paragraph({ text: (data.languages as string[]).join('  •  '), spacing: { after: 160 } }));
+  }
+  if (data.awards?.length) {
+    out.push(makeSectionTitle('Awards', ts));
+    data.awards.forEach((a: any) => { const n = typeof a === 'string' ? a : a.name || ''; out.push(new Paragraph({ text: `• ${cleanBullet(n)}`, spacing: { after: 60 } })); });
+    out.push(new Paragraph({ text: '', spacing: { after: 120 } }));
+  }
+  if (data.volunteerWork?.length) {
+    out.push(makeSectionTitle('Volunteer Work', ts));
+    data.volunteerWork.forEach((v: any) => {
+      if (typeof v === 'string') {
+        out.push(new Paragraph({ text: `• ${v}`, spacing: { after: 60 } }));
+      } else {
+        out.push(new Paragraph({ children: [new TextRun({ text: v.role || '', bold: true, font: p.font }), new TextRun({ text: v.organization ? ` — ${v.organization}` : '', font: p.font })], spacing: { before: 100, after: 30 } }));
+        out.push(new Paragraph({ children: [new TextRun({ text: v.period || `${v.startDate || ''}${v.current ? ' – Present' : v.endDate ? ` – ${v.endDate}` : ''}`, italics: true, color: hex(p.muted), font: p.font })], spacing: { after: 80 } }));
+      }
+    });
+  }
   return out;
 }
 /**

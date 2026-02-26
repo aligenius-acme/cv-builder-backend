@@ -138,7 +138,7 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
             }}>
               Skills
             </h3>
-            {skills.slice(0, 8).map((skill, index) => {
+            {skills.map((skill, index) => {
               const skillText = typeof skill === 'string' ? skill : (skill as any).category || (skill as any).name || String(skill);
               // Random skill level between 75-95 for visual variety
               const level = 75 + (index * 3);
@@ -189,7 +189,7 @@ export const InfographicLayout: React.FC<LayoutProps> = ({ data, config }) => {
             }}>
               Certifications
             </h3>
-            {certifications.slice(0, 4).map((cert, index) => (
+            {certifications.map((cert, index) => (
               <div key={index} style={{ fontSize: `${fontSize.body - 1}px`, color: textColor, marginBottom: '10px', lineHeight: 1.4 }}>
                 ✓ {typeof cert === 'string' ? cert : cert.name}
               </div>

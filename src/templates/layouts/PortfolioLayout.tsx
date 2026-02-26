@@ -141,7 +141,7 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
                     gap: '6px',
                     marginBottom: '8px',
                   }}>
-                    {project.technologies.slice(0, 4).map((tech, i) => (
+                    {project.technologies.map((tech, i) => (
                       <span
                         key={i}
                         style={{

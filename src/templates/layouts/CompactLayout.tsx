@@ -153,7 +153,7 @@ export const CompactLayout: React.FC<LayoutProps> = ({ data, config }) => {
                     {exp.location && ` • ${exp.location}`}
                   </div>
                   <ul style={{ margin: 0, paddingLeft: '16px', listStyle: 'disc' }}>
-                    {exp.description?.slice(0, 3).map((desc, i) => (
+                    {exp.description?.map((desc, i) => (
                       <li key={i} style={{
                         fontSize: `${compactFontSize.body}px`,
                         color: textColor,
