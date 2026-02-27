@@ -5,11 +5,12 @@ import { ValidationError, NotFoundError, QuotaExceededError } from '../utils/err
 import { uploadFile, deleteFile, getFile } from '../services/storage';
 import { parseFile, extractResumeData, logParsingError } from '../services/parser';
 import { fullCustomizationPipeline, analyzeATS } from '../services/ai';
+import { deductAICredit } from '../middleware/credits';
+import { getAffiliateCourses } from '../config/affiliateLinks';
 import { generatePDF, generateDOCX, generatePDFFromRegistry, generateDOCXFromRegistry, anonymizeResumeData } from '../services/documents';
 import { getTemplate, isValidTemplate } from '../services/templates';
 import { getTemplateById, getTemplateConfigFromDB } from '../services/template-registry';
 import { scrapeJobPosting, formatJobDescription, ScrapedJobData } from '../services/jobScraper';
-import { PlanType } from '@prisma/client';
 
 // Upload and parse resume
 export const uploadResume = async (
@@ -66,14 +67,6 @@ export const uploadResume = async (
           rawText,
           parsedData: parsedData as any,
           parseStatus: 'completed',
-        },
-      });
-
-      // Update subscription usage
-      await prisma.subscription.update({
-        where: { userId },
-        data: {
-          resumesCreated: { increment: 1 },
         },
       });
 
@@ -327,7 +320,7 @@ export const downloadOriginalResume = async (
       doc: 'application/msword',
     };
     const contentType = contentTypeMap[ext] || 'application/octet-stream';
-    const fileName = resume.fileName || `original-resume.${ext}`;
+    const fileName = resume.originalFileName || `original-resume.${ext}`;
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -436,6 +429,9 @@ export const customizeResume = async (
       organizationId
     );
 
+    // Deduct one credit for this endpoint (regardless of how many internal AI calls)
+    await deductAICredit(userId);
+
     // Create version
     const version = await prisma.resumeVersion.create({
       data: {
@@ -457,7 +453,8 @@ export const customizeResume = async (
       },
     });
 
-    // Note: AI credits are automatically deducted by callAI() function in ai.ts
+    // Map missing keywords to affiliate course recommendations
+    const courseRecommendations = await getAffiliateCourses(result.missingKeywords);
 
     res.status(201).json({
       success: true,
@@ -471,6 +468,7 @@ export const customizeResume = async (
         missingKeywords: version.missingKeywords,
         changesExplanation: version.changesExplanation,
         truthGuardWarnings: version.truthGuardWarnings,
+        courseRecommendations,
         createdAt: version.createdAt,
       },
     });
@@ -757,6 +755,9 @@ export const simulateATS = async (
       organizationId
     );
 
+    // Deduct one credit for this endpoint
+    await deductAICredit(userId);
+
     // Update version with new ATS details
     await prisma.resumeVersion.update({
       where: { id: versionId },
@@ -765,6 +766,9 @@ export const simulateATS = async (
         atsDetails: atsResult as any,
       },
     });
+
+    // Map missing keywords to affiliate course recommendations
+    const courseRecommendations = await getAffiliateCourses(atsResult.missingKeywords);
 
     res.json({
       success: true,
@@ -783,6 +787,7 @@ export const simulateATS = async (
         detailedRecommendations: atsResult.detailedRecommendations,
         quickWins: atsResult.quickWins,
         actionPlan: atsResult.actionPlan,
+        courseRecommendations,
       },
     });
   } catch (error) {
@@ -881,14 +886,6 @@ export const createBlankResume = async (
         parsedData: blankResumeData as any,
         parseStatus: 'completed',
         isBase: true,
-      },
-    });
-
-    // Update subscription usage
-    await prisma.subscription.update({
-      where: { userId },
-      data: {
-        resumesCreated: { increment: 1 },
       },
     });
 

@@ -395,12 +395,7 @@ async function callAI(
       },
     });
 
-    // CRITICAL: Auto-deduct AI credit after successful operation
-    // This ensures NO AI operation can bypass the credit system
-    const { deductAICredit } = await import('../middleware/credits');
-    await deductAICredit(userId);
-
-    console.log(`✅ AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms | 1 credit deducted from user ${userId}`);
+    console.log(`✅ AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms`);
 
     return result;
   } catch (error) {
@@ -488,11 +483,7 @@ export async function callAIRaw(
       },
     });
 
-    // CRITICAL: Auto-deduct AI credit after successful operation
-    const { deductAICredit } = await import('../middleware/credits');
-    await deductAICredit(userId);
-
-    console.log(`✅ AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms | 1 credit deducted from user ${userId}`);
+    console.log(`✅ AI operation ${operation} completed: ${totalTokens} tokens in ${durationMs}ms`);
 
     return content;
   } catch (error) {

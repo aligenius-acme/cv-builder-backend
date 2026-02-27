@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest } from '../types';
 import { ValidationError, NotFoundError } from '../utils/errors';
 import { UserRole } from '@prisma/client';
+import { invalidateAffiliateCache, seedAffiliateLinksIfEmpty } from '../config/affiliateLinks';
 
 // Get dashboard stats
 export const getDashboard = async (
@@ -30,6 +31,9 @@ export const getDashboard = async (
       newUsers,
       oldNewUsers,
 
+      // Pro users
+      proUsers,
+
       // AI metrics
       aiUsageStats,
       aiCreditsData,
@@ -56,6 +60,9 @@ export const getDashboard = async (
       prisma.user.count({ where: { lastLoginAt: { gte: thirtyDaysAgo } } }),
       prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       prisma.user.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+
+      // Pro users
+      prisma.user.count({ where: { plan: 'PRO' } }),
 
       // AI usage stats (30 days)
       prisma.aIUsageLog.aggregate({
@@ -181,6 +188,7 @@ export const getDashboard = async (
           totalSavedJobs,
           activeUsers30d: activeUsers,
           newUsers30d: newUsers,
+          proUsers,
           userGrowthRate: parseFloat(userGrowthRate),
           avgVersionsPerResume: parseFloat(avgVersionsPerResume),
 
@@ -221,6 +229,7 @@ export const getUsers = async (
     const limit = parseInt(req.query.limit as string) || 20;
     const search = req.query.search as string;
     const role = req.query.role as UserRole;
+    const plan = req.query.plan as string;
 
     const where: any = {};
 
@@ -234,6 +243,10 @@ export const getUsers = async (
 
     if (role) {
       where.role = role;
+    }
+
+    if (plan && ['FREE', 'PRO'].includes(plan)) {
+      where.plan = plan;
     }
 
     const [users, total] = await Promise.all([
@@ -263,6 +276,8 @@ export const getUsers = async (
           firstName: u.firstName,
           lastName: u.lastName,
           role: u.role,
+          plan: u.plan,
+          stripeSubscriptionId: u.stripeSubscriptionId,
           resumeCount: u._count.resumes,
           coverLetterCount: u._count.coverLetters,
           createdAt: u.createdAt,
@@ -350,7 +365,7 @@ export const updateUser = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { role, emailVerified } = req.body;
+    const { role, emailVerified, plan } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -360,12 +375,22 @@ export const updateUser = async (
       throw new NotFoundError('User not found');
     }
 
+    const updateData: any = {
+      ...(role && { role }),
+      ...(emailVerified !== undefined && { emailVerified }),
+    };
+
+    if (plan && ['FREE', 'PRO'].includes(plan)) {
+      updateData.plan = plan;
+      // When manually granting Free, also clear subscription IDs
+      if (plan === 'FREE') {
+        updateData.stripeSubscriptionId = null;
+      }
+    }
+
     const updated = await prisma.user.update({
       where: { id },
-      data: {
-        ...(role && { role }),
-        ...(emailVerified !== undefined && { emailVerified }),
-      },
+      data: updateData,
     });
 
     await prisma.auditLog.create({
@@ -374,7 +399,7 @@ export const updateUser = async (
         action: 'UPDATE_USER',
         targetType: 'user',
         targetId: id,
-        details: { role, emailVerified },
+        details: { role, emailVerified, plan },
       },
     });
 
@@ -384,6 +409,7 @@ export const updateUser = async (
         id: updated.id,
         email: updated.email,
         role: updated.role,
+        plan: updated.plan,
         emailVerified: updated.emailVerified,
       },
     });
@@ -741,6 +767,101 @@ export const getTemplates = async (
       success: true,
       data: templates,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── Affiliate Link Management ───────────────────────────────────────────────
+
+// GET /admin/affiliates — list all affiliate links (seed on first call if empty)
+export const getAffiliates = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    await seedAffiliateLinksIfEmpty();
+    const links = await prisma.affiliateLink.findMany({
+      orderBy: [{ provider: 'asc' }, { skill: 'asc' }],
+    });
+    res.json({ success: true, data: links });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /admin/affiliates — create a new affiliate link
+export const createAffiliate = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { skill, title, url, provider, isActive } = req.body;
+    if (!skill || !title || !url || !provider) {
+      throw new ValidationError('skill, title, url, and provider are required');
+    }
+    const link = await prisma.affiliateLink.create({
+      data: {
+        skill: skill.toLowerCase().trim(),
+        title: title.trim(),
+        url: url.trim(),
+        provider: provider.trim(),
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+      },
+    });
+    invalidateAffiliateCache();
+    res.status(201).json({ success: true, data: link });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /admin/affiliates/:id — update an affiliate link
+export const updateAffiliate = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { skill, title, url, provider, isActive } = req.body;
+
+    const existing = await prisma.affiliateLink.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Affiliate link not found');
+
+    const link = await prisma.affiliateLink.update({
+      where: { id },
+      data: {
+        ...(skill !== undefined && { skill: skill.toLowerCase().trim() }),
+        ...(title !== undefined && { title: title.trim() }),
+        ...(url !== undefined && { url: url.trim() }),
+        ...(provider !== undefined && { provider: provider.trim() }),
+        ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+      },
+    });
+    invalidateAffiliateCache();
+    res.json({ success: true, data: link });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /admin/affiliates/:id — delete an affiliate link
+export const deleteAffiliate = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const existing = await prisma.affiliateLink.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Affiliate link not found');
+
+    await prisma.affiliateLink.delete({ where: { id } });
+    invalidateAffiliateCache();
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }

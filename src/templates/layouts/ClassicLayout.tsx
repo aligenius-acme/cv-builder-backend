@@ -144,9 +144,9 @@ export const ClassicLayout: React.FC<LayoutProps> = ({ data, config }) => {
             <div key={i} style={{ marginBottom: '12px' }}>
               <div style={{ fontWeight: 700, fontSize: `${fontSize.subheader - 1}px` }}>{p.name}</div>
               {p.description && <div style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginLeft: '18px' }}>– {p.description}</div>}
-              {p.technologies?.length > 0 && (
+              {(p.technologies?.length ?? 0) > 0 && (
                 <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, fontStyle: 'italic', marginLeft: '18px' }}>
-                  Technologies: {p.technologies.join(', ')}
+                  Technologies: {p.technologies!.join(', ')}
                 </div>
               )}
             </div>

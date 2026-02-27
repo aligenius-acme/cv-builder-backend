@@ -3,9 +3,12 @@ import { AuthenticatedRequest } from '../types';
 import { prisma } from '../utils/prisma';
 import { QuotaExceededError } from '../utils/errors';
 
+const PRO_DAILY_CAP = 200;
+
 /**
- * Middleware to check if user has available AI credits
- * All users get 5 lifetime AI credits (no renewals)
+ * Middleware to check if user has available AI credits.
+ * Pro users bypass the lifetime credit limit but have a 200 calls/day anti-abuse cap.
+ * Free users get 5 lifetime credits.
  */
 export const checkAICredits = async (
   req: AuthenticatedRequest,
@@ -19,12 +22,12 @@ export const checkAICredits = async (
       return next(new Error('User not authenticated'));
     }
 
-    // Get user's current credit status
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         aiCredits: true,
         aiCreditsUsed: true,
+        plan: true,
       },
     });
 
@@ -32,16 +35,29 @@ export const checkAICredits = async (
       return next(new Error('User not found'));
     }
 
-    // Calculate remaining credits
+    if (user.plan === 'PRO') {
+      // Anti-abuse cap: 200 logged AI calls/day. A normal user doing 10 tailorings/day = 40 calls.
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const dailyUsage = await prisma.aIUsageLog.count({
+        where: { userId, success: true, createdAt: { gte: todayStart } },
+      });
+      if (dailyUsage >= PRO_DAILY_CAP) {
+        throw new QuotaExceededError('Daily usage limit reached. Resets at midnight.');
+      }
+      (req as any).credits = { isPro: true, remaining: PRO_DAILY_CAP - dailyUsage };
+      return next();
+    }
+
+    // FREE user: lifetime credit check
     const remainingCredits = user.aiCredits - user.aiCreditsUsed;
 
     if (remainingCredits <= 0) {
       throw new QuotaExceededError(
-        'You have used all your AI credits. Check out our recommended tools and courses to boost your job search!'
+        'You have used all your AI credits. Upgrade to Pro for unlimited access!'
       );
     }
 
-    // Add credit info to request for use in controllers
     (req as any).credits = {
       total: user.aiCredits,
       used: user.aiCreditsUsed,
@@ -55,16 +71,18 @@ export const checkAICredits = async (
 };
 
 /**
- * Deduct one AI credit from user after successful AI operation
+ * Deduct one AI credit from a FREE user after a successful AI endpoint.
+ * Pro users are skipped — credits are not counted for them.
  */
 export const deductAICredit = async (userId: string): Promise<void> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true },
+  });
+  if (user?.plan === 'PRO') return;
   await prisma.user.update({
     where: { id: userId },
-    data: {
-      aiCreditsUsed: {
-        increment: 1,
-      },
-    },
+    data: { aiCreditsUsed: { increment: 1 } },
   });
 };
 

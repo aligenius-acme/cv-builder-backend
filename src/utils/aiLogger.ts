@@ -2,7 +2,6 @@ import { prisma } from './prisma';
 
 interface AIUsageData {
   userId: string;
-  organizationId?: string;
   operation: string;
   provider: string;
   model: string;
@@ -38,7 +37,6 @@ export async function logAIUsage(data: AIUsageData): Promise<void> {
     await prisma.aIUsageLog.create({
       data: {
         userId: data.userId,
-        organizationId: data.organizationId,
         operation: data.operation,
         provider: data.provider,
         model: data.model,

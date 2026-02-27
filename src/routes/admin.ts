@@ -13,6 +13,10 @@ import {
   updatePrompt,
   createTemplate,
   getTemplates,
+  getAffiliates,
+  createAffiliate,
+  updateAffiliate,
+  deleteAffiliate,
 } from '../controllers/admin';
 
 const router = Router();
@@ -46,5 +50,11 @@ router.put('/prompts/:id', updatePrompt);
 // Template management
 router.get('/templates', getTemplates);
 router.post('/templates', createTemplate);
+
+// Affiliate link management
+router.get('/affiliates', getAffiliates);
+router.post('/affiliates', createAffiliate);
+router.put('/affiliates/:id', updateAffiliate);
+router.delete('/affiliates/:id', deleteAffiliate);
 
 export default router;

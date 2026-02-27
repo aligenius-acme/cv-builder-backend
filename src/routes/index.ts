@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import authRoutes from './auth';
+import billingRoutes from './billing';
 import resumeRoutes from './resume';
 import coverLetterRoutes from './coverLetter';
 import adminRoutes from './admin';
@@ -23,6 +24,7 @@ const router = Router();
 
 // API routes
 router.use('/auth', authRoutes);
+router.use('/billing', billingRoutes);
 router.use('/resumes', resumeRoutes);
 router.use('/cover-letters', coverLetterRoutes);
 router.use('/admin', adminRoutes);

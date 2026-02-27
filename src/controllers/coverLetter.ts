@@ -3,6 +3,8 @@ import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest, ParsedResumeData, JobData } from '../types';
 import { ValidationError, NotFoundError } from '../utils/errors';
 import { generateCoverLetter as aiGenerateCoverLetter, generateEnhancedCoverLetter as aiGenerateEnhancedCoverLetter, analyzeJobDescription } from '../services/ai';
+import { deductAICredit } from '../middleware/credits';
+import { getGrammarlyUrl } from '../config/affiliateLinks';
 import { generateCoverLetterPDF, generateCoverLetterDOCX } from '../services/documents';
 import { uploadDocument } from '../services/storage';
 
@@ -69,6 +71,9 @@ export const generateCoverLetter = async (
       organizationId
     );
 
+    // Deduct one credit for this endpoint
+    await deductAICredit(userId);
+
     // Save cover letter
     const coverLetter = await prisma.coverLetter.create({
       data: {
@@ -89,6 +94,7 @@ export const generateCoverLetter = async (
         jobTitle: coverLetter.jobTitle,
         companyName: coverLetter.companyName,
         content: coverLetter.content,
+        grammarlyUrl: await getGrammarlyUrl(),
         createdAt: coverLetter.createdAt,
       },
     });
@@ -354,6 +360,9 @@ export const regenerateCoverLetter = async (
       organizationId
     );
 
+    // Deduct one credit for this endpoint
+    await deductAICredit(userId);
+
     // Update cover letter
     const updated = await prisma.coverLetter.update({
       where: { id },
@@ -366,6 +375,7 @@ export const regenerateCoverLetter = async (
         id: updated.id,
         content: updated.content,
         tone: updated.tone,
+        grammarlyUrl: await getGrammarlyUrl(),
         updatedAt: updated.updatedAt,
       },
     });
@@ -436,6 +446,9 @@ export const generateEnhancedCoverLetter = async (
       organizationId
     );
 
+    // Deduct one credit for this endpoint
+    await deductAICredit(userId);
+
     // Save cover letter
     const coverLetter = await prisma.coverLetter.create({
       data: {
@@ -461,6 +474,7 @@ export const generateEnhancedCoverLetter = async (
         toneAnalysis: result.toneAnalysis,
         callToActionVariations: result.callToActionVariations,
         subjectLineOptions: result.subjectLineOptions,
+        grammarlyUrl: await getGrammarlyUrl(),
         createdAt: coverLetter.createdAt,
       },
     });

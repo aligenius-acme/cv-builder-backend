@@ -2,7 +2,8 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../utils/prisma';
 import { callAIRaw } from '../services/ai';
-import { logAIUsage } from '../utils/aiLogger';
+import { deductAICredit } from '../middleware/credits';
+import { getAffiliateCourses } from '../config/affiliateLinks';
 
 // Resume Performance Score - comprehensive scoring beyond ATS
 export const getResumePerformanceScore = async (
@@ -39,8 +40,6 @@ export const getResumePerformanceScore = async (
       resumeData = resume.parsedData;
       rawText = resume.rawText;
     }
-
-    const startTime = Date.now();
 
     const prompt = `You are a CRITICAL resume analyst. Provide an HONEST performance score - most resumes score 40-65, not 80+.
 
@@ -112,7 +111,6 @@ ${rawText}
 Parsed Data:
 ${JSON.stringify(resumeData, null, 2)}`;
 
-    // Call AI with automatic credit deduction and usage logging
     const content = await callAIRaw(
       'You are an expert resume analyst. Analyze resumes and provide detailed scoring with actionable improvements. Always respond with valid JSON only.',
       prompt,
@@ -122,19 +120,7 @@ ${JSON.stringify(resumeData, null, 2)}`;
       0.3
     );
 
-    const duration = Date.now() - startTime;
-
-    // Log AI usage
-    await logAIUsage({
-      userId,
-      operation: 'resume_performance_score',
-      provider: 'openai',
-      model: config.ai.openaiModel,
-      promptTokens: completion.usage?.prompt_tokens || 0,
-      completionTokens: completion.usage?.completion_tokens || 0,
-      totalTokens: completion.usage?.total_tokens || 0,
-      durationMs: duration,
-    });
+    await deductAICredit(userId);
 
     // Parse JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -183,8 +169,6 @@ export const analyzeSkillGap = async (
     }
 
     const roleToAnalyze = targetRole || targetJobTitle || 'Software Engineer';
-
-    const startTime = Date.now();
 
     const prompt = `You are a REALISTIC career advisor. Analyze the skill gap HONESTLY - don't sugarcoat if there's a significant gap.
 
@@ -258,7 +242,6 @@ Target Role: ${roleToAnalyze}
 ${targetJobDescription ? `Job Description: ${targetJobDescription}` : ''}
 ${industry ? `Industry: ${industry}` : ''}`;
 
-    // Call AI with automatic credit deduction and usage logging
     const content = await callAIRaw(
       'You are a career development expert. Analyze skill gaps and provide actionable learning paths with real resources. Always respond with valid JSON only.',
       prompt,
@@ -268,18 +251,7 @@ ${industry ? `Industry: ${industry}` : ''}`;
       0.4
     );
 
-    const duration = Date.now() - startTime;
-
-    await logAIUsage({
-      userId,
-      operation: 'skill_gap_analysis',
-      provider: 'openai',
-      model: config.ai.openaiModel,
-      promptTokens: completion.usage?.prompt_tokens || 0,
-      completionTokens: completion.usage?.completion_tokens || 0,
-      totalTokens: completion.usage?.total_tokens || 0,
-      durationMs: duration,
-    });
+    await deductAICredit(userId);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -288,9 +260,13 @@ ${industry ? `Industry: ${industry}` : ''}`;
 
     const analysis = JSON.parse(jsonMatch[0]);
 
+    // Map skill gaps to affiliate course recommendations
+    const skillGaps: string[] = (analysis.skillGaps || []).map((g: any) => g.skill || '');
+    const courseRecommendations = await getAffiliateCourses(skillGaps);
+
     res.json({
       success: true,
-      data: analysis,
+      data: { ...analysis, courseRecommendations },
     });
   } catch (error) {
     next(error);

@@ -27,7 +27,6 @@ export interface AICompletionResult<T = unknown> {
 
 export interface UsageLogParams {
   userId: string;
-  organizationId?: string | null;
   operation: string;
 }
 
@@ -150,7 +149,6 @@ export async function logAIUsage(
   await prisma.aIUsageLog.create({
     data: {
       userId: params.userId,
-      organizationId: params.organizationId,
       operation: params.operation,
       provider: 'openai',
       model: model || config.ai.openaiModel,

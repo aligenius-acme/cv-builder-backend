@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { executeJsonArrayCompletion, executeJsonCompletion } from '../utils/aiWrapper';
 import { sendSuccess, sendValidationError } from '../utils/responseHelpers';
+import { deductAICredit } from '../middleware/credits';
 
 interface Question {
   question: string;
@@ -117,10 +118,11 @@ IMPORTANT:
       },
       {
         userId: req.user!.id,
-        organizationId: null,
         operation: 'interview_questions',
       }
     );
+
+    await deductAICredit(req.user!.id);
 
     sendSuccess(res, {
       questions: result.data,
@@ -200,10 +202,11 @@ Provide evaluation in this JSON format:
       },
       {
         userId: req.user!.id,
-        organizationId: null,
         operation: 'answer_evaluation',
       }
     );
+
+    await deductAICredit(req.user!.id);
 
     sendSuccess(res, result.data);
   } catch (error: any) {

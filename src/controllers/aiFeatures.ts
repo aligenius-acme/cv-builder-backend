@@ -3,6 +3,8 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import * as aiService from '../services/ai';
 import { ValidationError } from '../utils/errors';
 import { prisma } from '../utils/prisma';
+import { deductAICredit } from '../middleware/credits';
+import { getAffiliateCourses } from '../config/affiliateLinks';
 
 // Calculate Job Match Score
 export const calculateJobMatch = async (
@@ -43,9 +45,13 @@ export const calculateJobMatch = async (
       null
     );
 
+    await deductAICredit(userId);
+
+    const courseRecommendations = await getAffiliateCourses((result as any).missingKeywords || []);
+
     res.json({
       success: true,
-      data: result,
+      data: { ...result, courseRecommendations },
     });
   } catch (error) {
     next(error);
@@ -82,6 +88,8 @@ export const quantifyAchievements = async (
       userId,
       null
     );
+
+    await deductAICredit(userId);
 
     res.json({
       success: true,
@@ -132,6 +140,8 @@ export const detectWeaknesses = async (
       userId,
       null
     );
+
+    await deductAICredit(userId);
 
     res.json({
       success: true,
@@ -202,6 +212,8 @@ export const generateFollowUpEmail = async (
       userId,
       null
     );
+
+    await deductAICredit(userId);
 
     res.json({
       success: true,
@@ -280,6 +292,8 @@ export const generateNetworkingMessage = async (
       null
     );
 
+    await deductAICredit(userId);
+
     res.json({
       success: true,
       data: result,
@@ -349,10 +363,15 @@ export const quickJobMatch = async (
       null
     );
 
+    await deductAICredit(userId);
+
+    const courseRecommendations = await getAffiliateCourses((result as any).missingKeywords || []);
+
     res.json({
       success: true,
       data: {
         ...result,
+        courseRecommendations,
         jobId: job.id,
         jobTitle: job.jobTitle,
         company: job.companyName,

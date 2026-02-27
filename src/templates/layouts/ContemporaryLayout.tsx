@@ -170,8 +170,8 @@ export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
                   {p.name}{p.url ? ` — ${p.url}` : ''}
                 </div>
                 {p.description && <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6 }}>{p.description}</div>}
-                {p.technologies?.length > 0 && (
-                  <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>Tech: {p.technologies.join(', ')}</div>
+                {(p.technologies?.length ?? 0) > 0 && (
+                  <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>Tech: {p.technologies!.join(', ')}</div>
                 )}
               </div>
             ))}

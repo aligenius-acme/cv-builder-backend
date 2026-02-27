@@ -50,7 +50,12 @@ model User {
   // Usage tracking
   aiUsageLogs       AIUsageLog[]
 
-  // AI Credits (5 lifetime credits for all users)
+  // Subscription plan
+  plan                 String            @default("FREE") // "FREE" | "PRO"
+  stripeCustomerId     String?           @unique
+  stripeSubscriptionId String?           @unique
+
+  // AI Credits (5 lifetime credits for free users)
   aiCredits         Int               @default(5)
   aiCreditsUsed     Int               @default(0)
 
@@ -478,6 +483,21 @@ model SavedJob {
   @@unique([userId, externalJobId])
   @@index([userId])
   @@index([createdAt])
+}
+
+// Affiliate Link Model (skill → course recommendation)
+model AffiliateLink {
+  id          String   @id @default(uuid())
+  skill       String   @unique  // keyword ('python', 'grammarly' for the Grammarly CTA, etc.)
+  title       String
+  url         String
+  provider    String   // 'Udemy' | 'Coursera' | 'LinkedIn Learning' | 'Grammarly'
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([skill])
+  @@index([isActive])
 }
 
 // A/B Test Status Enum

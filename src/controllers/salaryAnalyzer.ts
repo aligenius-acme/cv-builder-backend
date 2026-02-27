@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { callAIRaw } from '../services/ai';
 import { prisma } from '../utils/prisma';
+import { deductAICredit } from '../middleware/credits';
 
 interface SalaryRange {
   min: number;
@@ -105,7 +106,6 @@ Provide analysis in this JSON format:
   }` : ''}
 }`;
 
-    // Call AI with automatic credit deduction and usage logging
     const responseText = await callAIRaw(
       systemPrompt,
       userPrompt,
@@ -114,6 +114,8 @@ Provide analysis in this JSON format:
       1500,
       0.5
     );
+
+    await deductAICredit(req.user!.id);
 
     let analysis = {
       salaryRange: { min: 0, median: 0, max: 0, currency: 'USD' },
@@ -233,7 +235,6 @@ Provide comparison in this JSON format:
   ]
 }`;
 
-    // Call AI with automatic credit deduction and usage logging
     const responseText = await callAIRaw(
       systemPrompt,
       userPrompt,
@@ -242,6 +243,8 @@ Provide comparison in this JSON format:
       1500,
       0.5
     );
+
+    await deductAICredit(req.user!.id);
 
     let comparison = {
       totalCompensation: [],
@@ -381,7 +384,6 @@ Provide in this JSON format:
   }
 }`;
 
-    // Call AI with automatic credit deduction and usage logging
     const responseText = await callAIRaw(
       systemPrompt,
       userPrompt,
@@ -404,6 +406,8 @@ Provide in this JSON format:
       commonMistakes: [],
       timeline: {},
     };
+
+    await deductAICredit(req.user!.id);
 
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
