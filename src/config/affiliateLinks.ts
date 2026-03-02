@@ -148,6 +148,16 @@ export const AFFILIATE_COURSE_MAP: Record<string, CourseRecommendation> = {
     url: 'https://www.coursera.org/professional-certificates/google-digital-marketing-ecommerce',
     provider: 'Coursera',
   },
+  'resume writing': {
+    title: 'Resume Writing Masterclass',
+    url: 'https://www.udemy.com/course/writing-a-killer-resume/?couponCode=AFFILIATE',
+    provider: 'Udemy',
+  },
+  'interview skills': {
+    title: 'Interview Prep & Career Skills',
+    url: 'https://www.udemy.com/course/master-the-tech-interview/?couponCode=AFFILIATE',
+    provider: 'Udemy',
+  },
 };
 
 /** Grammarly affiliate URL — shown after cover letter and resume summary generation */
@@ -241,7 +251,12 @@ export async function getGrammarlyUrl(): Promise<string> {
 export async function seedAffiliateLinksIfEmpty(): Promise<void> {
   try {
     const count = await prisma.affiliateLink.count();
-    if (count > 0) return;
+    if (count > 0) {
+      await initCreditsPageDefaults();
+      return;
+    }
+
+    const DEFAULT_CREDITS_PAGE_SKILLS = ['resume writing', 'interview skills', 'project management'];
 
     const entries = [
       ...Object.entries(AFFILIATE_COURSE_MAP).map(([skill, rec]) => ({
@@ -250,6 +265,7 @@ export async function seedAffiliateLinksIfEmpty(): Promise<void> {
         url: rec.url,
         provider: rec.provider,
         isActive: true,
+        showOnCreditsPage: DEFAULT_CREDITS_PAGE_SKILLS.includes(skill),
       })),
       {
         skill: 'grammarly',
@@ -257,6 +273,7 @@ export async function seedAffiliateLinksIfEmpty(): Promise<void> {
         url: GRAMMARLY_AFFILIATE_URL,
         provider: 'Grammarly',
         isActive: true,
+        showOnCreditsPage: false,
       },
     ];
 
@@ -264,5 +281,25 @@ export async function seedAffiliateLinksIfEmpty(): Promise<void> {
     console.log(`[affiliates] Seeded ${entries.length} affiliate links`);
   } catch (err) {
     console.error('[affiliates] Seed failed (non-fatal):', err);
+  }
+}
+
+/**
+ * One-time migration: if no affiliates have showOnCreditsPage=true yet,
+ * set the 3 default skills so the out-of-credits page has content.
+ */
+async function initCreditsPageDefaults(): Promise<void> {
+  try {
+    const existing = await prisma.affiliateLink.count({ where: { showOnCreditsPage: true } });
+    if (existing > 0) return;
+
+    const DEFAULT_CREDITS_PAGE_SKILLS = ['resume writing', 'interview skills', 'project management'];
+    await prisma.affiliateLink.updateMany({
+      where: { skill: { in: DEFAULT_CREDITS_PAGE_SKILLS } },
+      data: { showOnCreditsPage: true },
+    });
+    console.log('[affiliates] Initialized credits page defaults');
+  } catch (err) {
+    console.error('[affiliates] initCreditsPageDefaults failed (non-fatal):', err);
   }
 }

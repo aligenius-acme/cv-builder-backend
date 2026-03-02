@@ -798,7 +798,7 @@ export const createAffiliate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { skill, title, url, provider, isActive } = req.body;
+    const { skill, title, url, provider, isActive, showOnCreditsPage } = req.body;
     if (!skill || !title || !url || !provider) {
       throw new ValidationError('skill, title, url, and provider are required');
     }
@@ -809,6 +809,7 @@ export const createAffiliate = async (
         url: url.trim(),
         provider: provider.trim(),
         isActive: isActive !== undefined ? Boolean(isActive) : true,
+        showOnCreditsPage: showOnCreditsPage !== undefined ? Boolean(showOnCreditsPage) : false,
       },
     });
     invalidateAffiliateCache();
@@ -826,7 +827,7 @@ export const updateAffiliate = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { skill, title, url, provider, isActive } = req.body;
+    const { skill, title, url, provider, isActive, showOnCreditsPage } = req.body;
 
     const existing = await prisma.affiliateLink.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Affiliate link not found');
@@ -839,6 +840,7 @@ export const updateAffiliate = async (
         ...(url !== undefined && { url: url.trim() }),
         ...(provider !== undefined && { provider: provider.trim() }),
         ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+        ...(showOnCreditsPage !== undefined && { showOnCreditsPage: Boolean(showOnCreditsPage) }),
       },
     });
     invalidateAffiliateCache();

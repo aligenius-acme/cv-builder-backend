@@ -487,17 +487,19 @@ model SavedJob {
 
 // Affiliate Link Model (skill → course recommendation)
 model AffiliateLink {
-  id          String   @id @default(uuid())
-  skill       String   @unique  // keyword ('python', 'grammarly' for the Grammarly CTA, etc.)
-  title       String
-  url         String
-  provider    String   // 'Udemy' | 'Coursera' | 'LinkedIn Learning' | 'Grammarly'
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(uuid())
+  skill             String   @unique  // keyword ('python', 'grammarly' for the Grammarly CTA, etc.)
+  title             String
+  url               String
+  provider          String   // 'Udemy' | 'Coursera' | 'LinkedIn Learning' | 'Grammarly'
+  isActive          Boolean  @default(true)
+  showOnCreditsPage Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([skill])
   @@index([isActive])
+  @@index([showOnCreditsPage])
 }
 
 // A/B Test Status Enum
