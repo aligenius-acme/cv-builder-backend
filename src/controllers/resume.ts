@@ -4,7 +4,7 @@ import { AuthenticatedRequest, ParsedResumeData } from '../types';
 import { ValidationError, NotFoundError, QuotaExceededError } from '../utils/errors';
 import { uploadFile, deleteFile, getFile } from '../services/storage';
 import { parseFile, extractResumeData, logParsingError } from '../services/parser';
-import { fullCustomizationPipeline, analyzeATS } from '../services/ai';
+import { fullCustomizationPipeline, analyzeATS, generateResumeText } from '../services/ai';
 import { deductAICredit } from '../middleware/credits';
 import { getAffiliateCourses } from '../config/affiliateLinks';
 import { generatePDF, generateDOCX, generatePDFFromRegistry, generateDOCXFromRegistry, anonymizeResumeData } from '../services/documents';
@@ -1191,6 +1191,66 @@ export const previewResume = async (
 
     res.setHeader('Content-Type', 'application/pdf');
     res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update tailored content of a resume version (no AI credits — user edit)
+export const updateVersionContent = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id, versionId } = req.params;
+    const { tailoredData } = req.body;
+
+    if (!tailoredData || typeof tailoredData !== 'object') {
+      throw new ValidationError('tailoredData is required');
+    }
+
+    const validSections = [
+      'contact', 'summary', 'experience', 'education',
+      'skills', 'certifications', 'projects', 'languages', 'awards', 'volunteerWork',
+    ];
+    for (const key of Object.keys(tailoredData)) {
+      if (!validSections.includes(key)) {
+        throw new ValidationError(`Invalid section: ${key}`);
+      }
+    }
+
+    // Verify the version belongs to the user
+    const version = await prisma.resumeVersion.findFirst({
+      where: { id: versionId, resumeId: id, userId },
+    });
+
+    if (!version) {
+      throw new NotFoundError('Version not found');
+    }
+
+    // Merge incoming partial data with existing tailoredData
+    const existing = (version.tailoredData as any) || {};
+    const merged: ParsedResumeData = { ...existing, ...tailoredData };
+
+    // Regenerate plain text from updated structured data
+    const tailoredText = generateResumeText(merged);
+
+    const updated = await prisma.resumeVersion.update({
+      where: { id: versionId },
+      data: { tailoredData: merged as any, tailoredText, updatedAt: new Date() },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        tailoredData: merged,
+        tailoredText,
+        updatedAt: updated.updatedAt,
+      },
+    });
   } catch (error) {
     next(error);
   }

@@ -354,9 +354,9 @@ async function callAI(
 ): Promise<{ content: string; promptTokens: number; completionTokens: number }> {
   const startTime = Date.now();
 
-  // Scoring/analysis operations use temperature 0.1 for reproducibility.
+  // Scoring/analysis operations use temperature 0 for full determinism.
   // Creative operations (customization, cover letter, writing) use 0.3 for variety.
-  const temperature = DETERMINISTIC_OPERATIONS.has(operation) ? 0.1 : 0.3;
+  const temperature = DETERMINISTIC_OPERATIONS.has(operation) ? 0 : 0.3;
 
   try {
     if (!openai) {
@@ -1045,7 +1045,7 @@ Return only valid JSON.`;
 }
 
 // Generate plain text from structured resume data
-function generateResumeText(data: ParsedResumeData): string {
+export function generateResumeText(data: ParsedResumeData): string {
   const lines: string[] = [];
 
   // Contact — keep URLs on labelled separate lines so ATS parsers don't
@@ -1212,7 +1212,7 @@ export async function fullCustomizationPipeline(
     'organized', 'innovative', 'strategic thinking', 'presentation skills',
   ]);
 
-  const jobKeywords = [...jobData.requiredSkills, ...jobData.keywords];
+  const jobKeywords = [...new Set([...jobData.requiredSkills, ...jobData.keywords])];
   const resumeTextLower = resumeText.toLowerCase();
 
   // Only count domain-specific keywords for mismatch detection — soft skills are excluded
@@ -1227,15 +1227,33 @@ export async function fullCustomizationPipeline(
     (customization as any).matchStrength = 'poor';
   }
 
+  // Code-computed keyword matching against the tailored text — used for all ceiling/formula logic.
+  // This is deterministic (no AI randomness) so the same tailored text always produces the same score.
+  const tailoredTextLower = customization.tailoredText.toLowerCase();
+  const codeMatchedKeywords = jobKeywords.filter(kw => kw && tailoredTextLower.includes(kw.toLowerCase()));
+  const codeMissingKeywords = jobKeywords.filter(kw => kw && !tailoredTextLower.includes(kw.toLowerCase()));
+  const codeKeywordMatchPct = jobKeywords.length > 0
+    ? Math.round((codeMatchedKeywords.length / jobKeywords.length) * 100)
+    : 0;
+
+  // Derive match strength from code-computed domain match rate — not from AI output
+  const codeMatchStrength =
+    domainMatchRate >= 0.75 ? 'strong' :
+    domainMatchRate >= 0.45 ? 'moderate' :
+    domainMatchRate >= 0.20 ? 'weak' : 'poor';
+
   // Run ATS analysis — pass confirmed missing keywords so scorer cannot ignore real gaps
   const atsDetails = await analyzeATS(
     customization.tailoredText,
     jobKeywords,
     userId,
     organizationId,
-    customization.missingKeywords,
+    codeMissingKeywords,
     jobData.jobField
   );
+
+  // Sync AI-reported keyword match % with code-computed value for consistency
+  atsDetails.keywordMatchPercentage = codeKeywordMatchPct;
 
   // Domain mismatch hard cap
   if (isDomainMismatch) {
@@ -1249,21 +1267,21 @@ export async function fullCustomizationPipeline(
     }
   }
 
-  // Enforce hard score ceiling based on match strength
+  // Enforce hard score ceiling based on code-derived match strength (deterministic)
   const matchStrengthCeiling: Record<string, number> = {
     strong: 100,
     moderate: 78,
     weak: 58,
     poor: 30,
   };
-  const ceiling = matchStrengthCeiling[customization.matchStrength as string] ?? 100;
+  const ceiling = matchStrengthCeiling[codeMatchStrength] ?? 100;
   if (atsDetails.score > ceiling) {
     atsDetails.score = ceiling;
   }
 
-  // Enforce keyword-based ceiling independently
+  // Enforce keyword-based ceiling using code-computed missing count (deterministic)
   const totalKeywords = jobKeywords.length;
-  const missingCount = customization.missingKeywords.length;
+  const missingCount = codeMissingKeywords.length;
   if (totalKeywords > 0) {
     const missingPct = missingCount / totalKeywords;
     const keywordCeiling =
@@ -1275,14 +1293,12 @@ export async function fullCustomizationPipeline(
     }
   }
 
-  // Fix 1: Weighted score formula — keyword match drives 60% of the final score.
-  // This prevents a beautifully formatted but domain-mismatched resume from scoring above ~35
-  // even when the domain mismatch cap doesn't fire (e.g. soft-skill inflation bypassed the cap).
+  // Weighted score formula — keyword match drives 60% of the final score.
+  // Uses code-computed keyword match % to eliminate AI counting noise.
   if (atsDetails.sectionScores) {
     const sectionVals = Object.values(atsDetails.sectionScores);
     const sectionQualityAvg = sectionVals.reduce((a, b) => a + b, 0) / sectionVals.length;
-    const kwMatchPct = atsDetails.keywordMatchPercentage ?? 0;
-    const weightedScore = Math.round((sectionQualityAvg * 0.4) + (kwMatchPct * 0.6));
+    const weightedScore = Math.round((sectionQualityAvg * 0.4) + (codeKeywordMatchPct * 0.6));
     if (weightedScore < atsDetails.score) {
       atsDetails.score = weightedScore;
     }
@@ -1308,8 +1324,16 @@ export async function fullCustomizationPipeline(
     organizationId
   );
 
+  // Override AI-generated keyword lists with code-computed ones so that:
+  // 1. Displayed keyword cards match the score (both use the same source)
+  // 2. Course recommendations only suggest skills genuinely absent from the resume
+  atsDetails.matchedKeywords = codeMatchedKeywords;
+  atsDetails.missingKeywords = codeMissingKeywords;
+
   return {
     ...customization,
+    matchedKeywords: codeMatchedKeywords,
+    missingKeywords: codeMissingKeywords,
     atsScore: atsDetails.score,
     atsDetails,
     jobData,

@@ -19,6 +19,7 @@ import {
   updateResumeContent,
   downloadResume,
   previewResume,
+  updateVersionContent,
 } from '../controllers/resume';
 import { uploadLimiter, aiLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
@@ -78,6 +79,9 @@ router.get('/:id/versions/:versionId', getVersion);
 router.get('/:id/compare', compareVersions);
 router.get('/:id/versions/:versionId/download', downloadVersion);
 router.delete('/:id/versions/:versionId', deleteVersion);
+
+// Edit tailored version content (no AI credits)
+router.put('/:id/versions/:versionId/content', updateVersionContent);
 
 // ATS simulation (AI-powered, rate limited, credit checked)
 router.post('/:id/versions/:versionId/simulate-ats', aiLimiter, checkAICredits, simulateATS);

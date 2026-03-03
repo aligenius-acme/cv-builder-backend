@@ -51,11 +51,17 @@ app.use(helmet({
 
 // CORS configuration - only allow specific origins
 const allowedOrigins = config.allowedOrigins || [config.frontendUrl];
+const isDev = process.env.NODE_ENV !== 'production';
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
+      return callback(null, true);
+    }
+
+    // In development allow any localhost port (handles Next.js using 3001/3002 fallbacks)
+    if (isDev && /^http:\/\/localhost:\d+$/.test(origin)) {
       return callback(null, true);
     }
 
