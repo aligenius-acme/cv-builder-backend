@@ -218,19 +218,65 @@ export function invalidateAffiliateCache() {
  * Fetch course recommendations for a list of skill keywords.
  * Prefers DB rows; falls back to static AFFILIATE_COURSE_MAP on DB error.
  */
+/** Find the best affiliate match for a single keyword using exact then partial matching. */
+function findMatch(
+  kw: string,
+  lookup: (slug: string) => CourseRecommendation | undefined
+): CourseRecommendation | undefined {
+  const normalized = kw.toLowerCase().trim();
+  // 1. Exact match
+  const exact = lookup(normalized);
+  if (exact) return exact;
+  // 2. Strip common suffixes like ".js", " experience", " skills", " proficiency"
+  const stripped = normalized
+    .replace(/\.js$/i, '')
+    .replace(/\s+(experience|skills?|proficiency|development|programming|knowledge)$/i, '')
+    .trim();
+  if (stripped !== normalized) {
+    const stripMatch = lookup(stripped);
+    if (stripMatch) return stripMatch;
+  }
+  // 3. Slug contains keyword or keyword contains slug (partial match)
+  // handled by caller scanning all keys
+  return undefined;
+}
+
 export async function getAffiliateCourses(keywords: string[]): Promise<CourseRecommendation[]> {
   const cache = await getCache();
 
+  const results: CourseRecommendation[] = [];
+  const seen = new Set<string>();
+
+  const addCourse = (course: CourseRecommendation) => {
+    if (!seen.has(course.url)) { seen.add(course.url); results.push(course); }
+  };
+
   if (cache) {
-    return keywords
-      .map((kw) => cache.links.get(kw.toLowerCase()))
-      .filter(Boolean) as CourseRecommendation[];
+    const allSlugs = Array.from(cache.links.keys());
+    for (const kw of keywords) {
+      const normalized = kw.toLowerCase().trim();
+      const direct = findMatch(kw, (slug) => cache.links.get(slug));
+      if (direct) { addCourse(direct); continue; }
+      const partialSlug = allSlugs.find(
+        (slug) => normalized.includes(slug) || slug.includes(normalized)
+      );
+      if (partialSlug) addCourse(cache.links.get(partialSlug)!);
+    }
+    return results;
   }
 
   // Fallback to static map
-  return keywords
-    .map((kw) => AFFILIATE_COURSE_MAP[kw.toLowerCase()])
-    .filter(Boolean) as CourseRecommendation[];
+  const allSlugs = Object.keys(AFFILIATE_COURSE_MAP);
+  for (const kw of keywords) {
+    const normalized = kw.toLowerCase().trim();
+    const direct = findMatch(kw, (slug) => AFFILIATE_COURSE_MAP[slug]);
+    if (direct) { addCourse(direct); continue; }
+    const partialSlug = allSlugs.find(
+      (slug) => normalized.includes(slug) || slug.includes(normalized)
+    );
+    if (partialSlug) addCourse(AFFILIATE_COURSE_MAP[partialSlug]);
+  }
+  return results;
 }
 
 /**

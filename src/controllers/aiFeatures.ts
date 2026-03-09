@@ -45,7 +45,7 @@ export const calculateJobMatch = async (
       null
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     const courseRecommendations = await getAffiliateCourses((result as any).missingKeywords || []);
 
@@ -89,7 +89,7 @@ export const quantifyAchievements = async (
       null
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     res.json({
       success: true,
@@ -141,7 +141,7 @@ export const detectWeaknesses = async (
       null
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     res.json({
       success: true,
@@ -213,7 +213,7 @@ export const generateFollowUpEmail = async (
       null
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     res.json({
       success: true,
@@ -292,7 +292,7 @@ export const generateNetworkingMessage = async (
       null
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     res.json({
       success: true,
@@ -363,7 +363,7 @@ export const quickJobMatch = async (
       null
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     const courseRecommendations = await getAffiliateCourses((result as any).missingKeywords || []);
 

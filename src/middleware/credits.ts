@@ -73,17 +73,23 @@ export const checkAICredits = async (
 /**
  * Deduct one AI credit from a FREE user after a successful AI endpoint.
  * Pro users are skipped — credits are not counted for them.
+ * If `req` is provided, stores updated credit counts on req._creditsInfo so the
+ * response middleware can inject them into the JSON response body.
  */
-export const deductAICredit = async (userId: string): Promise<void> => {
+export const deductAICredit = async (userId: string, req?: any): Promise<void> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { plan: true },
   });
   if (user?.plan === 'PRO') return;
-  await prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: userId },
     data: { aiCreditsUsed: { increment: 1 } },
+    select: { aiCredits: true, aiCreditsUsed: true },
   });
+  if (req) {
+    req._creditsInfo = { aiCredits: updated.aiCredits, aiCreditsUsed: updated.aiCreditsUsed };
+  }
 };
 
 /**

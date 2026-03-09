@@ -92,6 +92,18 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// Inject updated credit counts into any AI response that deducted a credit
+app.use((req: any, res, next) => {
+  const _json = res.json.bind(res);
+  (res as any).json = function (body: any) {
+    if (req._creditsInfo && body && typeof body === 'object' && !Array.isArray(body)) {
+      body.creditsInfo = req._creditsInfo;
+    }
+    return _json(body);
+  };
+  next();
+});
+
 // Apply rate limiting to all API routes
 // This protects against brute force attacks and API abuse
 app.use('/api', apiLimiter);

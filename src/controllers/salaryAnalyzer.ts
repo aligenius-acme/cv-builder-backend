@@ -115,7 +115,7 @@ Provide analysis in this JSON format:
       0.5
     );
 
-    await deductAICredit(req.user!.id);
+    await deductAICredit(req.user!.id, req);
 
     let analysis = {
       salaryRange: { min: 0, median: 0, max: 0, currency: 'USD' },
@@ -244,7 +244,7 @@ Provide comparison in this JSON format:
       0.5
     );
 
-    await deductAICredit(req.user!.id);
+    await deductAICredit(req.user!.id, req);
 
     let comparison = {
       totalCompensation: [],
@@ -407,7 +407,7 @@ Provide in this JSON format:
       timeline: {},
     };
 
-    await deductAICredit(req.user!.id);
+    await deductAICredit(req.user!.id, req);
 
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);

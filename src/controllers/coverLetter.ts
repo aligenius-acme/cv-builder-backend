@@ -72,7 +72,7 @@ export const generateCoverLetter = async (
     );
 
     // Deduct one credit for this endpoint
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     // Save cover letter
     const coverLetter = await prisma.coverLetter.create({
@@ -361,7 +361,7 @@ export const regenerateCoverLetter = async (
     );
 
     // Deduct one credit for this endpoint
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     // Update cover letter
     const updated = await prisma.coverLetter.update({
@@ -447,7 +447,7 @@ export const generateEnhancedCoverLetter = async (
     );
 
     // Deduct one credit for this endpoint
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     // Save cover letter
     const coverLetter = await prisma.coverLetter.create({

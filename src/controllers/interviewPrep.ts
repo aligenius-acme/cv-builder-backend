@@ -122,7 +122,7 @@ IMPORTANT:
       }
     );
 
-    await deductAICredit(req.user!.id);
+    await deductAICredit(req.user!.id, req);
 
     sendSuccess(res, {
       questions: result.data,
@@ -206,7 +206,7 @@ Provide evaluation in this JSON format:
       }
     );
 
-    await deductAICredit(req.user!.id);
+    await deductAICredit(req.user!.id, req);
 
     sendSuccess(res, result.data);
   } catch (error: any) {

@@ -430,7 +430,7 @@ export const customizeResume = async (
     );
 
     // Deduct one credit for this endpoint (regardless of how many internal AI calls)
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     // Create version
     const version = await prisma.resumeVersion.create({
@@ -756,7 +756,7 @@ export const simulateATS = async (
     );
 
     // Deduct one credit for this endpoint
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     // Update version with new ATS details
     await prisma.resumeVersion.update({
@@ -764,6 +764,8 @@ export const simulateATS = async (
       data: {
         atsScore: atsResult.score,
         atsDetails: atsResult as any,
+        matchedKeywords: atsResult.matchedKeywords || [],
+        missingKeywords: atsResult.missingKeywords || [],
       },
     });
 
