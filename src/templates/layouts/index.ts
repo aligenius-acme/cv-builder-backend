@@ -18,6 +18,11 @@ import { InfographicLayout, metadata as infographicMetadata } from './Infographi
 import { BoldModernLayout, metadata as boldModernMetadata } from './BoldModernLayout';
 import { ClassicLayout, metadata as classicMetadata } from './ClassicLayout';
 import { ContemporaryLayout, metadata as contemporaryMetadata } from './ContemporaryLayout';
+import { SplitPanelLayout, metadata as splitPanelMetadata } from './SplitPanelLayout';
+import { RuledElegantLayout, metadata as ruledElegantMetadata } from './RuledElegantLayout';
+import { TopAccentLayout, metadata as topAccentMetadata } from './TopAccentLayout';
+import { ColumnSplitLayout, metadata as columnSplitMetadata } from './ColumnSplitLayout';
+import { BorderedPageLayout, metadata as borderedPageMetadata } from './BorderedPageLayout';
 import { LayoutType, LayoutProps, LayoutMetadata } from './types';
 import * as React from 'react';
 
@@ -45,6 +50,13 @@ export const LAYOUT_REGISTRY: Record<LayoutType, React.FC<LayoutProps>> = {
   BoldModernLayout,
   ClassicLayout,
   ContemporaryLayout,
+
+  // 5 new distinct layouts
+  SplitPanelLayout,
+  RuledElegantLayout,
+  TopAccentLayout,
+  ColumnSplitLayout,
+  BorderedPageLayout,
 };
 
 /**
@@ -71,6 +83,13 @@ export const LAYOUT_METADATA: Record<LayoutType, LayoutMetadata> = {
   BoldModernLayout: boldModernMetadata,
   ClassicLayout: classicMetadata,
   ContemporaryLayout: contemporaryMetadata,
+
+  // 5 new distinct layouts
+  SplitPanelLayout: splitPanelMetadata,
+  RuledElegantLayout: ruledElegantMetadata,
+  TopAccentLayout: topAccentMetadata,
+  ColumnSplitLayout: columnSplitMetadata,
+  BorderedPageLayout: borderedPageMetadata,
 };
 
 /**
@@ -132,4 +151,9 @@ export {
   BoldModernLayout,
   ClassicLayout,
   ContemporaryLayout,
+  SplitPanelLayout,
+  RuledElegantLayout,
+  TopAccentLayout,
+  ColumnSplitLayout,
+  BorderedPageLayout,
 };

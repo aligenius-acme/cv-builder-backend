@@ -33,7 +33,12 @@ export type LayoutType =
   | 'AcademicLayout'
   | 'BoldModernLayout'
   | 'ClassicLayout'
-  | 'ContemporaryLayout';
+  | 'ContemporaryLayout'
+  | 'SplitPanelLayout'
+  | 'RuledElegantLayout'
+  | 'TopAccentLayout'
+  | 'ColumnSplitLayout'
+  | 'BorderedPageLayout';
 
 /**
  * Layout metadata for organizing and categorizing layouts

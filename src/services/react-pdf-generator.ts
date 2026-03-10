@@ -266,6 +266,11 @@ export async function generatePDFFromReact(
           'portfolio':       'PortfolioLayout',
           'creative':        'CreativeLayout',
           'infographic':     'InfographicLayout',
+          'split-panel':     'SplitPanelLayout',
+          'ruled-elegant':   'RuledElegantLayout',
+          'top-accent':      'TopAccentLayout',
+          'column-split':    'ColumnSplitLayout',
+          'bordered-page':   'BorderedPageLayout',
         };
         const registryKey = LAYOUT_TYPE_TO_REGISTRY[modularConfig.layoutType] || 'BaseLayout';
         const LayoutComponent = getLayoutComponent(registryKey as LayoutType);
@@ -846,6 +851,11 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
       'portfolio':       'PortfolioLayout',
       'creative':        'CreativeLayout',
       'infographic':     'InfographicLayout',
+      'split-panel':     'SplitPanelLayout',
+      'ruled-elegant':   'RuledElegantLayout',
+      'top-accent':      'TopAccentLayout',
+      'column-split':    'ColumnSplitLayout',
+      'bordered-page':   'BorderedPageLayout',
     };
 
     // Resolve config, layout component, and pick the right sample data

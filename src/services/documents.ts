@@ -1623,10 +1623,10 @@ const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: 'auto' } as const;
 function toWordFont(tplConfig: { layoutType?: string; headerStyle?: string; fontFamily?: string }): string {
   const lt = tplConfig.layoutType || '';
   if (lt === 'academic') return 'Garamond';
-  if (lt === 'classic' || lt === 'executive') return 'Georgia';
+  if (lt === 'classic' || lt === 'executive' || lt === 'ruled-elegant' || lt === 'bordered-page') return 'Georgia';
   if (lt === 'bold-modern') return 'Arial';
-  if (lt === 'contemporary' || lt === 'compact' || lt === 'infographic' || lt === 'portfolio') return 'Calibri';
-  if (lt === 'professional') return 'Arial';
+  if (lt === 'contemporary' || lt === 'compact' || lt === 'infographic' || lt === 'portfolio' || lt === 'split-panel' || lt === 'column-split') return 'Calibri';
+  if (lt === 'professional' || lt === 'top-accent') return 'Arial';
   if (lt === 'tech') return 'Calibri';
   if (tplConfig.headerStyle === 'centered') return 'Georgia';
   if (tplConfig.headerStyle === 'banner') return 'Calibri';
@@ -1662,6 +1662,11 @@ function docxBuilderKey(tplConfig: {
     if (lt === 'tech')          return 'tech';
     if (lt === 'infographic')   return 'infographic';
     if (lt === 'portfolio')     return 'portfolio';
+    if (lt === 'split-panel')   return 'sidebar';
+    if (lt === 'column-split')  return 'sidebar';
+    if (lt === 'ruled-elegant') return 'classic';
+    if (lt === 'top-accent')    return 'professional';
+    if (lt === 'bordered-page') return 'classic';
   }
   // Fallback via derived style properties
   if (tplConfig.hasSidebar || tplConfig.headerStyle === 'split') return 'sidebar';
