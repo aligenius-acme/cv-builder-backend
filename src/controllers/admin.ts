@@ -6,6 +6,20 @@ import { UserRole } from '@prisma/client';
 import { invalidateAffiliateCache, seedAffiliateLinksIfEmpty } from '../config/affiliateLinks';
 import { getAllSettings, setSetting, SETTING_DEFAULTS, seedSettingsIfEmpty, invalidateSettingsCache } from '../config/appSettings';
 
+const MODULE_OPERATIONS: { module: string; operations: string[] }[] = [
+  { module: 'Resume Tailoring',   operations: ['resume_customize', 'job_analysis', 'truth_guard'] },
+  { module: 'ATS Analysis',       operations: ['ats_analysis'] },
+  { module: 'Cover Letters',      operations: ['cover_letter', 'cover_letter_enhanced'] },
+  { module: 'Job Match Score',    operations: ['job_match_score'] },
+  { module: 'AI Writing',         operations: ['writing_suggestions', 'writing_completions', 'generate_bullets'] },
+  { module: 'Career Performance', operations: ['resume_performance_score', 'quantify_achievements', 'weakness_detector'] },
+  { module: 'Skill Gap',          operations: ['skill_gap_analysis'] },
+  { module: 'Salary Analyzer',    operations: ['salary_analysis', 'offer_comparison', 'negotiation_script'] },
+  { module: 'Interview Prep',     operations: ['interview_questions', 'answer_evaluation'] },
+  { module: 'Networking',         operations: ['follow_up_email', 'networking_message'] },
+  { module: 'Job Board',          operations: ['job_details_generation'] },
+];
+
 // Get dashboard stats
 export const getDashboard = async (
   req: AuthenticatedRequest,
@@ -48,6 +62,18 @@ export const getDashboard = async (
 
       // Recent data
       recentUsers,
+
+      // Module usage
+      aiLogsCurrent,
+      aiLogsPrev,
+      resumeCount30d,
+      resumeCountPrev,
+      jobAppCount30d,
+      jobAppCountPrev,
+      abTestCount30d,
+      abTestCountPrev,
+      shareCount30d,
+      shareCountPrev,
     ] = await Promise.all([
       // Basic counts
       prisma.user.count(),
@@ -119,6 +145,29 @@ export const getDashboard = async (
           createdAt: true,
         },
       }),
+
+      // Module usage — AI logs current 30d
+      prisma.aIUsageLog.findMany({
+        where: { createdAt: { gte: thirtyDaysAgo }, success: true },
+        select: { operation: true, userId: true, estimatedCost: true },
+      }),
+
+      // Module usage — AI logs previous 30d (for trend)
+      prisma.aIUsageLog.groupBy({
+        by: ['operation'],
+        where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo }, success: true },
+        _count: { id: true },
+      }),
+
+      // Non-AI module counts: current + previous 30d
+      prisma.resume.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.resume.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.jobApplication.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.jobApplication.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.resumeABTest.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.resumeABTest.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      prisma.shareAnalytics.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.shareAnalytics.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
     ]);
 
     // Fetch user details for top AI users
@@ -162,6 +211,38 @@ export const getDashboard = async (
     const errorRate24h = totalResumes > 0
       ? ((recentErrors / totalResumes) * 100).toFixed(2)
       : '0';
+
+    // Module usage aggregation
+    const prevMap = new Map(aiLogsPrev.map((r) => [r.operation, r._count.id]));
+
+    const aiModules = MODULE_OPERATIONS.map(({ module, operations }) => {
+      const rows = aiLogsCurrent.filter((r) => operations.includes(r.operation));
+      const actions30d = rows.length;
+      const cost30d = rows.reduce((s, r) => s + Number(r.estimatedCost || 0), 0);
+      const uniqueUsers30d = new Set(rows.map((r) => r.userId)).size;
+      const prev = operations.reduce((s, op) => s + (prevMap.get(op) || 0), 0);
+      const trend = prev > 0 ? ((actions30d - prev) / prev) * 100 : (actions30d > 0 ? 100 : 0);
+      return {
+        module,
+        type: 'ai' as const,
+        actions30d,
+        uniqueUsers30d,
+        cost30d: parseFloat(cost30d.toFixed(4)),
+        trend: parseFloat(trend.toFixed(1)),
+      };
+    });
+
+    const calcTrend = (curr: number, prev: number) =>
+      prev > 0 ? parseFloat((((curr - prev) / prev) * 100).toFixed(1)) : (curr > 0 ? 100 : 0);
+
+    const nonAiModules = [
+      { module: 'Resume Builder', type: 'non-ai' as const, actions30d: resumeCount30d,  uniqueUsers30d: 0, cost30d: 0, trend: calcTrend(resumeCount30d, resumeCountPrev) },
+      { module: 'Job Tracker',    type: 'non-ai' as const, actions30d: jobAppCount30d,   uniqueUsers30d: 0, cost30d: 0, trend: calcTrend(jobAppCount30d, jobAppCountPrev) },
+      { module: 'A/B Testing',    type: 'non-ai' as const, actions30d: abTestCount30d,   uniqueUsers30d: 0, cost30d: 0, trend: calcTrend(abTestCount30d, abTestCountPrev) },
+      { module: 'Resume Sharing', type: 'non-ai' as const, actions30d: shareCount30d,    uniqueUsers30d: 0, cost30d: 0, trend: calcTrend(shareCount30d, shareCountPrev) },
+    ];
+
+    const moduleUsage = [...aiModules, ...nonAiModules].sort((a, b) => b.actions30d - a.actions30d);
 
     // Log admin action
     await prisma.auditLog.create({
@@ -212,6 +293,7 @@ export const getDashboard = async (
           avgDuration: Math.round(op._avg.durationMs || 0),
         })),
         recentUsers,
+        moduleUsage,
       },
     });
   } catch (error) {
