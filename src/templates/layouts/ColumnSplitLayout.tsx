@@ -9,6 +9,7 @@
 
 import * as React from 'react';
 import { LayoutProps } from './types';
+import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const ColumnSplitLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
@@ -68,7 +69,12 @@ export const ColumnSplitLayout: React.FC<LayoutProps> = ({ data, config }) => {
       <div style={{
         backgroundColor: primaryColor,
         padding: `24px ${margins.right}px 20px ${margins.left}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '16px',
       }}>
+        <div style={{ flex: 1 }}>
         <h1 style={{
           fontSize: `${fontSize.header + 2}px`,
           fontWeight: 700,
@@ -88,6 +94,18 @@ export const ColumnSplitLayout: React.FC<LayoutProps> = ({ data, config }) => {
             .filter(Boolean)
             .map((v, i) => <span key={i}>{v}</span>)}
         </div>
+        </div>
+        {contact.photoUrl && (
+          <div style={{ flexShrink: 0 }}>
+            <PhotoCircle
+              photoUrl={contact.photoUrl}
+              name={contact.name || 'User'}
+              size="medium"
+              position="center"
+              primaryColor={primaryColor}
+            />
+          </div>
+        )}
       </div>
 
       {/* Two-column body */}

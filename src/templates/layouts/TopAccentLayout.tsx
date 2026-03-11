@@ -8,6 +8,7 @@
 
 import * as React from 'react';
 import { LayoutProps } from './types';
+import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const TopAccentLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
@@ -82,10 +83,21 @@ export const TopAccentLayout: React.FC<LayoutProps> = ({ data, config }) => {
             </div>
           )}
         </div>
-        <div style={{ textAlign: 'right', fontSize: `${fontSize.body - 1}px`, color: mutedColor, lineHeight: 1.75, marginTop: '4px' }}>
-          {[contact.email, contact.phone, contact.location, contact.linkedin, contact.github, contact.website]
-            .filter(Boolean)
-            .map((v, i) => <div key={i}>{v}</div>)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+          {contact.photoUrl && (
+            <PhotoCircle
+              photoUrl={contact.photoUrl}
+              name={contact.name || 'User'}
+              size="medium"
+              position="center"
+              primaryColor={primaryColor}
+            />
+          )}
+          <div style={{ textAlign: 'right', fontSize: `${fontSize.body - 1}px`, color: mutedColor, lineHeight: 1.75, marginTop: '4px' }}>
+            {[contact.email, contact.phone, contact.location, contact.linkedin, contact.github, contact.website]
+              .filter(Boolean)
+              .map((v, i) => <div key={i}>{v}</div>)}
+          </div>
         </div>
       </div>
 

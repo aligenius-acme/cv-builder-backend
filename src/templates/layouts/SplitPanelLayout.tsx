@@ -8,6 +8,7 @@
 
 import * as React from 'react';
 import { LayoutProps } from './types';
+import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const SplitPanelLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
@@ -71,6 +72,19 @@ export const SplitPanelLayout: React.FC<LayoutProps> = ({ data, config }) => {
         padding: `${margins.top}px 20px ${margins.bottom}px 20px`,
         flexShrink: 0,
       }}>
+        {/* Photo */}
+        {contact.photoUrl && (
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <PhotoCircle
+              photoUrl={contact.photoUrl}
+              name={contact.name || 'User'}
+              size="large"
+              position="center"
+              primaryColor={primaryColor}
+            />
+          </div>
+        )}
+
         {/* Name */}
         <h1 style={{
           fontSize: `${fontSize.header}px`,

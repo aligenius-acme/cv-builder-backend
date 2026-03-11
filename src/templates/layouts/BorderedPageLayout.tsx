@@ -8,6 +8,7 @@
 
 import * as React from 'react';
 import { LayoutProps } from './types';
+import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const BorderedPageLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
@@ -57,6 +58,17 @@ export const BorderedPageLayout: React.FC<LayoutProps> = ({ data, config }) => {
       }}>
         {/* Centered header */}
         <div style={{ textAlign: 'center', paddingBottom: '16px', marginBottom: '4px' }}>
+          {contact.photoUrl && (
+            <div style={{ marginBottom: '14px' }}>
+              <PhotoCircle
+                photoUrl={contact.photoUrl}
+                name={contact.name || 'User'}
+                size="medium"
+                position="center"
+                primaryColor={primaryColor}
+              />
+            </div>
+          )}
           <h1 style={{
             fontSize: `${fontSize.header + 6}px`,
             fontWeight: 400,

@@ -158,7 +158,7 @@ async function generateLeftAlignedPDF(
       }
 
       // Links
-      const links = [data.contact.linkedin, data.contact.github].filter(Boolean);
+      const links = [data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean);
       if (links.length > 0) {
         doc
           .fontSize(fontSize.body - 0.5)
@@ -409,7 +409,7 @@ async function generateCenteredPDF(
       doc.y = lineY + 12;
 
       // Contact
-      const contactParts = [data.contact.email, data.contact.phone, data.contact.location].filter(Boolean);
+      const contactParts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean);
       if (contactParts.length > 0) {
         doc
           .font('Helvetica')
@@ -582,7 +582,7 @@ async function generateBannerPDF(
       }
 
       // Contact in banner
-      const contactParts = [data.contact.email, data.contact.phone, data.contact.location].filter(Boolean);
+      const contactParts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean);
       if (contactParts.length > 0) {
         doc
           .font('Helvetica')
@@ -1276,7 +1276,7 @@ export async function generateDOCX(
   }
 
   // Contact Info
-  const contactParts = [data.contact.email, data.contact.phone, data.contact.location].filter(Boolean);
+  const contactParts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean);
   if (contactParts.length > 0) {
     children.push(
       new Paragraph({
@@ -1860,7 +1860,7 @@ function buildClassicDocx(data: ParsedResumeData, p: DocxPalette): Paragraph[] {
     spacing: { after: 80 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join(' · '), color: hex(p.muted), size: 20, font: p.font })],
       alignment: AlignmentType.CENTER, spacing: { after: 80 },
@@ -1894,7 +1894,7 @@ function buildAcademicDocx(data: ParsedResumeData, p: DocxPalette): Paragraph[] 
     alignment: AlignmentType.CENTER, spacing: { after: 80 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join(' · '), color: hex(p.muted), size: 20, font: p.font })],
       alignment: AlignmentType.CENTER, spacing: { after: 80 },
@@ -1930,7 +1930,7 @@ function buildBoldModernDocx(data: ParsedResumeData, p: DocxPalette): Paragraph[
     spacing: { before: 80, after: 120 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join('  ·  '), color: hex(p.muted), size: 20, font: p.font })],
       spacing: { after: 360 },
@@ -1955,7 +1955,7 @@ function buildContemporaryDocx(data: ParsedResumeData, p: DocxPalette): Paragrap
     spacing: { after: 100 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join(' · '), color: hex(p.muted), size: 20, font: p.font })],
       spacing: { before: 100, after: 360 },
@@ -1988,7 +1988,7 @@ function buildExecutiveDocx(data: ParsedResumeData, p: DocxPalette): Paragraph[]
     spacing: { before: 80, after: 80 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join('  |  '), color: hex(p.muted), size: 20, font: p.font })],
       spacing: { after: 360 },
@@ -2019,7 +2019,7 @@ function buildMinimalDocx(data: ParsedResumeData, p: DocxPalette): Paragraph[] {
     alignment: AlignmentType.CENTER, spacing: { after: 160 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join('    '), color: hex(p.muted), size: 20, font: p.font })],
       alignment: AlignmentType.CENTER, spacing: { after: 600 },
@@ -2117,7 +2117,7 @@ function buildDefaultDocx(data: ParsedResumeData, p: DocxPalette): Paragraph[] {
     indent: { left: 200 }, spacing: { after: 40 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join('  |  '), color: hex(p.muted), size: 20, font: p.font })],
       indent: { left: 200 }, spacing: { after: 320 },
@@ -2155,7 +2155,9 @@ function buildSidebarDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | 
     if (data.contact.email)    left.push(new Paragraph({ children: [new TextRun({ text: data.contact.email,    size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
     if (data.contact.phone)    left.push(new Paragraph({ children: [new TextRun({ text: data.contact.phone,    size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
     if (data.contact.location) left.push(new Paragraph({ children: [new TextRun({ text: data.contact.location, size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
-    if (data.contact.linkedin) left.push(new Paragraph({ children: [new TextRun({ text: data.contact.linkedin, size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 80 } }));
+    if (data.contact.linkedin) left.push(new Paragraph({ children: [new TextRun({ text: data.contact.linkedin, size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
+    if (data.contact.github)   left.push(new Paragraph({ children: [new TextRun({ text: data.contact.github,   size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
+    if (data.contact.website)  left.push(new Paragraph({ children: [new TextRun({ text: data.contact.website,  size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 80 } }));
   }
   left.push(new Paragraph({ text: '', spacing: { after: 160 } }));
 
@@ -2263,7 +2265,7 @@ function buildProfessionalDocx(data: ParsedResumeData, p: DocxPalette): (Paragra
   const out: (Paragraph | Table)[] = [];
   out.push(new Paragraph({ children: [new TextRun({ text: data.contact?.name || 'Resume', bold: true, color: hex(p.primary), size: 56, font: p.font })], border: { left: { style: BorderStyle.SINGLE, size: 48, color: hex(p.primary) } }, indent: { left: 280 }, spacing: { after: 60 } }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({ children: [new TextRun({ text: parts.join('  |  '), color: hex(p.muted), size: 20, font: p.font })], indent: { left: 280 }, spacing: { after: 400 } }));
   }
   if (data.summary) { out.push(makeSectionTitle('Professional Summary', ts)); out.push(new Paragraph({ text: data.summary, spacing: { after: 240 } })); }
@@ -2313,7 +2315,7 @@ function buildTechDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | Tab
   });
   out.push(new Paragraph({ children: [new TextRun({ text: data.contact?.name || 'Resume', bold: true, color: hex(p.primary), size: 52, font: cf })], border: { bottom: { style: BorderStyle.SINGLE, size: 20, color: hex(p.primary) } }, spacing: { after: 80 } }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({ children: [new TextRun({ text: parts.join('  |  '), color: hex(p.muted), size: 20, font: cf })], spacing: { after: 360 } }));
   }
   if (data.skills?.length) {
@@ -2346,7 +2348,7 @@ function buildCompactDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | 
   const out: (Paragraph | Table)[] = [];
   out.push(new Paragraph({ children: [new TextRun({ text: data.contact?.name || 'Resume', bold: true, color: hex(p.primary), size: 44, font: p.font })], border: { bottom: { style: BorderStyle.SINGLE, size: 16, color: hex(p.primary) } }, spacing: { after: 80 } }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({ children: [new TextRun({ text: parts.join('  |  '), color: hex(p.muted), size: 18, font: p.font })], spacing: { after: 200 } }));
   }
   const main: (Paragraph | Table)[] = [];
@@ -2420,7 +2422,9 @@ function buildInfographicDocx(data: ParsedResumeData, p: DocxPalette): (Paragrap
     if (data.contact.email)    left.push(new Paragraph({ children: [new TextRun({ text: `✉ ${data.contact.email}`,    size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
     if (data.contact.phone)    left.push(new Paragraph({ children: [new TextRun({ text: `☎ ${data.contact.phone}`,    size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
     if (data.contact.location) left.push(new Paragraph({ children: [new TextRun({ text: `● ${data.contact.location}`, size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
-    if (data.contact.linkedin) left.push(new Paragraph({ children: [new TextRun({ text: `► ${data.contact.linkedin}`, size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 80 } }));
+    if (data.contact.linkedin) left.push(new Paragraph({ children: [new TextRun({ text: `► ${data.contact.linkedin}`, size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
+    if (data.contact.github)   left.push(new Paragraph({ children: [new TextRun({ text: `► ${data.contact.github}`,   size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 40 } }));
+    if (data.contact.website)  left.push(new Paragraph({ children: [new TextRun({ text: `► ${data.contact.website}`,  size: 18, color: hex(p.muted), font: p.font })], spacing: { after: 80 } }));
     left.push(new Paragraph({ text: '', spacing: { after: 120 } }));
   }
   if (data.skills?.length) { left.push(makeSectionTitle('Skills', leftTs)); normalizeSkills(data.skills).forEach(s => left.push(new Paragraph({ children: [new TextRun({ text: `• ${s}`, size: 19, font: p.font })], spacing: { after: 40 } }))); left.push(new Paragraph({ text: '', spacing: { after: 120 } })); }
@@ -2467,7 +2471,7 @@ function buildPortfolioDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph 
   const out: (Paragraph | Table)[] = [];
   out.push(new Paragraph({ children: [new TextRun({ text: data.contact?.name || 'Resume', bold: true, color: hex(p.primary), size: 60, font: p.font })], border: { bottom: { style: BorderStyle.SINGLE, size: 20, color: hex(p.primary) } }, spacing: { after: 100 } }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({ children: [new TextRun({ text: parts.join('  |  '), color: hex(p.muted), size: 20, font: p.font })], spacing: { after: 120 } }));
   }
   if (data.summary) out.push(new Paragraph({ children: [new TextRun({ text: data.summary, size: 21, font: p.font })], spacing: { after: 360 } }));
@@ -2560,7 +2564,7 @@ function buildTimelineDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph |
     alignment: AlignmentType.CENTER, spacing: { after: 120 },
   }));
   if (data.contact) {
-    const parts = [data.contact.email, data.contact.phone, data.contact.location].filter(Boolean) as string[];
+    const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join('  •  '), color: hex(p.muted), size: 20, font: p.font })],
       alignment: AlignmentType.CENTER, spacing: { after: 440 },
@@ -2743,6 +2747,8 @@ async function generateFlatDocx(data: ParsedResumeData): Promise<Buffer> {
     if (data.contact.phone) contactParts.push(data.contact.phone);
     if (data.contact.location) contactParts.push(data.contact.location);
     if (data.contact.linkedin) contactParts.push(data.contact.linkedin);
+    if (data.contact.github) contactParts.push(data.contact.github);
+    if (data.contact.website) contactParts.push(data.contact.website);
 
     sections.push(
       new Paragraph({

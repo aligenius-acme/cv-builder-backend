@@ -8,6 +8,7 @@
 
 import * as React from 'react';
 import { LayoutProps } from './types';
+import { PhotoCircle } from '../shared/components/PhotoCircle';
 
 export const RuledElegantLayout: React.FC<LayoutProps> = ({ data, config }) => {
   const { contact, summary, experience, education, skills, certifications, projects, languages, awards, volunteerWork } = data;
@@ -53,6 +54,17 @@ export const RuledElegantLayout: React.FC<LayoutProps> = ({ data, config }) => {
     }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        {contact.photoUrl && (
+          <div style={{ marginBottom: '14px' }}>
+            <PhotoCircle
+              photoUrl={contact.photoUrl}
+              name={contact.name || 'User'}
+              size="medium"
+              position="center"
+              primaryColor={primaryColor}
+            />
+          </div>
+        )}
         <h1 style={{
           fontSize: `${fontSize.header + 4}px`,
           fontWeight: 400,

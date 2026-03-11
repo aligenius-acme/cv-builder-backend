@@ -3,7 +3,10 @@ import * as React from 'react';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import path from 'path';
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import * as https from 'https';
+import * as http from 'http';
+import { v2 as cloudinary } from 'cloudinary';
 import { ParsedResumeData } from '../types';
 import { getTemplateConfig, ExtendedTemplateConfig } from './templates';
 import { BaseTemplate } from '../templates/shared/components/BaseTemplate';
@@ -62,6 +65,57 @@ export async function closeBrowser(): Promise<void> {
     await browserInstance.close();
     browserInstance = null;
     console.log('Browser instance closed');
+  }
+}
+
+/**
+ * Resolve a photo URL to a base64 data URI so Puppeteer can embed it
+ * without needing to make authenticated network requests.
+ */
+async function resolvePhotoUrl(photoUrl: string): Promise<string | undefined> {
+  if (!photoUrl) return undefined;
+  if (photoUrl.startsWith('data:')) return photoUrl; // already a data URI
+
+  try {
+    let fetchUrl = photoUrl;
+
+    // Generate a short-lived signed URL for Cloudinary authenticated images
+    if (photoUrl.includes('cloudinary.com') && cloudinary.config().api_key) {
+      const match = photoUrl.match(/\/image\/authenticated\/s--[^/]+--\/(.+?)(?:\.[a-z]{2,5})?(\?|$)/i)
+                 || photoUrl.match(/\/image\/authenticated\/(.+?)(?:\.[a-z]{2,5})?(\?|$)/i);
+      const publicId = match?.[1];
+      if (publicId) {
+        fetchUrl = cloudinary.url(publicId, {
+          secure: true,
+          resource_type: 'image',
+          sign_url: true,
+          type: 'authenticated',
+          expires_at: Math.floor(Date.now() / 1000) + 120,
+        });
+      }
+    } else if (photoUrl.startsWith('file://')) {
+      const filePath = photoUrl.replace(/^file:\/\//, '');
+      const buffer = readFileSync(filePath);
+      const ext = (filePath.split('.').pop() || 'jpeg').toLowerCase();
+      const mimeMap: Record<string, string> = { png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
+      return `data:${mimeMap[ext] ?? 'image/jpeg'};base64,${buffer.toString('base64')}`;
+    }
+
+    return await new Promise<string | undefined>((resolve) => {
+      const lib = fetchUrl.startsWith('https') ? https : http;
+      (lib as typeof https).get(fetchUrl, (res) => {
+        if (res.statusCode !== 200) { res.resume(); return resolve(undefined); }
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => {
+          const mime = (res.headers['content-type'] as string | undefined)?.split(';')[0] ?? 'image/jpeg';
+          resolve(`data:${mime};base64,${Buffer.concat(chunks).toString('base64')}`);
+        });
+        res.on('error', () => resolve(undefined));
+      }).on('error', () => resolve(undefined));
+    });
+  } catch {
+    return undefined;
   }
 }
 
@@ -204,6 +258,15 @@ export async function generatePDFFromReact(
       where: { id: templateId },
       select: { templateConfig: true },
     });
+
+    // Resolve profile photo to base64 data URI so Puppeteer can render it
+    // (Cloudinary uses authenticated access mode which Puppeteer cannot fetch)
+    if (resumeData.contact?.photoUrl) {
+      const dataUri = await resolvePhotoUrl(resumeData.contact.photoUrl);
+      if (dataUri) {
+        resumeData = { ...resumeData, contact: { ...resumeData.contact, photoUrl: dataUri } }; // eslint-disable-line no-param-reassign
+      }
+    }
 
     let templateComponent: React.ReactElement;
     let config: ExtendedTemplateConfig;
@@ -516,15 +579,15 @@ export async function healthCheck(): Promise<{
 
 /**
  * Inline SVG placeholder photo used for all template thumbnails.
- * Embedded as a data URI so no network request is needed during screenshot.
+ * Embedded as a base64 data URI so no network request is needed during screenshot.
  */
-const THUMBNAIL_PHOTO_URI = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-  `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">` +
+const _SVG_PLACEHOLDER =
+  `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">` +
   `<circle cx="50" cy="50" r="50" fill="#6B7280"/>` +
   `<circle cx="50" cy="36" r="16" fill="#D1D5DB"/>` +
   `<ellipse cx="50" cy="78" rx="26" ry="19" fill="#D1D5DB"/>` +
-  `</svg>`
-)}`;
+  `</svg>`;
+const THUMBNAIL_PHOTO_URI = `data:image/svg+xml;base64,${Buffer.from(_SVG_PLACEHOLDER).toString('base64')}`;
 
 // ─── Thumbnail Sample Data ────────────────────────────────────────────────────
 // Three calibrated datasets, selected based on layout type:
@@ -734,7 +797,7 @@ const THUMBNAIL_DATA_SPACIOUS: ParsedResumeData = {
 /** Pick the right sample dataset for a given layoutType */
 function chooseThumbnailData(layoutType: string | undefined): ParsedResumeData {
   if (!layoutType) return THUMBNAIL_DATA_NARROW;
-  if (['two-sidebar', 'compact', 'infographic'].includes(layoutType)) return THUMBNAIL_DATA_WIDE;
+  if (['two-sidebar', 'compact', 'infographic', 'split-panel', 'column-split'].includes(layoutType)) return THUMBNAIL_DATA_WIDE;
   if (layoutType === 'minimal') return THUMBNAIL_DATA_SPACIOUS;
   return THUMBNAIL_DATA_NARROW;
 }
@@ -743,6 +806,10 @@ function chooseThumbnailData(layoutType: string | undefined): ParsedResumeData {
 // ─── Disk thumbnail cache ──────────────────────────────────────────────────────
 // Thumbnails are saved as JPEG files under backend/thumbnails/ so they survive
 // server restarts. In-memory cache is still used for speed; disk is the fallback.
+//
+// THUMB_VERSION: bump this number whenever layout rendering code changes so that
+// stale disk-cached thumbnails are ignored and fresh ones are generated.
+const THUMB_VERSION = 5;
 
 const THUMB_CACHE_DIR = path.join(__dirname, '../../thumbnails');
 
@@ -751,9 +818,9 @@ async function ensureThumbDir(): Promise<void> {
 }
 
 function thumbFilePath(templateId: string): string {
-  // Sanitize to prevent path traversal
+  // Sanitize to prevent path traversal; version suffix busts stale disk cache
   const safe = templateId.replace(/[^a-zA-Z0-9_-]/g, '_');
-  return path.join(THUMB_CACHE_DIR, `${safe}.jpg`);
+  return path.join(THUMB_CACHE_DIR, `${safe}_v${THUMB_VERSION}.jpg`);
 }
 
 async function readDiskThumb(templateId: string): Promise<Buffer | null> {
