@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import Stripe from 'stripe';
 import { prisma } from '../utils/prisma';
 import { AuthenticatedRequest } from '../types';
+import { isProEnabled, getFreeMonthlyCredits } from '../config/appSettings';
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -11,6 +12,21 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID || '';
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 
+/** Returns the 1st day of the next calendar month as an ISO string */
+function nextMonthFirst(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1, 1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+/** Returns true if the given date is within the current calendar month */
+function isThisMonth(date: Date | null): boolean {
+  if (!date) return false;
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
 /** POST /api/billing/checkout — create Stripe Checkout session */
 export const createCheckoutSession = async (
   req: AuthenticatedRequest,
@@ -18,6 +34,11 @@ export const createCheckoutSession = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    if (!(await isProEnabled())) {
+      res.status(403).json({ success: false, error: 'Subscriptions are not available yet' });
+      return;
+    }
+
     if (!stripe) {
       res.status(503).json({ success: false, error: 'Payment system not configured' });
       return;
@@ -88,23 +109,28 @@ export const createPortalSession = async (
   }
 };
 
-/** GET /api/billing/status — return current plan info */
+/** GET /api/billing/status — return current plan info + credit claim eligibility */
 export const getBillingStatus = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: {
-        plan: true,
-        aiCredits: true,
-        aiCreditsUsed: true,
-        stripeCustomerId: true,
-        stripeSubscriptionId: true,
-      },
-    });
+    const [user, proEnabled, monthlyCreditsAmount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: {
+          plan: true,
+          aiCredits: true,
+          aiCreditsUsed: true,
+          stripeCustomerId: true,
+          stripeSubscriptionId: true,
+          monthlyCreditsRefreshedAt: true,
+        },
+      }),
+      isProEnabled(),
+      getFreeMonthlyCredits(),
+    ]);
 
     if (!user) {
       res.status(404).json({ success: false, error: 'User not found' });
@@ -114,6 +140,11 @@ export const getBillingStatus = async (
     const remainingCredits =
       user.plan === 'PRO' ? -1 : user.aiCredits - user.aiCreditsUsed;
 
+    const claimedThisMonth = isThisMonth(user.monthlyCreditsRefreshedAt);
+    // Can only claim if: Pro is disabled AND free plan AND hasn't claimed this month
+    const canClaimMonthlyCredits =
+      !proEnabled && user.plan === 'FREE' && !claimedThisMonth;
+
     res.json({
       success: true,
       data: {
@@ -121,6 +152,74 @@ export const getBillingStatus = async (
         remainingCredits,
         stripeCustomerId: user.stripeCustomerId,
         hasSubscription: !!user.stripeSubscriptionId,
+        proSubscriptionEnabled: proEnabled,
+        canClaimMonthlyCredits,
+        nextRefillDate: claimedThisMonth ? nextMonthFirst() : null,
+        monthlyCreditsAmount,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /api/billing/claim-credits — award monthly free credits to a FREE user */
+export const claimMonthlyCredits = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    // Block if Pro subscription is enabled — users should upgrade instead
+    if (await isProEnabled()) {
+      res.status(403).json({
+        success: false,
+        error: 'Please upgrade to Pro for unlimited access',
+      });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { plan: true, aiCredits: true, aiCreditsUsed: true, monthlyCreditsRefreshedAt: true },
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    if (user.plan === 'PRO') {
+      res.status(400).json({ success: false, error: 'Pro users have unlimited credits' });
+      return;
+    }
+
+    if (isThisMonth(user.monthlyCreditsRefreshedAt)) {
+      res.status(400).json({
+        success: false,
+        error: 'Already claimed this month',
+        data: { nextRefillDate: nextMonthFirst() },
+      });
+      return;
+    }
+
+    const amount = await getFreeMonthlyCredits();
+    const updated = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        aiCredits: { increment: amount },
+        monthlyCreditsRefreshedAt: new Date(),
+      },
+      select: { aiCredits: true, aiCreditsUsed: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        credits: updated.aiCredits,
+        used: updated.aiCreditsUsed,
+        remaining: updated.aiCredits - updated.aiCreditsUsed,
+        nextRefillDate: nextMonthFirst(),
       },
     });
   } catch (error) {

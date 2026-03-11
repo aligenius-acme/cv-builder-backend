@@ -17,6 +17,8 @@ import {
   createAffiliate,
   updateAffiliate,
   deleteAffiliate,
+  getSettings,
+  updateSetting,
 } from '../controllers/admin';
 
 const router = Router();
@@ -56,5 +58,9 @@ router.get('/affiliates', getAffiliates);
 router.post('/affiliates', createAffiliate);
 router.put('/affiliates/:id', updateAffiliate);
 router.delete('/affiliates/:id', deleteAffiliate);
+
+// App settings
+router.get('/settings', getSettings);
+router.put('/settings/:key', updateSetting);
 
 export default router;

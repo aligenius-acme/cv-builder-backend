@@ -5,6 +5,7 @@ import {
   createCheckoutSession,
   createPortalSession,
   getBillingStatus,
+  claimMonthlyCredits,
   handleWebhook,
 } from '../controllers/billing';
 
@@ -19,6 +20,7 @@ router.post(
 
 router.post('/checkout', authenticate, createCheckoutSession);
 router.get('/status', authenticate, getBillingStatus);
+router.post('/claim-credits', authenticate, claimMonthlyCredits);
 router.post('/portal', authenticate, createPortalSession);
 
 export default router;

@@ -12,6 +12,14 @@ import { getTemplate, isValidTemplate } from '../services/templates';
 import { getTemplateById, getTemplateConfigFromDB } from '../services/template-registry';
 import { scrapeJobPosting, formatJobDescription, ScrapedJobData } from '../services/jobScraper';
 
+/** Strip characters that are invalid in HTTP Content-Disposition filenames */
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/[^\x20-\x7E]/g, '')   // non-ASCII / control chars
+    .replace(/["/\\:*?<>|]/g, '_')  // chars invalid in filenames or HTTP headers
+    .trim() || 'resume';
+}
+
 // Upload and parse resume
 export const uploadResume = async (
   req: AuthenticatedRequest,
@@ -703,13 +711,13 @@ export const downloadVersion = async (
     if (format === 'docx') {
       buffer = await generateDOCXFromRegistry(resumeData, templateId);
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      fileName = `resume-v${version.versionNumber}-${version.companyName}.docx`;
+      fileName = `resume-v${version.versionNumber}-${sanitizeFilename(version.companyName || 'tailored')}.docx`;
     } else {
       // Use React-based PDF generator for modular template system
       const { generatePDFFromReact } = await import('../services/react-pdf-generator');
       buffer = await generatePDFFromReact(templateId, resumeData);
       contentType = 'application/pdf';
-      fileName = `resume-v${version.versionNumber}-${version.companyName}.pdf`;
+      fileName = `resume-v${version.versionNumber}-${sanitizeFilename(version.companyName || 'tailored')}.pdf`;
     }
 
     res.setHeader('Content-Type', contentType);
@@ -1134,13 +1142,13 @@ export const downloadResume = async (
     if (format === 'docx') {
       buffer = await generateDOCXFromRegistry(resumeData, templateId);
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      fileName = `${resume.title || 'resume'}.docx`;
+      fileName = `${sanitizeFilename(resume.title || 'resume')}.docx`;
     } else {
       // Use React-based PDF generator for modular template system
       const { generatePDFFromReact } = await import('../services/react-pdf-generator');
       buffer = await generatePDFFromReact(templateId, resumeData);
       contentType = 'application/pdf';
-      fileName = `${resume.title || 'resume'}.pdf`;
+      fileName = `${sanitizeFilename(resume.title || 'resume')}.pdf`;
     }
 
     res.setHeader('Content-Type', contentType);

@@ -277,7 +277,8 @@ export const downloadSharedResume = async (
       extension = 'pdf';
     }
 
-    const filename = `resume-${version.companyName || 'tailored'}.${extension}`;
+    const safeName = (version.companyName || 'tailored').replace(/[^\x20-\x7E]/g, '').replace(/["/\\:*?<>|]/g, '_').trim() || 'tailored';
+    const filename = `resume-${safeName}.${extension}`;
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

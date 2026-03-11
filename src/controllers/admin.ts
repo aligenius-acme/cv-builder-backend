@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../types';
 import { ValidationError, NotFoundError } from '../utils/errors';
 import { UserRole } from '@prisma/client';
 import { invalidateAffiliateCache, seedAffiliateLinksIfEmpty } from '../config/affiliateLinks';
+import { getAllSettings, setSetting, SETTING_DEFAULTS, seedSettingsIfEmpty, invalidateSettingsCache } from '../config/appSettings';
 
 // Get dashboard stats
 export const getDashboard = async (
@@ -864,6 +865,58 @@ export const deleteAffiliate = async (
     await prisma.affiliateLink.delete({ where: { id } });
     invalidateAffiliateCache();
     res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+
+/** GET /admin/settings — return all settings as { key: value } map */
+export const getSettings = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    await seedSettingsIfEmpty();
+    const settings = await getAllSettings();
+    res.json({ success: true, data: { settings, defaults: SETTING_DEFAULTS } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** PUT /admin/settings/:key — update a single setting */
+export const updateSetting = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+
+    if (!(key in SETTING_DEFAULTS)) {
+      throw new ValidationError(`Unknown setting: ${key}`);
+    }
+
+    if (value === undefined || value === null) {
+      throw new ValidationError('value is required');
+    }
+
+    // Validate numeric settings
+    if (key === 'freeMonthlyCredits') {
+      const n = parseInt(String(value), 10);
+      if (isNaN(n) || n < 1 || n > 100) {
+        throw new ValidationError('freeMonthlyCredits must be between 1 and 100');
+      }
+    }
+
+    await setSetting(key, String(value));
+    invalidateSettingsCache();
+
+    res.json({ success: true, data: { key, value: String(value) } });
   } catch (error) {
     next(error);
   }
