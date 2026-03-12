@@ -2755,7 +2755,36 @@ function buildTimelineDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph |
   const ts: TitleStyle = { uppercase: true, color: hex(p.primary), border: 'bottom', font: p.font };
   const out: (Paragraph | Table)[] = [];
 
-  // Centered name in primaryColor (bold 700)
+  // DATE_W: 22% date column, CONTENT_W: 78% content column
+  // Cell padding matches PDF's 30px gap and 8px top/bottom
+  const DATE_CELL_MARGINS   = { top: 160, bottom: 160, left: 0,   right: 360 };
+  const CONTENT_CELL_MARGINS = { top: 160, bottom: 160, left: 360, right: 0 };
+  const CONTENT_LEFT_BORDER  = { style: BorderStyle.SINGLE, size: 20, color: hex(p.primary) } as const;
+
+  /** Builds one timeline row (date left | content right) */
+  function makeTimelineRow(dateParas: Paragraph[], contentParas: Paragraph[]): Table {
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 22, type: WidthType.PERCENTAGE },
+            children: dateParas,
+            borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
+            margins: DATE_CELL_MARGINS,
+          }),
+          new TableCell({
+            width: { size: 78, type: WidthType.PERCENTAGE },
+            children: contentParas,
+            borders: { top: NO_BORDER, bottom: NO_BORDER, right: NO_BORDER, left: CONTENT_LEFT_BORDER },
+            margins: CONTENT_CELL_MARGINS,
+          }),
+        ],
+      })],
+    });
+  }
+
+  // Centered name in primaryColor
   out.push(new Paragraph({
     children: [new TextRun({ text: data.contact?.name || 'Resume', bold: true, color: hex(p.primary), size: 60, font: p.font })],
     alignment: AlignmentType.CENTER, spacing: { after: 120 },
@@ -2764,82 +2793,111 @@ function buildTimelineDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph |
     const parts = [data.contact.email, data.contact.phone, data.contact.location, data.contact.linkedin, data.contact.github, data.contact.website].filter(Boolean) as string[];
     if (parts.length) out.push(new Paragraph({
       children: [new TextRun({ text: parts.join('  •  '), color: hex(p.muted), size: 20, font: p.font })],
-      alignment: AlignmentType.CENTER, spacing: { after: 440 },
+      alignment: AlignmentType.CENTER, spacing: { after: 480 },
     }));
   }
 
-  // Summary with 4px left border in primaryColor (matches CSS borderLeft: 4px solid primaryColor)
+  // Summary — 4px left border + generous padding (matches PDF padding: 20px)
   if (data.summary) {
     out.push(makeSectionTitle('Summary', ts));
     out.push(new Paragraph({
       children: [new TextRun({ text: data.summary, size: 22, font: p.font })],
-      border: { left: { style: BorderStyle.SINGLE, size: 20, color: hex(p.primary) } },
-      indent: { left: 240 },
-      spacing: { after: 400 },
+      border: { left: { style: BorderStyle.SINGLE, size: 28, color: hex(p.primary) } },
+      indent: { left: 320 },
+      spacing: { before: 80, after: 480 },
     }));
   }
 
-  // Experience Timeline — each entry as 2-column table (date | content)
+  // Experience Timeline — each entry as 2-col table (date | content)
+  // Entries separated by 360 twips (~6.4mm) to match PDF's 30px gap
   if (data.experience?.length) {
     out.push(makeSectionTitle('Experience Timeline', ts));
-    data.experience.forEach((exp: any) => {
-      const dateLeft: Paragraph[] = [
+    data.experience.forEach((exp: any, idx: number) => {
+      const startDate = exp.startDate || '';
+      const endDate   = exp.current ? 'Present' : (exp.endDate || '');
+
+      const dateParas: Paragraph[] = [
         new Paragraph({
-          children: [new TextRun({ text: exp.startDate || '', bold: true, color: hex(p.primary), size: 20, font: p.font })],
-          spacing: { after: 40 },
+          children: [new TextRun({ text: startDate, bold: true, color: hex(p.primary), size: 21, font: p.font })],
+          spacing: { after: 60 },
         }),
         new Paragraph({
-          children: [new TextRun({ text: exp.current ? 'Present' : (exp.endDate || ''), color: hex(p.muted), size: 18, font: p.font })],
+          children: [new TextRun({ text: endDate, color: hex(p.muted), size: 19, font: p.font })],
           spacing: { after: 0 },
         }),
       ];
-      const contentRight: Paragraph[] = [
+
+      const title = exp.title || exp.position || '';
+      const contentParas: Paragraph[] = [
         new Paragraph({
-          children: [new TextRun({ text: exp.title || '', bold: true, color: hex(p.text), size: 24, font: p.font })],
-          spacing: { after: 50 },
+          children: [new TextRun({ text: title, bold: true, color: hex(p.text), size: 24, font: p.font })],
+          spacing: { after: 60 },
         }),
         new Paragraph({
           children: [
             new TextRun({ text: exp.company || '', bold: true, color: hex(p.primary), size: 22, font: p.font }),
             ...(exp.location ? [new TextRun({ text: `  •  ${exp.location}`, color: hex(p.muted), size: 20, font: p.font })] : []),
           ],
-          spacing: { after: 80 },
+          spacing: { after: 120 },
         }),
-        ...((exp.description || []) as string[]).map((desc: string) => new Paragraph({
+        ...((exp.description || exp.highlights || []) as string[]).map((desc: string) => new Paragraph({
           children: [new TextRun({ text: `→ ${cleanBullet(desc)}`, size: 21, font: p.font })],
-          spacing: { after: 50 },
+          indent: { left: 160 },
+          spacing: { after: 60 },
         })),
       ];
-      out.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 22, type: WidthType.PERCENTAGE },
-              children: dateLeft,
-              borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
-              margins: { top: 80, bottom: 80, left: 0, right: 160 },
-            }),
-            new TableCell({
-              width: { size: 78, type: WidthType.PERCENTAGE },
-              children: contentRight,
-              borders: {
-                top: NO_BORDER, bottom: NO_BORDER, right: NO_BORDER,
-                left: { style: BorderStyle.SINGLE, size: 8, color: blendWithWhite(p.primary, 0.5) },
-              },
-              margins: { top: 80, bottom: 80, left: 200, right: 0 },
-            }),
-          ],
-        })],
-      }));
-      out.push(new Paragraph({ text: '', spacing: { after: 100 } }));
+
+      out.push(makeTimelineRow(dateParas, contentParas));
+      // Spacer between entries — 360 twips between entries, less after last
+      out.push(new Paragraph({ text: '', spacing: { after: idx < data.experience.length - 1 ? 360 : 200 } }));
     });
-    out.push(new Paragraph({ text: '', spacing: { after: 160 } }));
+    out.push(new Paragraph({ text: '', spacing: { after: 280 } }));
   }
 
-  if (data.skills?.length) { out.push(makeSectionTitle('Skills', ts)); out.push(makeSkillsLine(data.skills, p)); }
+  // Skills — pill-style chips rendered as 3-col grid (closest DOCX equivalent of pill chips)
+  if (data.skills?.length) { out.push(makeSectionTitle('Skills', ts)); out.push(...makeSkillsGrid(data.skills, p)); }
+
+  // Education
   if (data.education?.length) { out.push(makeSectionTitle('Education', ts)); data.education.forEach((e: any) => out.push(...makeEduBlock(e, p))); }
-  out.push(...makeOptionalSections(data, ts, '•', p));
+
+  // Volunteer Work — same 2-col timeline table layout as experience (matches PDF volunteer section)
+  if (data.volunteerWork?.length) {
+    out.push(makeSectionTitle('Volunteer Work', ts));
+    data.volunteerWork.forEach((vol: any, idx: number) => {
+      const dateParas: Paragraph[] = [
+        new Paragraph({
+          children: [new TextRun({
+            text: typeof vol === 'string' ? '' : (vol.period || vol.startDate || ''),
+            bold: true, color: hex(p.primary), size: 21, font: p.font,
+          })],
+          spacing: { after: 0 },
+        }),
+      ];
+      const contentParas: Paragraph[] = typeof vol === 'string'
+        ? [new Paragraph({ children: [new TextRun({ text: `→ ${vol}`, size: 21, font: p.font })], spacing: { after: 0 } })]
+        : [
+            new Paragraph({ children: [new TextRun({ text: vol.role || '', bold: true, color: hex(p.text), size: 24, font: p.font })], spacing: { after: 60 } }),
+            new Paragraph({
+              children: [
+                new TextRun({ text: vol.organization || '', bold: true, color: hex(p.primary), size: 22, font: p.font }),
+                ...(vol.location ? [new TextRun({ text: `  •  ${vol.location}`, color: hex(p.muted), size: 20, font: p.font })] : []),
+              ],
+              spacing: { after: vol.description?.length ? 120 : 0 },
+            }),
+            ...((vol.description || []) as string[]).map((d: string) => new Paragraph({
+              children: [new TextRun({ text: `→ ${cleanBullet(d)}`, size: 21, font: p.font })],
+              indent: { left: 160 }, spacing: { after: 60 },
+            })),
+          ];
+      out.push(makeTimelineRow(dateParas, contentParas));
+      out.push(new Paragraph({ text: '', spacing: { after: idx < data.volunteerWork!.length - 1 ? 360 : 200 } }));
+    });
+    out.push(new Paragraph({ text: '', spacing: { after: 280 } }));
+  }
+
+  // Remaining optional sections (certs, projects, languages, awards, etc.)
+  // volunteerWork is already rendered above as a timeline table, so suppress it here.
+  out.push(...makeOptionalSections({ ...data, volunteerWork: [] }, ts, '→', p));
   return out;
 }
 
