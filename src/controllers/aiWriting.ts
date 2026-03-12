@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { callAIRaw } from '../services/ai';
+import { callAIRaw, getPrompt } from '../services/ai';
 import { prisma } from '../utils/prisma';
 
 interface SuggestionRequest {
@@ -29,21 +29,7 @@ export const getSuggestions = async (
       });
     }
 
-    let systemPrompt = `You are an expert resume writer helping to improve bullet points.
-
-CRITICAL RULES:
-1. NEVER fabricate specific metrics, percentages, or numbers that weren't implied
-2. NEVER add technologies, tools, or skills not mentioned in the original
-3. NEVER exaggerate scope (team sizes, budgets, user counts) beyond what's reasonable
-4. When quantifying, use REALISTIC ranges (e.g., "improved by 15-25%") rather than suspiciously precise numbers
-5. Keep improvements TRUTHFUL and DEFENSIBLE in an interview
-
-Your suggestions should be:
-- Professional and impactful but HONEST
-- Use strong action verbs appropriate to the actual responsibility level
-- Include realistic quantification where the context supports it
-- ATS-friendly
-- Concise but specific`;
+    let systemPrompt = await getPrompt('writing_suggestions');
 
     if (context?.jobTitle) {
       systemPrompt += `\nThe target job title is: ${context.jobTitle}`;
@@ -221,20 +207,7 @@ export const generateBulletPoints = async (
       });
     }
 
-    const systemPrompt = `You are an expert resume writer. Generate impactful but REALISTIC bullet points for work experience.
-
-CRITICAL RULES:
-1. Generate bullets that are GENERIC enough to be true for most people in this role
-2. Use placeholder metrics like "[X]%" or "[N]+" where the user should fill in real numbers
-3. Don't include suspiciously specific metrics that would be hard to verify
-4. Match the responsibility level to the job title - don't make entry-level roles sound like VP positions
-5. Each bullet should be something the candidate can confidently discuss in an interview
-
-Each bullet should:
-- Start with a strong action verb appropriate to the seniority level
-- Include placeholder metrics that the user should customize with real numbers
-- Be specific enough to be useful but generic enough to be true
-- Be ATS-friendly`;
+    const systemPrompt = await getPrompt('generate_bullets');
 
     let userPrompt = `Generate 5 professional resume bullet points for this role:
 Job Title: ${jobTitle}

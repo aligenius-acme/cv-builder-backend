@@ -793,6 +793,46 @@ export const updatePrompt = async (
   }
 };
 
+export const createPrompt = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { name, promptText } = req.body;
+
+    if (!name || !promptText) {
+      res.status(400).json({ success: false, error: 'name and promptText are required' });
+      return;
+    }
+
+    // Reject if any version already exists for this name
+    const existing = await prisma.promptVersion.findFirst({ where: { name } });
+    if (existing) {
+      res.status(409).json({ success: false, error: `Prompt "${name}" already exists. Use Edit to update it.` });
+      return;
+    }
+
+    const prompt = await prisma.promptVersion.create({
+      data: { name, version: 1, promptText, isActive: true },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        adminId: req.user!.id,
+        action: 'CREATE_PROMPT',
+        targetType: 'prompt',
+        targetId: prompt.id,
+        details: { name, version: 1 },
+      },
+    });
+
+    res.status(201).json({ success: true, data: prompt });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Create template
 export const createTemplate = async (
   req: AuthenticatedRequest,

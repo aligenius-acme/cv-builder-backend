@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../utils/prisma';
-import { callAIRaw } from '../services/ai';
+import { callAIRaw, getPrompt } from '../services/ai';
 import { deductAICredit } from '../middleware/credits';
 import { getAffiliateCourses } from '../config/affiliateLinks';
 
@@ -41,67 +41,24 @@ export const getResumePerformanceScore = async (
       rawText = resume.rawText;
     }
 
-    const prompt = `You are a CRITICAL resume analyst. Provide an HONEST performance score - most resumes score 40-65, not 80+.
+    const systemPrompt = await getPrompt('resume_performance_score');
 
-SCORING GUIDELINES (BE STRICT):
-- 90-100: Exceptional resume (top 1%) - rare, almost never given
-- 75-89: Strong resume with minor improvements needed
-- 60-74: Average resume - functional but not competitive
-- 45-59: Below average - needs significant work
-- 30-44: Weak resume - major issues
-- 0-29: Poor resume - needs complete rewrite
-
-A resume with:
-- No metrics = automatic cap at 60 for quantification
-- Generic buzzwords without evidence = cap at 50 for uniqueness
-- Missing sections = cap at 50 for completeness
-- Vague bullet points = cap at 55 for impact language
+    const userPrompt = `Analyze this resume and return the performance score as JSON.
 
 Return a JSON object:
 {
   "overallScore": <number 0-100 - BE HONEST, most resumes are 45-65>,
   "categories": {
-    "impactLanguage": {
-      "score": <0-100 - penalize heavily for weak verbs and vague statements>,
-      "description": "<honest assessment>",
-      "suggestions": ["<specific improvement with example>", ...]
-    },
-    "quantification": {
-      "score": <0-100 - count actual metrics, most resumes score 30-50 here>,
-      "description": "<honest assessment>",
-      "bulletsWithMetrics": <actual count>,
-      "totalBullets": <actual count>,
-      "suggestions": ["<specific improvement with example>", ...]
-    },
-    "keywordOptimization": {
-      "score": <0-100 - based on industry-relevant keywords present>,
-      "description": "<honest assessment>",
-      "strongKeywords": ["<actual relevant keywords found>", ...],
-      "missingKeywords": ["<important keywords missing for their field>", ...],
-      "suggestions": ["<specific improvement>", ...]
-    },
-    "readability": {
-      "score": <0-100>,
-      "description": "<honest assessment>",
-      "avgSentenceLength": <number>,
-      "suggestions": ["<specific improvement>", ...]
-    },
-    "uniqueness": {
-      "score": <0-100 - penalize heavily for clichés and generic phrases>,
-      "description": "<honest assessment>",
-      "genericPhrases": ["<overused phrases found>", ...],
-      "suggestions": ["<specific improvement>", ...]
-    },
-    "completeness": {
-      "score": <0-100>,
-      "description": "<honest assessment>",
-      "missingSections": ["<missing sections>", ...],
-      "suggestions": ["<specific improvement>", ...]
-    }
+    "impactLanguage": { "score": <0-100>, "description": "<honest assessment>", "suggestions": ["<specific improvement with example>"] },
+    "quantification": { "score": <0-100>, "description": "<honest assessment>", "bulletsWithMetrics": <count>, "totalBullets": <count>, "suggestions": ["<specific improvement>"] },
+    "keywordOptimization": { "score": <0-100>, "description": "<honest assessment>", "strongKeywords": ["<keywords found>"], "missingKeywords": ["<missing keywords>"], "suggestions": ["<specific improvement>"] },
+    "readability": { "score": <0-100>, "description": "<honest assessment>", "avgSentenceLength": <number>, "suggestions": ["<specific improvement>"] },
+    "uniqueness": { "score": <0-100>, "description": "<honest assessment>", "genericPhrases": ["<overused phrases found>"], "suggestions": ["<specific improvement>"] },
+    "completeness": { "score": <0-100>, "description": "<honest assessment>", "missingSections": ["<missing sections>"], "suggestions": ["<specific improvement>"] }
   },
-  "topStrengths": ["<genuine strengths only - OK to have fewer than 3 if resume is weak>"],
-  "priorityImprovements": ["<most critical fixes needed>", "<second priority>", "<third priority>"],
-  "competitiveAnalysis": "<HONEST assessment of how this compares to other candidates - tell them if they'd struggle to get interviews>",
+  "topStrengths": ["<genuine strengths only>"],
+  "priorityImprovements": ["<most critical fix>", "<second priority>", "<third priority>"],
+  "competitiveAnalysis": "<HONEST assessment vs other candidates>",
   "bluntAssessment": "<1-2 sentence brutally honest summary>"
 }
 
@@ -112,8 +69,8 @@ Parsed Data:
 ${JSON.stringify(resumeData, null, 2)}`;
 
     const content = await callAIRaw(
-      'You are an expert resume analyst. Analyze resumes and provide detailed scoring with actionable improvements. Always respond with valid JSON only.',
-      prompt,
+      systemPrompt,
+      userPrompt,
       userId,
       'resume_performance_score',
       2000,
@@ -170,36 +127,14 @@ export const analyzeSkillGap = async (
 
     const roleToAnalyze = targetRole || targetJobTitle || 'Software Engineer';
 
-    const prompt = `You are a REALISTIC career advisor. Analyze the skill gap HONESTLY - don't sugarcoat if there's a significant gap.
+    const systemPrompt = await getPrompt('skill_gap_analysis');
 
-CRITICAL RULES FOR HONEST ASSESSMENT:
-1. matchPercentage should be MATHEMATICAL: (skills they have / skills required) * 100
-2. If they're missing critical skills, readinessLevel should reflect that honestly
-3. Don't inflate matchPercentage to make them feel good - a 40% match IS a 40% match
-4. Time estimates for learning should be REALISTIC - you can't become proficient in a new programming language in 2 weeks
-5. If the gap is significant, SAY SO clearly
-
-MATCH PERCENTAGE GUIDELINES:
-- 80-100%: Ready to apply now
-- 60-79%: Almost ready, minor gaps to address
-- 40-59%: Significant development needed (months of work)
-- 20-39%: Major gap - consider intermediate roles first
-- 0-19%: Different career path needed
+    const userPrompt = `Analyze the skill gap for this candidate and return JSON.
 
 Return a JSON object:
 {
-  "currentSkills": {
-    "technical": ["<only skills ACTUALLY listed>", ...],
-    "soft": ["<only if mentioned>", ...],
-    "tools": ["<only tools mentioned>", ...],
-    "certifications": ["<only if listed>", ...]
-  },
-  "requiredSkills": {
-    "technical": ["<required for target role>", ...],
-    "soft": ["<required for target role>", ...],
-    "tools": ["<required for target role>", ...],
-    "certifications": ["<required or strongly preferred>", ...]
-  },
+  "currentSkills": { "technical": [], "soft": [], "tools": [], "certifications": [] },
+  "requiredSkills": { "technical": [], "soft": [], "tools": [], "certifications": [] },
   "skillGaps": [
     {
       "skill": "<missing skill>",
@@ -208,43 +143,27 @@ Return a JSON object:
       "currentLevel": "none|beginner|intermediate|advanced",
       "requiredLevel": "beginner|intermediate|advanced|expert",
       "learningPath": {
-        "estimatedTime": "<REALISTIC time - learning React basics takes 2-3 months, not 2 weeks>",
-        "resources": [
-          {
-            "type": "course|book|tutorial|certification|project",
-            "name": "<real resource name>",
-            "provider": "<real provider>",
-            "cost": "free|paid",
-            "duration": "<realistic duration>"
-          }
-        ]
+        "estimatedTime": "<REALISTIC time>",
+        "resources": [{ "type": "course|book|tutorial|certification|project", "name": "<real resource>", "provider": "<real provider>", "cost": "free|paid", "duration": "<realistic duration>" }]
       }
     }
   ],
-  "matchPercentage": <HONEST 0-100 - most career changers score 30-50>,
+  "matchPercentage": <HONEST 0-100>,
   "readinessLevel": "ready (75%+)|almost-ready (60-74%)|needs-development (40-59%)|significant-gap (20-39%)|major-pivot-needed (<20%)",
-  "prioritizedActions": [
-    {
-      "action": "<specific action>",
-      "impact": "high|medium|low",
-      "timeframe": "<REALISTIC timeframe>",
-      "description": "<why this matters>"
-    }
-  ],
-  "careerPathInsights": "<HONEST assessment - if they need intermediate steps, say so>",
+  "prioritizedActions": [{ "action": "<specific action>", "impact": "high|medium|low", "timeframe": "<REALISTIC timeframe>", "description": "<why this matters>" }],
+  "careerPathInsights": "<HONEST assessment>",
   "honestAssessment": "<1-2 sentences of blunt truth about their readiness>"
 }
 
 Candidate Skills: ${Array.isArray(skillsToAnalyze) ? skillsToAnalyze.join(', ') : skillsToAnalyze}
 ${experienceLevel ? `Experience Level: ${experienceLevel}` : ''}
-
 Target Role: ${roleToAnalyze}
 ${targetJobDescription ? `Job Description: ${targetJobDescription}` : ''}
 ${industry ? `Industry: ${industry}` : ''}`;
 
     const content = await callAIRaw(
-      'You are a career development expert. Analyze skill gaps and provide actionable learning paths with real resources. Always respond with valid JSON only.',
-      prompt,
+      systemPrompt,
+      userPrompt,
       userId,
       'skill_gap_analysis',
       3000,

@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { executeJsonArrayCompletion, executeJsonCompletion } from '../utils/aiWrapper';
+import { getPrompt } from '../services/ai';
 import { sendSuccess, sendValidationError } from '../utils/responseHelpers';
 import { deductAICredit } from '../middleware/credits';
 
@@ -38,20 +39,7 @@ export const generateQuestions = async (
       return sendValidationError(res, 'Job title is required');
     }
 
-    const systemPrompt = `You are an expert career coach and interview preparation specialist who has conducted thousands of interviews.
-
-Generate REALISTIC, CHALLENGING interview questions that a candidate would ACTUALLY face for this position. Include the tough questions that trip up candidates, not just softball questions.
-
-QUESTION DIFFICULTY DISTRIBUTION:
-- 30% should be genuinely difficult questions that many candidates fail
-- 40% should be moderately challenging
-- 30% should be standard questions but with high expectations for answers
-
-Include questions that test for:
-- Actual technical/domain competence (not just buzzwords)
-- Real problem-solving ability
-- Honest self-awareness about weaknesses
-- Cultural fit concerns interviewers typically have`;
+    const systemPrompt = await getPrompt('interview_questions');
 
     let userPrompt = `Generate 10 interview questions for this position:
 Job Title: ${jobTitle}`;
@@ -155,16 +143,7 @@ export const evaluateAnswer = async (
       return sendValidationError(res, 'Question and answer are required');
     }
 
-    const systemPrompt = `You are an HONEST and CRITICAL interview coach. Your job is to help candidates improve by giving them REAL feedback, not feel-good platitudes.
-
-SCORING GUIDELINES (BE STRICT):
-- 9-10: Exceptional answer that would impress even demanding interviewers (RARE)
-- 7-8: Strong answer with good structure and specific examples
-- 5-6: Adequate answer but missing key elements or specificity
-- 3-4: Weak answer with vague responses or missing the point
-- 1-2: Poor answer that would likely disqualify the candidate
-
-Most practice answers should score 4-6. A score of 8+ should be reserved for genuinely impressive responses.`;
+    const systemPrompt = await getPrompt('answer_evaluation');
 
     const userPrompt = `Evaluate this interview answer CRITICALLY and HONESTLY:
 

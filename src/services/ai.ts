@@ -15,7 +15,7 @@ import { AIServiceError } from '../utils/errors';
 const openai = config.ai.openaiApiKey ? new OpenAI({ apiKey: config.ai.openaiApiKey }) : null;
 
 // Get active prompts from database or use defaults
-async function getPrompt(name: string): Promise<string> {
+export async function getPrompt(name: string): Promise<string> {
   const prompt = await prisma.promptVersion.findFirst({
     where: { name, isActive: true },
     orderBy: { version: 'desc' },
@@ -304,36 +304,176 @@ Return JSON array (empty array = AI was faithful, which is the best outcome):
 
 Return only valid JSON.`,
 
-    cover_letter: `Write a professional cover letter for this job application.
+    cover_letter: `You are a professional cover letter writer. Write compelling, honest cover letters that get interviews.
 
-Candidate Resume:
-{resume_data}
-
-Job Information:
-{job_data}
-
-Job Title: {job_title}
-Company: {company_name}
-Tone: {tone}
-
-CRITICAL RULES:
-1. ONLY reference experiences, skills, and achievements that exist in the resume
-2. NEVER claim expertise in tools/technologies not demonstrated in the resume
-3. NEVER fabricate metrics, team sizes, or project outcomes
-4. If the candidate is underqualified, focus on genuine transferable skills and learning ability
-5. Be honest about experience level - don't claim senior expertise if resume shows junior experience
+ABSOLUTE RULES — VIOLATION MEANS FAILURE:
+1. ONLY reference experiences, skills, and achievements that exist in the candidate's resume
+2. NEVER fabricate skills, tools, metrics, job titles, or accomplishments
+3. NEVER claim expertise in something not demonstrated in the resume
+4. If the candidate is underqualified, focus on genuine transferable skills — do NOT invent qualifications
+5. Use ACTUAL metrics and numbers from the resume (not invented ones)
 
 GUIDELINES:
-1. Opening: Express genuine interest (but don't oversell fit if resume doesn't support it)
-2. Body: Connect 2-3 REAL experiences from the resume to job requirements
-3. Use ACTUAL metrics and achievements from the resume
-4. If candidate lacks a key requirement, acknowledge eagerness to learn rather than claiming expertise
-5. Closing: Express enthusiasm and call to action
-6. Keep it concise: 3-4 paragraphs max
-
-HONESTY CHECK: If the candidate's resume doesn't strongly match the job requirements, the cover letter should still be compelling but realistic. Overselling leads to awkward interviews.
+1. Opening: Express specific, genuine interest in the role — reference something real about the role or company from the JD
+2. Body paragraphs: Connect 2-3 REAL experiences from the resume to the job's actual requirements (use the JD keywords naturally)
+3. Highlight concrete achievements with real numbers from the resume
+4. Mirror language/keywords from the job description where they apply truthfully
+5. Closing: Clear call to action, express enthusiasm
+6. Length: 3-4 focused paragraphs — concise and impact-driven
 
 Return only the cover letter text, no JSON or formatting markers.`,
+
+    cover_letter_enhanced: `You are a professional cover letter writer. Write compelling, honest cover letters with alternatives and analysis.
+
+ABSOLUTE RULES — VIOLATION MEANS FAILURE:
+1. ONLY reference experiences, skills, and achievements that exist in the candidate's resume
+2. NEVER fabricate skills, tools, metrics, job titles, or accomplishments
+3. NEVER claim expertise in something not demonstrated in the resume
+4. Use ACTUAL metrics and numbers from the resume (not invented ones)
+5. Mirror job description language where it applies truthfully to the candidate's background
+
+GUIDELINES:
+1. Opening: Specific interest in the role — reference something real from the JD
+2. Body: Connect 2-3 REAL experiences from resume to the job's actual requirements (use JD keywords naturally)
+3. Highlight concrete achievements with real numbers from the resume
+4. Closing: Clear call to action, express genuine enthusiasm
+5. Length: 3-4 focused paragraphs — concise and impact-driven
+
+Return only valid JSON with the full structure including content, alternativeOpenings, keyPhrases, toneAnalysis, callToActionVariations, and subjectLineOptions.`,
+
+    resume_performance_score: `You are an expert resume analyst. Analyze resumes and provide detailed, honest performance scoring with actionable improvements.
+
+SCORING GUIDELINES (BE STRICT):
+- 90-100: Exceptional resume (top 1%) — rare, almost never given
+- 75-89: Strong resume with minor improvements needed
+- 60-74: Average resume — functional but not competitive
+- 45-59: Below average — needs significant work
+- 30-44: Weak resume — major issues
+- 0-29: Poor resume — needs complete rewrite
+
+AUTOMATIC SCORE CAPS:
+- No metrics = cap at 60 for quantification
+- Generic buzzwords without evidence = cap at 50 for uniqueness
+- Missing sections = cap at 50 for completeness
+- Vague bullet points = cap at 55 for impact language
+
+Always respond with valid JSON only.`,
+
+    skill_gap_analysis: `You are a career development expert. Analyze skill gaps and provide actionable learning paths with real resources.
+
+CRITICAL RULES FOR HONEST ASSESSMENT:
+1. matchPercentage should be MATHEMATICAL: (skills they have / skills required) * 100
+2. If they're missing critical skills, readinessLevel should reflect that honestly
+3. Don't inflate matchPercentage to make them feel good — a 40% match IS a 40% match
+4. Time estimates for learning should be REALISTIC — you can't become proficient in a new programming language in 2 weeks
+5. If the gap is significant, SAY SO clearly
+
+READINESS LEVELS:
+- 80-100%: Ready to apply now
+- 60-79%: Almost ready, minor gaps to address
+- 40-59%: Significant development needed (months of work)
+- 20-39%: Major gap — consider intermediate roles first
+- 0-19%: Different career path needed
+
+Always respond with valid JSON only.`,
+
+    writing_suggestions: `You are an expert resume writer helping to improve bullet points.
+
+CRITICAL RULES:
+1. NEVER fabricate specific metrics, percentages, or numbers that weren't implied
+2. NEVER add technologies, tools, or skills not mentioned in the original
+3. NEVER exaggerate scope (team sizes, budgets, user counts) beyond what's reasonable
+4. When quantifying, use REALISTIC ranges (e.g., "improved by 15-25%") rather than suspiciously precise numbers
+5. Keep improvements TRUTHFUL and DEFENSIBLE in an interview
+
+Your suggestions should be:
+- Professional and impactful but HONEST
+- Use strong action verbs appropriate to the actual responsibility level
+- Include realistic quantification where the context supports it
+- ATS-friendly
+- Concise but specific`,
+
+    generate_bullets: `You are an expert resume writer. Generate impactful but REALISTIC bullet points for work experience.
+
+CRITICAL RULES:
+1. Generate bullets that are GENERIC enough to be true for most people in this role
+2. Use placeholder metrics like "[X]%" or "[N]+" where the user should fill in real numbers
+3. Don't include suspiciously specific metrics that would be hard to verify
+4. Match the responsibility level to the job title — don't make entry-level roles sound like VP positions
+5. Each bullet should be something the candidate can confidently discuss in an interview
+
+Each bullet should:
+- Start with a strong action verb appropriate to the seniority level
+- Include placeholder metrics that the user should customize with real numbers
+- Be specific enough to be useful but generic enough to be true
+- Be ATS-friendly`,
+
+    salary_analysis: `You are an expert salary analyst. Provide REALISTIC and ACCURATE salary estimates based on market data.
+
+CRITICAL RULES FOR ACCURACY:
+1. Base estimates on real market data patterns — don't inflate to make users feel good
+2. Location matters enormously — SF/NYC pay 40-60% more than average US markets
+3. Experience years have diminishing returns — 10 years doesn't pay 2x of 5 years
+4. Company size matters — startups often pay less base but more equity
+5. Be CONSERVATIVE with estimates — it's better to be pleasantly surprised than disappointed
+6. Acknowledge uncertainty — salary data varies widely and your knowledge may be dated
+
+COMMON MISTAKES TO AVOID:
+- Don't quote top-of-market FAANG salaries as typical
+- Don't assume all "Senior" titles mean the same level
+- Account for the full compensation picture (base, bonus, equity, benefits)
+
+Use USD unless another currency is specified. Always respond with valid JSON only.`,
+
+    offer_comparison: `You are an expert career advisor helping compare job offers with HONEST, REALISTIC analysis.
+
+CRITICAL RULES:
+1. Don't just assume higher salary = better offer — consider total compensation
+2. Be realistic about equity value — most startup equity ends up worthless
+3. Factor in cost of living differences between locations
+4. Consider career trajectory, not just immediate compensation
+5. Be honest about trade-offs — there's rarely a clearly "best" option
+6. Account for job stability and company financial health
+
+COMMON CANDIDATE MISTAKES TO WARN ABOUT:
+- Overvaluing equity at startups (90%+ fail or have minimal exits)
+- Ignoring benefits value (health insurance alone can be $15-25k/year value)
+- Not factoring in commute/remote work value
+- Chasing title over compensation or learning opportunity
+
+Always respond with valid JSON only.`,
+
+    negotiation_script: `You are an expert salary negotiation coach with 20+ years experience. Create professional, persuasive negotiation scripts with specific counter-offer phrases. Be confident but not aggressive. Focus on value provided. Include word-for-word scripts the candidate can use.
+
+Always respond with valid JSON only.`,
+
+    interview_questions: `You are an expert career coach and interview preparation specialist who has conducted thousands of interviews.
+
+Generate REALISTIC, CHALLENGING interview questions that a candidate would ACTUALLY face for this position. Include the tough questions that trip up candidates, not just softball questions.
+
+QUESTION DIFFICULTY DISTRIBUTION:
+- 30% should be genuinely difficult questions that many candidates fail
+- 40% should be moderately challenging
+- 30% should be standard questions but with high expectations for answers
+
+Include questions that test for:
+- Actual technical/domain competence (not just buzzwords)
+- Real problem-solving ability
+- Honest self-awareness about weaknesses
+- Cultural fit concerns interviewers typically have`,
+
+    answer_evaluation: `You are an HONEST and CRITICAL interview coach. Your job is to help candidates improve by giving them REAL feedback, not feel-good platitudes.
+
+SCORING GUIDELINES (BE STRICT):
+- 9-10: Exceptional answer that would impress even demanding interviewers (RARE)
+- 7-8: Strong answer with good structure and specific examples
+- 5-6: Adequate answer but missing key elements or specificity
+- 3-4: Weak answer with vague responses or missing the point
+- 1-2: Poor answer that would likely disqualify the candidate
+
+Most practice answers should score 4-6. A score of 8+ should be reserved for genuinely impressive responses.
+
+Always respond with valid JSON only.`,
   };
 
   return prompts[name] || '';
@@ -343,6 +483,7 @@ Return only the cover letter text, no JSON or formatting markers.`,
 // Operations that are analytical/scoring — need near-zero temperature for consistency
 const DETERMINISTIC_OPERATIONS = new Set([
   'ats_analysis', 'truth_guard', 'job_analysis', 'job_match_score', 'weakness_detector',
+  'resume_performance_score', 'answer_evaluation',
 ]);
 
 async function callAI(
@@ -914,7 +1055,9 @@ export async function generateCoverLetter(
     input.jobData.qualifications?.length ? `Qualifications: ${input.jobData.qualifications.join(', ')}` : '',
   ].filter(Boolean).join('\n');
 
-  const prompt = `Write a professional cover letter for this job application.
+  const systemPrompt = await getPrompt('cover_letter');
+
+  const userPrompt = `Write a cover letter for this candidate and job.
 
 CANDIDATE RESUME:
 ${JSON.stringify(input.resumeData, null, 2)}
@@ -924,26 +1067,9 @@ TARGET JOB:
 - Company: ${input.companyName}
 - Tone: ${input.tone || 'professional'}
 ${jobKeywordsSection ? `\nJOB REQUIREMENTS:\n${jobKeywordsSection}` : ''}
-${input.jobDescription ? `\nFULL JOB DESCRIPTION (use for company context, culture, and specific requirements):\n${input.jobDescription}` : ''}
+${input.jobDescription ? `\nFULL JOB DESCRIPTION (use for company context, culture, and specific requirements):\n${input.jobDescription}` : ''}`;
 
-ABSOLUTE RULES — VIOLATION MEANS FAILURE:
-1. ONLY reference experiences, skills, and achievements that exist in the candidate's resume
-2. NEVER fabricate skills, tools, metrics, job titles, or accomplishments
-3. NEVER claim expertise in something not demonstrated in the resume
-4. If the candidate is underqualified, focus on genuine transferable skills — do NOT invent qualifications
-5. Use ACTUAL metrics and numbers from the resume (not invented ones)
-
-GUIDELINES:
-1. Opening: Express specific, genuine interest in ${input.jobTitle} at ${input.companyName} — reference something real about the role or company from the JD
-2. Body paragraphs: Connect 2-3 REAL experiences from the resume to the job's actual requirements (use the JD keywords naturally)
-3. Highlight concrete achievements with real numbers from the resume
-4. Mirror language/keywords from the job description where they apply truthfully
-5. Closing: Clear call to action, express enthusiasm
-6. Length: 3-4 focused paragraphs — concise and impact-driven
-
-Return only the cover letter text, no JSON or formatting markers.`;
-
-  const { content } = await callAI(prompt, userId, organizationId, 'cover_letter');
+  const content = await callAIRaw(systemPrompt, userPrompt, userId, 'cover_letter', undefined, 0.3);
 
   return content.trim();
 }
@@ -962,7 +1088,9 @@ export async function generateEnhancedCoverLetter(
     input.jobData.qualifications?.length ? `Qualifications: ${input.jobData.qualifications.join(', ')}` : '',
   ].filter(Boolean).join('\n');
 
-  const prompt = `Write a professional cover letter for this job application AND provide alternative options.
+  const systemPrompt = await getPrompt('cover_letter_enhanced');
+
+  const userPrompt = `Write a cover letter with alternatives for this candidate and job.
 
 CANDIDATE RESUME:
 ${JSON.stringify(input.resumeData, null, 2)}
@@ -974,72 +1102,24 @@ TARGET JOB:
 ${jobKeywordsSection ? `\nJOB REQUIREMENTS:\n${jobKeywordsSection}` : ''}
 ${input.jobDescription ? `\nFULL JOB DESCRIPTION (use for company context, culture, tone, and specific requirements):\n${input.jobDescription}` : ''}
 
-ABSOLUTE RULES — VIOLATION MEANS FAILURE:
-1. ONLY reference experiences, skills, and achievements that exist in the candidate's resume
-2. NEVER fabricate skills, tools, metrics, job titles, or accomplishments
-3. NEVER claim expertise in something not demonstrated in the resume
-4. Use ACTUAL metrics and numbers from the resume (not invented ones)
-5. Mirror job description language where it applies truthfully to the candidate's background
-
-GUIDELINES:
-1. Opening: Specific interest in ${input.jobTitle} at ${input.companyName} — reference something real from the JD
-2. Body: Connect 2-3 REAL experiences from resume to the job's actual requirements (use JD keywords naturally)
-3. Highlight concrete achievements with real numbers from the resume
-4. Closing: Clear call to action, express genuine enthusiasm
-5. Length: 3-4 focused paragraphs — concise and impact-driven
-
-Return JSON:
+Return JSON with these fields:
 {
   "content": "The full cover letter text (3-4 paragraphs)",
   "alternativeOpenings": [
-    {
-      "style": "story",
-      "opening": "A compelling story-based opening paragraph that hooks the reader",
-      "description": "Opens with a brief professional story or anecdote"
-    },
-    {
-      "style": "achievement",
-      "opening": "An achievement-focused opening that leads with impact",
-      "description": "Opens by highlighting a key accomplishment relevant to the role"
-    },
-    {
-      "style": "connection",
-      "opening": "A connection-based opening referencing mutual contacts or company knowledge",
-      "description": "Opens by establishing a personal or professional connection"
-    },
-    {
-      "style": "passion",
-      "opening": "A passion-driven opening showing enthusiasm for the field/company",
-      "description": "Opens by expressing genuine passion for the work"
-    }
+    { "style": "story", "opening": "...", "description": "..." },
+    { "style": "achievement", "opening": "...", "description": "..." },
+    { "style": "connection", "opening": "...", "description": "..." },
+    { "style": "passion", "opening": "...", "description": "..." }
   ],
-  "keyPhrases": [
-    {
-      "phrase": "Key phrase used in the cover letter",
-      "matchesJobRequirement": "Which job requirement this addresses"
-    }
-  ],
-  "toneAnalysis": {
-    "currentTone": "Description of the letter's tone (e.g., 'Confident and professional')",
-    "formalityScore": 7,
-    "enthusiasmScore": 8,
-    "suggestions": ["Suggestions to adjust tone if needed"]
-  },
-  "callToActionVariations": [
-    "I would welcome the opportunity to discuss how my experience can benefit [Company].",
-    "I am excited to bring my skills to your team and would love to schedule a conversation.",
-    "Let's connect to explore how I can contribute to [Company]'s continued success."
-  ],
-  "subjectLineOptions": [
-    "Application for ${input.jobTitle} - [Your Name]",
-    "Experienced [Role] Excited to Join ${input.companyName}",
-    "${input.jobTitle} Application - [Relevant Achievement/Skill]"
-  ]
+  "keyPhrases": [{ "phrase": "...", "matchesJobRequirement": "..." }],
+  "toneAnalysis": { "currentTone": "...", "formalityScore": 7, "enthusiasmScore": 8, "suggestions": [] },
+  "callToActionVariations": ["...", "...", "..."],
+  "subjectLineOptions": ["Application for ${input.jobTitle} - [Your Name]", "Experienced [Role] Excited to Join ${input.companyName}", "${input.jobTitle} Application - [Relevant Achievement/Skill]"]
 }
 
 Return only valid JSON.`;
 
-  const { content } = await callAI(prompt, userId, organizationId, 'cover_letter_enhanced', 4000);
+  const content = await callAIRaw(systemPrompt, userPrompt, userId, 'cover_letter_enhanced', 4000, 0.3);
 
   return parseAIJSON<EnhancedCoverLetterResult>(content);
 }

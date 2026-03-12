@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { callAIRaw } from '../services/ai';
+import { callAIRaw, getPrompt } from '../services/ai';
 import { prisma } from '../utils/prisma';
 import { deductAICredit } from '../middleware/credits';
 
@@ -45,22 +45,7 @@ export const analyzeSalary = async (
       });
     }
 
-    const systemPrompt = `You are an expert salary analyst. Provide REALISTIC and ACCURATE salary estimates.
-
-CRITICAL RULES FOR ACCURACY:
-1. Base estimates on real market data patterns - don't inflate to make users feel good
-2. Location matters enormously - SF/NYC pay 40-60% more than average US markets
-3. Experience years have diminishing returns - 10 years doesn't pay 2x of 5 years
-4. Company size matters - startups often pay less base but more equity
-5. Be CONSERVATIVE with estimates - it's better to be pleasantly surprised than disappointed
-6. Acknowledge uncertainty - salary data varies widely and your knowledge may be dated
-
-COMMON MISTAKES TO AVOID:
-- Don't quote top-of-market FAANG salaries as typical
-- Don't assume all "Senior" titles mean the same level
-- Account for the full compensation picture (base, bonus, equity, benefits)
-
-Use USD unless another currency is specified.`;
+    const systemPrompt = await getPrompt('salary_analysis');
 
     const userPrompt = `Analyze the salary market for this position:
 
@@ -170,21 +155,7 @@ export const compareOffers = async (
       });
     }
 
-    const systemPrompt = `You are an expert career advisor helping compare job offers with HONEST, REALISTIC analysis.
-
-CRITICAL RULES:
-1. Don't just assume higher salary = better offer - consider total compensation
-2. Be realistic about equity value - most startup equity ends up worthless
-3. Factor in cost of living differences between locations
-4. Consider career trajectory, not just immediate compensation
-5. Be honest about trade-offs - there's rarely a clearly "best" option
-6. Account for job stability and company financial health
-
-COMMON CANDIDATE MISTAKES TO WARN ABOUT:
-- Overvaluing equity at startups (90%+ fail or have minimal exits)
-- Ignoring benefits value (health insurance alone can be $15-25k/year value)
-- Not factoring in commute/remote work value
-- Chasing title over compensation or learning opportunity`;
+    const systemPrompt = await getPrompt('offer_comparison');
 
     const offersDescription = offers.map((o: any, i: number) => `
 Offer ${i + 1}:
@@ -296,10 +267,7 @@ export const getNegotiationScript = async (
       });
     }
 
-    const systemPrompt = `You are an expert salary negotiation coach with 20+ years experience.
-Create professional, persuasive negotiation scripts with specific counter-offer phrases.
-Be confident but not aggressive. Focus on value provided.
-Include word-for-word scripts the candidate can use.`;
+    const systemPrompt = await getPrompt('negotiation_script');
 
     const userPrompt = `Create a comprehensive salary negotiation toolkit:
 

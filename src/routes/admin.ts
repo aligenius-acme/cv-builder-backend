@@ -11,6 +11,7 @@ import {
   getAuditLogs,
   getPrompts,
   updatePrompt,
+  createPrompt,
   createTemplate,
   getTemplates,
   getAffiliates,
@@ -47,6 +48,7 @@ router.get('/audit-logs', getAuditLogs);
 
 // Prompt management
 router.get('/prompts', getPrompts);
+router.post('/prompts', createPrompt);
 router.put('/prompts/:id', updatePrompt);
 
 // Template management
