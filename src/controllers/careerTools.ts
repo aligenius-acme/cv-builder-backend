@@ -120,7 +120,7 @@ ${JSON.stringify(resumeData, null, 2)}`;
       0.3
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     // Parse JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -251,7 +251,7 @@ ${industry ? `Industry: ${industry}` : ''}`;
       0.4
     );
 
-    await deductAICredit(userId);
+    await deductAICredit(userId, req);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -264,9 +264,69 @@ ${industry ? `Industry: ${industry}` : ''}`;
     const skillGaps: string[] = (analysis.skillGaps || []).map((g: any) => g.skill || '');
     const courseRecommendations = await getAffiliateCourses(skillGaps);
 
+    // Normalise AI response to the shape the frontend SkillGapAnalysis interface expects
+    const mapImportance = (imp: string): 'critical' | 'important' | 'nice-to-have' => {
+      const lower = (imp || '').toLowerCase();
+      if (lower.startsWith('critical')) return 'critical';
+      if (lower.startsWith('important')) return 'important';
+      return 'nice-to-have';
+    };
+
+    const currentSkillsMatched: string[] = [
+      ...(analysis.currentSkills?.technical || []),
+      ...(analysis.currentSkills?.soft || []),
+      ...(analysis.currentSkills?.tools || []),
+      ...(analysis.currentSkills?.certifications || []),
+    ].filter(Boolean);
+
+    const missingSkills = (analysis.skillGaps || []).map((gap: any) => ({
+      skill: gap.skill || '',
+      importance: mapImportance(gap.importance),
+      learningResources: (gap.learningPath?.resources || []).map((r: any) => ({
+        title: r.name || r.title || '',
+        type: r.type || 'course',
+        url: r.url,
+        duration: r.duration,
+      })),
+    }));
+
+    const recommendations: string[] = (analysis.prioritizedActions || [])
+      .map((a: any) => (a.description ? `${a.action}: ${a.description}` : a.action || ''))
+      .filter(Boolean);
+
+    // Build a simple phased learning path from skill gap importance groups
+    const byImportance = (imp: string) => missingSkills.filter((s: any) => s.importance === imp);
+    const buildPhase = (phase: string, duration: string, skills: any[]) => ({
+      phase,
+      duration,
+      skills: skills.map((s: any) => s.skill),
+      milestones: skills.map((s: any) => `Achieve proficiency in ${s.skill}`),
+    });
+
+    const learningPath = [
+      byImportance('critical').length > 0 && buildPhase('Foundation — Critical Skills', '1-3 months', byImportance('critical')),
+      byImportance('important').length > 0 && buildPhase('Core Development', '2-4 months', byImportance('important')),
+      byImportance('nice-to-have').length > 0 && buildPhase('Advanced Proficiency', '1-2 months', byImportance('nice-to-have')),
+    ].filter(Boolean);
+
+    const formattedData = {
+      targetRole: roleToAnalyze,
+      currentSkillsMatched,
+      missingSkills,
+      overallReadiness: analysis.matchPercentage ?? 0,
+      recommendations: recommendations.length > 0 ? recommendations : [analysis.careerPathInsights || analysis.honestAssessment || 'Focus on the critical skills listed above.'],
+      learningPath: learningPath.length > 0 ? learningPath : [{
+        phase: 'Getting Started',
+        duration: '1-3 months',
+        skills: missingSkills.slice(0, 3).map((s: any) => s.skill),
+        milestones: ['Complete initial skills assessment', 'Begin targeted learning', 'Apply skills in projects'],
+      }],
+      courseRecommendations,
+    };
+
     res.json({
       success: true,
-      data: { ...analysis, courseRecommendations },
+      data: formattedData,
     });
   } catch (error) {
     next(error);
