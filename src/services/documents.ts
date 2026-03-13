@@ -1620,6 +1620,7 @@ interface DocxPalette {
 
 /** Shared no-border object used in tables */
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: 'auto' } as const;
+const NO_TABLE_BORDERS = { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER, insideH: NO_BORDER, insideV: NO_BORDER } as const;
 
 /**
  * Maps template config → Word-compatible font matching the HTML layout font.
@@ -1666,11 +1667,20 @@ function docxBuilderKey(tplConfig: {
     if (lt === 'tech')          return 'tech';
     if (lt === 'infographic')   return 'infographic';
     if (lt === 'portfolio')     return 'portfolio';
-    if (lt === 'split-panel')   return 'split_panel';
-    if (lt === 'column-split')  return 'column_split';
-    if (lt === 'ruled-elegant') return 'ruled_elegant';
-    if (lt === 'top-accent')    return 'top_accent';
-    if (lt === 'bordered-page') return 'bordered_page';
+    if (lt === 'split-panel')    return 'split_panel';
+    if (lt === 'column-split')   return 'column_split';
+    if (lt === 'ruled-elegant')  return 'ruled_elegant';
+    if (lt === 'top-accent')     return 'top_accent';
+    if (lt === 'bordered-page')  return 'bordered_page';
+    // New 8 layouts — map to closest structural equivalent
+    if (lt === 'dark-mode')      return 'tech';
+    if (lt === 'diagonal-hero')  return 'contemporary';
+    if (lt === 'magazine')       return 'contemporary';
+    if (lt === 'highlight-band') return 'bold_modern';
+    if (lt === 'stacked-cards')  return 'professional';
+    if (lt === 'monogram')       return 'executive';
+    if (lt === 'timeline-dots')  return 'timeline';
+    if (lt === 'compact-table')  return 'compact';
   }
   // Fallback via derived style properties
   if (tplConfig.hasSidebar || tplConfig.headerStyle === 'split') return 'sidebar';
@@ -1821,7 +1831,7 @@ function makeSkillsGrid(skills: any[], palette: DocxPalette): (Paragraph | Table
       })),
     }));
   }
-  out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
+  out.push(new Table({ borders: NO_TABLE_BORDERS, width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
   out.push(new Paragraph({ text: '', spacing: { after: 160 } }));
   return out;
 }
@@ -2432,6 +2442,7 @@ function buildSidebarDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | 
   const sidebarBg = blendWithWhite(p.primary, 0.12);
 
   return [new Table({
+    borders: NO_TABLE_BORDERS,
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [new TableRow({
       children: [
@@ -2536,6 +2547,7 @@ function buildSplitPanelDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph
   }
 
   return [new Table({
+    borders: NO_TABLE_BORDERS,
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [new TableRow({
       children: [
@@ -2573,6 +2585,7 @@ function buildColumnSplitDocx(data: ParsedResumeData, p: DocxPalette): (Paragrap
   const contactParts = (['email','phone','location','linkedin','github','website'] as const)
     .map(f => data.contact?.[f]).filter(Boolean) as string[];
   const headerTable = new Table({
+    borders: NO_TABLE_BORDERS,
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [new TableRow({
       children: [new TableCell({
@@ -2642,6 +2655,7 @@ function buildColumnSplitDocx(data: ParsedResumeData, p: DocxPalette): (Paragrap
 
   const lightBorder = { style: BorderStyle.SINGLE, size: 4, color: `${hex(p.primary)}30` };
   const bodyTable = new Table({
+    borders: NO_TABLE_BORDERS,
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [new TableRow({
       children: [
@@ -2721,6 +2735,7 @@ function buildTopAccentDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph 
   const contactParts = (['email','phone','location','linkedin','github','website'] as const)
     .map(f => data.contact?.[f]).filter(Boolean) as string[];
   const headerTable = new Table({
+    borders: NO_TABLE_BORDERS,
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [new TableRow({
       children: [
@@ -2807,6 +2822,7 @@ function buildBorderedPageDocx(data: ParsedResumeData, p: DocxPalette): (Paragra
 
   const frameBorder = { style: BorderStyle.SINGLE, size: 18, color: solidPrimary };
   return [new Table({
+    borders: NO_TABLE_BORDERS,
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [new TableRow({
       children: [new TableCell({
@@ -2858,7 +2874,7 @@ function buildProfessionalDocx(data: ParsedResumeData, p: DocxPalette): (Paragra
     for (let i = 0; i < skillItems.length; i += 3) {
       skillRows.push(new TableRow({ children: Array.from({ length: 3 }, (_, j) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: skillItems[i + j] || '', size: 20, font: p.font })], spacing: { after: 40 } })], borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }, width: { size: 33, type: WidthType.PERCENTAGE } })) }));
     }
-    if (skillRows.length) out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: skillRows }));
+    if (skillRows.length) out.push(new Table({ borders: NO_TABLE_BORDERS, width: { size: 100, type: WidthType.PERCENTAGE }, rows: skillRows }));
     out.push(new Paragraph({ text: '', spacing: { after: 160 } }));
   }
   out.push(...makeOptionalSections(data, ts, '▪', p));
@@ -2889,7 +2905,7 @@ function buildTechDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | Tab
     for (let i = 0; i < skillItems.length; i += 3) {
       skillRows.push(new TableRow({ children: Array.from({ length: 3 }, (_, j) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: skillItems[i + j] || '', size: 20, font: cf })], spacing: { after: 40 } })], borders: { top: { style: BorderStyle.SINGLE, size: 4, color: borderColor }, bottom: { style: BorderStyle.SINGLE, size: 4, color: borderColor }, left: { style: BorderStyle.SINGLE, size: 4, color: borderColor }, right: { style: BorderStyle.SINGLE, size: 4, color: borderColor } }, margins: { top: 80, bottom: 80, left: 120, right: 120 }, width: { size: 33, type: WidthType.PERCENTAGE } })) }));
     }
-    if (skillRows.length) out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: skillRows }));
+    if (skillRows.length) out.push(new Table({ borders: NO_TABLE_BORDERS, width: { size: 100, type: WidthType.PERCENTAGE }, rows: skillRows }));
     out.push(new Paragraph({ text: '', spacing: { after: 200 } }));
   }
   if (data.summary) { out.push(techTitle('About')); out.push(new Paragraph({ children: [new TextRun({ text: data.summary, font: cf })], spacing: { after: 240 } })); }
@@ -2965,7 +2981,7 @@ function buildCompactDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | 
     side.push(makeSectionTitle('Awards', sideTs));
     data.awards.forEach((a: any) => { const n = typeof a === 'string' ? a : (a as any).name || ''; side.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(n)}`, size: 19, font: p.font })], spacing: { after: 30 } })); });
   }
-  out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [
+  out.push(new Table({ borders: NO_TABLE_BORDERS, width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [
     new TableCell({ width: { size: 70, type: WidthType.PERCENTAGE }, children: main, borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }, margins: { top: 80, bottom: 80, left: 0, right: 200 } }),
     new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, children: side, borders: { top: NO_BORDER, bottom: NO_BORDER, right: NO_BORDER, left: { style: BorderStyle.SINGLE, size: 4, color: blendWithWhite(p.primary, 0.2) } }, margins: { top: 80, bottom: 80, left: 200, right: 0 } }),
   ] })] }));
@@ -3019,7 +3035,7 @@ function buildInfographicDocx(data: ParsedResumeData, p: DocxPalette): (Paragrap
       }
     });
   }
-  return [new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [
+  return [new Table({ borders: NO_TABLE_BORDERS, width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [
     new TableCell({ width: { size: 35, type: WidthType.PERCENTAGE }, children: left, borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: { style: BorderStyle.SINGLE, size: 8, color: blendWithWhite(p.primary, 0.3) } }, margins: { top: 80, bottom: 80, left: 0, right: 200 } }),
     new TableCell({ width: { size: 65, type: WidthType.PERCENTAGE }, children: right, borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }, margins: { top: 80, bottom: 80, left: 200, right: 0 } }),
   ] })] })];
@@ -3054,7 +3070,7 @@ function buildPortfolioDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph 
       });
       projRows.push(new TableRow({ children: [makeCell(pr1, hex(p.primary)), makeCell(pr2 || {}, hex(p.secondary))] }));
     }
-    if (projRows.length) out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: projRows }));
+    if (projRows.length) out.push(new Table({ borders: NO_TABLE_BORDERS, width: { size: 100, type: WidthType.PERCENTAGE }, rows: projRows }));
     out.push(new Paragraph({ text: '', spacing: { after: 200 } }));
   }
   if (data.experience?.length) {
@@ -3078,7 +3094,7 @@ function buildPortfolioDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph 
     for (let i = 0; i < skillItems.length; i += 4) {
       skillRows4.push(new TableRow({ children: Array.from({ length: 4 }, (_, j) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: skillItems[i + j] || '', size: 19, font: p.font })], spacing: { after: 30 } })], borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER }, width: { size: 25, type: WidthType.PERCENTAGE } })) }));
     }
-    if (skillRows4.length) out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: skillRows4 }));
+    if (skillRows4.length) out.push(new Table({ borders: NO_TABLE_BORDERS, width: { size: 100, type: WidthType.PERCENTAGE }, rows: skillRows4 }));
     out.push(new Paragraph({ text: '', spacing: { after: 200 } }));
   }
   if (data.education?.length) { out.push(makeSectionTitle('Education', ts)); data.education.forEach((e: any) => out.push(...makeEduBlock(e, p))); }
@@ -3130,6 +3146,7 @@ function buildTimelineDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph |
   /** Builds one timeline row (date left | content right) */
   function makeTimelineRow(dateParas: Paragraph[], contentParas: Paragraph[]): Table {
     return new Table({
+      borders: NO_TABLE_BORDERS,
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [new TableRow({
         children: [
@@ -3300,7 +3317,7 @@ export async function generateDOCXFromRegistry(
     };
 
     const builderKey = docxBuilderKey(tplConfig);
-    console.log(`DOCX builder: ${builderKey}, font: ${docFont}, layoutType: ${tplConfig.layoutType}, headerStyle: ${tplConfig.headerStyle}, sectionStyle: ${tplConfig.sectionStyle}`);
+    console.log(`DOCX builder: ${builderKey}, font: ${docFont}, layoutType: ${tplConfig.layoutType}`);
 
     // Resolve profile photo to a Buffer before building content
     const photoBuffer = data.contact?.photoUrl
@@ -3347,6 +3364,7 @@ export async function generateDOCXFromRegistry(
         // with a side-by-side table — photo on the right, name/contact on the left.
         const headerParas = children.splice(0, 2) as Paragraph[];
         const photoHeaderTable = new Table({
+          borders: NO_TABLE_BORDERS,
           width: { size: 100, type: WidthType.PERCENTAGE },
           rows: [new TableRow({
             children: [

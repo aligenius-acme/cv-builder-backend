@@ -48,6 +48,7 @@
     "express-rate-limit": "^8.2.1",
     "googleapis": "^169.0.0",
     "helmet": "^8.1.0",
+    "html-to-docx": "^1.8.0",
     "ioredis": "^5.9.3",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.11.0",
