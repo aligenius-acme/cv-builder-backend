@@ -60,8 +60,8 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // In development allow any localhost port (handles Next.js using 3001/3002 fallbacks)
-    if (isDev && /^http:\/\/localhost:\d+$/.test(origin)) {
+    // In development allow specific localhost ports only
+    if (isDev && /^http:\/\/localhost:(3000|3001|3002)$/.test(origin)) {
       return callback(null, true);
     }
 

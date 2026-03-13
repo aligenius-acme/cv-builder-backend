@@ -14,7 +14,14 @@ export const config = {
 
   // JWT
   jwt: {
-    secret: process.env.JWT_SECRET || "default-secret-change-me",
+    secret: (() => {
+      const s = process.env.JWT_SECRET;
+      if (!s && process.env.NODE_ENV === 'production') {
+        console.error('FATAL: JWT_SECRET environment variable is not set in production.');
+        process.exit(1);
+      }
+      return s || 'dev-only-secret-change-me';
+    })(),
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   },
 

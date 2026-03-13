@@ -53,3 +53,12 @@ export const passwordResetLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// OAuth callback rate limiter (prevent brute-force of OAuth code exchange)
+export const oauthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isDev ? 10000 : 20,
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});

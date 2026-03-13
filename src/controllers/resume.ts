@@ -331,7 +331,7 @@ export const downloadOriginalResume = async (
     const fileName = resume.originalFileName || `original-resume.${ext}`;
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
     res.end(fileBuffer, 'binary');
   } catch (error) {
     next(error);
@@ -567,13 +567,6 @@ export const getVersion = async (
     const originalData = transformResumeDataForFrontend(version.resume.parsedData);
     const tailoredData = transformResumeDataForFrontend(version.tailoredData);
 
-    // Debug: Log transformed experience data
-    if (tailoredData?.experience && tailoredData.experience.length > 0) {
-      console.log('=== TRANSFORMED EXPERIENCE DEBUG ===');
-      console.log('First experience object keys:', Object.keys(tailoredData.experience[0]));
-      console.log('First experience object:', JSON.stringify(tailoredData.experience[0], null, 2));
-      console.log('===================================');
-    }
 
     res.json({
       success: true,
@@ -721,7 +714,7 @@ export const downloadVersion = async (
     }
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
     res.setHeader('Content-Length', buffer.length.toString());
     res.end(buffer, 'binary');
   } catch (error) {
@@ -924,11 +917,6 @@ export const updateResumeContent = async (
     const { id } = req.params;
     const { parsedData, title, photoUrl } = req.body;
 
-    console.log('=== UPDATE RESUME CONTENT DEBUG ===');
-    console.log('Resume ID:', id);
-    console.log('Received parsedData:', JSON.stringify(parsedData, null, 2));
-    console.log('Title:', title);
-    console.log('PhotoUrl:', photoUrl);
 
     const resume = await prisma.resume.findFirst({
       where: { id, userId },
@@ -938,7 +926,6 @@ export const updateResumeContent = async (
       throw new NotFoundError('Resume not found');
     }
 
-    console.log('Current parsedData in DB:', JSON.stringify(resume.parsedData, null, 2));
 
     // Validate parsedData structure
     if (parsedData) {
@@ -967,13 +954,8 @@ export const updateResumeContent = async (
       }
     }
 
-    console.log('Merged updatedData:', JSON.stringify(updatedData, null, 2));
-
     // Generate raw text from parsed data for search/ATS purposes
     const rawText = generateRawTextFromParsedData(updatedData);
-
-    console.log('Generated rawText length:', rawText.length);
-    console.log('Generated rawText preview:', rawText.substring(0, 200));
 
     const updated = await prisma.resume.update({
       where: { id },
@@ -1152,7 +1134,7 @@ export const downloadResume = async (
     }
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
     res.setHeader('Content-Length', buffer.length.toString());
     res.end(buffer, 'binary');
   } catch (error) {
