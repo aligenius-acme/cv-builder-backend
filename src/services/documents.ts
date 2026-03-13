@@ -5,6 +5,7 @@ import * as http from 'http';
 import { readFileSync } from 'fs';
 import { ParsedResumeData, AnonymizationConfig, SkillCategory } from '../types';
 import { ExtendedTemplateConfig, getTemplateConfig, BASE_LAYOUTS, COLOR_PALETTES } from './templates';
+import { config as appConfig } from '../config';
 
 // Bullet character map
 const BULLETS: Record<string, string> = {
@@ -1665,11 +1666,11 @@ function docxBuilderKey(tplConfig: {
     if (lt === 'tech')          return 'tech';
     if (lt === 'infographic')   return 'infographic';
     if (lt === 'portfolio')     return 'portfolio';
-    if (lt === 'split-panel')   return 'sidebar';
-    if (lt === 'column-split')  return 'sidebar';
-    if (lt === 'ruled-elegant') return 'classic';
-    if (lt === 'top-accent')    return 'professional';
-    if (lt === 'bordered-page') return 'classic';
+    if (lt === 'split-panel')   return 'split_panel';
+    if (lt === 'column-split')  return 'column_split';
+    if (lt === 'ruled-elegant') return 'ruled_elegant';
+    if (lt === 'top-accent')    return 'top_accent';
+    if (lt === 'bordered-page') return 'bordered_page';
   }
   // Fallback via derived style properties
   if (tplConfig.hasSidebar || tplConfig.headerStyle === 'split') return 'sidebar';
@@ -2452,6 +2453,371 @@ function buildSidebarDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | 
   })];
 }
 
+// ─── Split Panel ─────────────────────────────────────────────────────────────
+/**
+ * SplitPanel — Solid primaryColor sidebar (33% left) with white text,
+ * white body (67% right). Matches the PDF SplitPanelLayout.
+ */
+function buildSplitPanelDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | Table)[] {
+  const solidPrimary = hex(p.primary);
+  const leftTs: TitleStyle = { uppercase: true, color: 'ffffff', border: 'bottom', borderColor: 'ffffff40', font: p.font };
+  const rightTs: TitleStyle = { uppercase: true, color: hex(p.primary), border: 'bottom', font: p.font };
+  const left: Paragraph[] = [];
+  const right: Paragraph[] = [];
+
+  // Name + title
+  left.push(new Paragraph({
+    children: [new TextRun({ text: data.contact?.name || '', bold: true, color: 'ffffff', size: 44, font: p.font })],
+    spacing: { after: 80 },
+  }));
+  const currentTitle = data.experience?.[0]?.title || data.experience?.[0]?.position || '';
+  if (currentTitle) left.push(new Paragraph({
+    children: [new TextRun({ text: currentTitle, color: 'ffffffCC', size: 20, font: p.font })],
+    spacing: { after: 200 },
+  }));
+
+  // Contact
+  left.push(makeSectionTitle('Contact', leftTs));
+  const contactFields = ['email','phone','location','linkedin','github','website'] as const;
+  contactFields.forEach(f => {
+    if (data.contact?.[f]) left.push(new Paragraph({
+      children: [new TextRun({ text: data.contact[f]!, size: 18, color: 'ffffffDD', font: p.font })],
+      spacing: { after: 50 },
+    }));
+  });
+
+  // Skills
+  if (data.skills?.length) {
+    left.push(makeSectionTitle('Skills', leftTs));
+    normalizeSkills(data.skills).forEach(s => left.push(new Paragraph({
+      children: [new TextRun({ text: `• ${s}`, size: 19, color: 'ffffffE0', font: p.font })],
+      spacing: { after: 50 },
+    })));
+  }
+  // Languages
+  if (data.languages?.length) {
+    left.push(makeSectionTitle('Languages', leftTs));
+    (data.languages as string[]).forEach(l => left.push(new Paragraph({
+      children: [new TextRun({ text: l, size: 19, color: 'ffffffE0', font: p.font })],
+      spacing: { after: 50 },
+    })));
+  }
+  // Certifications
+  if (data.certifications?.length) {
+    left.push(makeSectionTitle('Certifications', leftTs));
+    data.certifications.forEach((c: any) => {
+      const n = typeof c === 'string' ? c : c.name || '';
+      left.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(n)}`, size: 19, color: 'ffffffE0', font: p.font })], spacing: { after: 50 } }));
+    });
+  }
+  // Awards
+  if (data.awards?.length) {
+    left.push(makeSectionTitle('Awards', leftTs));
+    data.awards.forEach((a: any) => {
+      const n = typeof a === 'string' ? a : a.name || '';
+      left.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(n)}`, size: 19, color: 'ffffffE0', font: p.font })], spacing: { after: 50 } }));
+    });
+  }
+
+  // Right: summary + experience + education + projects
+  if (data.summary) { right.push(makeSectionTitle('Summary', rightTs)); right.push(new Paragraph({ text: data.summary, spacing: { after: 200 } })); }
+  if (data.experience?.length) { right.push(makeSectionTitle('Experience', rightTs)); data.experience.forEach((e: any) => right.push(...makeExpBlock(e, '•', p))); }
+  if (data.education?.length) { right.push(makeSectionTitle('Education', rightTs)); data.education.forEach((e: any) => right.push(...makeEduBlock(e, p))); }
+  if (data.projects?.length) {
+    right.push(makeSectionTitle('Projects', rightTs));
+    data.projects.forEach((pr: any) => {
+      right.push(new Paragraph({ children: [new TextRun({ text: pr.name || '', bold: true, color: hex(p.text), font: p.font })], spacing: { before: 120, after: 40 } }));
+      if (pr.description) right.push(new Paragraph({ text: pr.description, spacing: { after: 40 } }));
+      if (pr.technologies?.length) right.push(new Paragraph({
+        children: [new TextRun({ text: pr.technologies.join(', '), italics: true, color: hex(p.muted), size: 20, font: p.font })],
+        spacing: { after: 60 },
+      }));
+    });
+  }
+
+  return [new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 33, type: WidthType.PERCENTAGE },
+          children: left,
+          borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
+          shading: { type: ShadingType.SOLID, fill: solidPrimary, color: solidPrimary },
+          margins: { top: 300, bottom: 300, left: 240, right: 240 },
+        }),
+        new TableCell({
+          width: { size: 67, type: WidthType.PERCENTAGE },
+          children: right,
+          borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
+          margins: { top: 300, bottom: 300, left: 300, right: 240 },
+        }),
+      ],
+    })],
+  })];
+}
+
+// ─── Column Split ─────────────────────────────────────────────────────────────
+/**
+ * ColumnSplit — Full-width colored header + two-column body (58% main / 42% side).
+ * Matches PDF ColumnSplitLayout.
+ */
+function buildColumnSplitDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | Table)[] {
+  const solidPrimary = hex(p.primary);
+  const mainTs: TitleStyle = { uppercase: true, color: hex(p.primary), border: 'bottom', font: p.font };
+  const sideTs: TitleStyle = { uppercase: true, color: hex(p.primary), border: 'bottom', font: p.font };
+  const mainCol: (Paragraph | Table)[] = [];
+  const sideCol: Paragraph[] = [];
+
+  // Full-width header table
+  const contactParts = (['email','phone','location','linkedin','github','website'] as const)
+    .map(f => data.contact?.[f]).filter(Boolean) as string[];
+  const headerTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [new TableRow({
+      children: [new TableCell({
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: data.contact?.name || '', bold: true, color: 'ffffff', size: 48, font: p.font })],
+            spacing: { after: 60 },
+          }),
+          ...(data.experience?.[0]?.title ? [new Paragraph({
+            children: [new TextRun({ text: data.experience[0].title, color: 'ffffffCC', size: 22, font: p.font })],
+            spacing: { after: 80 },
+          })] : []),
+          new Paragraph({
+            children: [new TextRun({ text: contactParts.join('  |  '), color: 'ffffffAA', size: 19, font: p.font })],
+            spacing: { after: 0 },
+          }),
+        ],
+        borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
+        shading: { type: ShadingType.SOLID, fill: solidPrimary, color: solidPrimary },
+        margins: { top: 280, bottom: 280, left: 360, right: 360 },
+      })],
+    })],
+  });
+
+  // Main column (58%): experience + education + projects
+  if (data.experience?.length) { mainCol.push(makeSectionTitle('Experience', mainTs)); data.experience.forEach((e: any) => mainCol.push(...makeExpBlock(e, '•', p))); }
+  if (data.education?.length) { mainCol.push(makeSectionTitle('Education', mainTs)); data.education.forEach((e: any) => mainCol.push(...makeEduBlock(e, p))); }
+  if (data.projects?.length) {
+    mainCol.push(makeSectionTitle('Projects', mainTs));
+    data.projects.forEach((pr: any) => {
+      mainCol.push(new Paragraph({ children: [new TextRun({ text: pr.name || '', bold: true, color: hex(p.text), font: p.font })], spacing: { before: 120, after: 40 } }));
+      if (pr.description) mainCol.push(new Paragraph({ text: pr.description, spacing: { after: 40 } }));
+      if (pr.technologies?.length) mainCol.push(new Paragraph({
+        children: [new TextRun({ text: pr.technologies.join(', '), italics: true, color: hex(p.muted), size: 20, font: p.font })],
+        spacing: { after: 60 },
+      }));
+    });
+  }
+
+  // Side column (42%): summary + skills + certs + awards + languages
+  if (data.summary) { sideCol.push(makeSectionTitle('Summary', sideTs)); sideCol.push(new Paragraph({ text: data.summary, spacing: { after: 160 } })); }
+  if (data.skills?.length) {
+    sideCol.push(makeSectionTitle('Skills', sideTs));
+    normalizeSkills(data.skills).forEach(s => sideCol.push(new Paragraph({
+      children: [new TextRun({ text: `• ${s}`, size: 20, font: p.font })], spacing: { after: 50 },
+    })));
+    sideCol.push(new Paragraph({ text: '', spacing: { after: 80 } }));
+  }
+  if (data.certifications?.length) {
+    sideCol.push(makeSectionTitle('Certifications', sideTs));
+    data.certifications.forEach((c: any) => {
+      const n = typeof c === 'string' ? c : c.name || '';
+      sideCol.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(n)}`, size: 19, font: p.font })], spacing: { after: 50 } }));
+    });
+  }
+  if (data.awards?.length) {
+    sideCol.push(makeSectionTitle('Awards', sideTs));
+    data.awards.forEach((a: any) => {
+      const n = typeof a === 'string' ? a : a.name || '';
+      sideCol.push(new Paragraph({ children: [new TextRun({ text: `• ${cleanBullet(n)}`, size: 19, font: p.font })], spacing: { after: 50 } }));
+    });
+  }
+  if (data.languages?.length) {
+    sideCol.push(makeSectionTitle('Languages', sideTs));
+    sideCol.push(new Paragraph({ text: (data.languages as string[]).join('  •  '), spacing: { after: 120 } }));
+  }
+
+  const lightBorder = { style: BorderStyle.SINGLE, size: 4, color: `${hex(p.primary)}30` };
+  const bodyTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 58, type: WidthType.PERCENTAGE },
+          children: mainCol as Paragraph[],
+          borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: lightBorder },
+          margins: { top: 200, bottom: 200, left: 360, right: 280 },
+        }),
+        new TableCell({
+          width: { size: 42, type: WidthType.PERCENTAGE },
+          children: sideCol,
+          borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
+          margins: { top: 200, bottom: 200, left: 280, right: 360 },
+        }),
+      ],
+    })],
+  });
+
+  return [headerTable, bodyTable];
+}
+
+// ─── Ruled Elegant ────────────────────────────────────────────────────────────
+/**
+ * RuledElegant — Serif (Georgia), centered name, double-rule section dividers,
+ * generous whitespace. Matches PDF RuledElegantLayout.
+ */
+function buildRuledElegantDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | Table)[] {
+  const font = 'Georgia';
+  const ts: TitleStyle = { uppercase: true, color: hex(p.primary), border: 'bottom_double', font, align: 'left' };
+  const out: (Paragraph | Table)[] = [];
+
+  // Name — centered, serif
+  out.push(new Paragraph({
+    children: [new TextRun({ text: data.contact?.name || '', bold: true, color: hex(p.text), size: 52, font })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 80 },
+  }));
+  // Current title
+  const currentTitle = data.experience?.[0]?.title || data.experience?.[0]?.position || '';
+  if (currentTitle) out.push(new Paragraph({
+    children: [new TextRun({ text: currentTitle, italics: true, color: hex(p.muted), size: 24, font })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 80 },
+  }));
+  // Contact line
+  const parts = (['email','phone','location','linkedin','github','website'] as const)
+    .map(f => data.contact?.[f]).filter(Boolean) as string[];
+  if (parts.length) out.push(new Paragraph({
+    children: [new TextRun({ text: parts.join('  •  '), color: hex(p.muted), size: 19, font })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 360 },
+  }));
+
+  if (data.summary) { out.push(makeSectionTitle('Professional Summary', ts)); out.push(new Paragraph({ children: [new TextRun({ text: data.summary, size: 22, font })], spacing: { after: 240 } })); }
+  if (data.experience?.length) {
+    out.push(makeSectionTitle('Experience', ts));
+    data.experience.forEach(e => out.push(...makeExpBlock(e, '–', { ...p, font })));
+  }
+  if (data.education?.length) { out.push(makeSectionTitle('Education', ts)); data.education.forEach(e => out.push(...makeEduBlock(e, { ...p, font }))); }
+  if (data.skills?.length) { out.push(makeSectionTitle('Skills', ts)); out.push(...makeSkillsGrid(data.skills, { ...p, font })); }
+  out.push(...makeOptionalSections(data, ts, '–', { ...p, font }));
+  return out;
+}
+
+// ─── Top Accent ───────────────────────────────────────────────────────────────
+/**
+ * TopAccent — Colored top header bar (name left, contact right),
+ * clean body with thick-bottom section borders. Matches PDF TopAccentLayout.
+ */
+function buildTopAccentDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | Table)[] {
+  const solidPrimary = hex(p.primary);
+  const ts: TitleStyle = { uppercase: true, color: hex(p.primary), border: 'bottom_thick', font: p.font };
+  const out: (Paragraph | Table)[] = [];
+
+  // Header bar — name left, contact right
+  const contactParts = (['email','phone','location','linkedin','github','website'] as const)
+    .map(f => data.contact?.[f]).filter(Boolean) as string[];
+  const headerTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 60, type: WidthType.PERCENTAGE },
+          children: [
+            new Paragraph({
+              children: [new TextRun({ text: data.contact?.name || '', bold: true, color: 'ffffff', size: 52, font: p.font })],
+              spacing: { after: 40 },
+            }),
+            ...(data.experience?.[0]?.title ? [new Paragraph({
+              children: [new TextRun({ text: data.experience[0].title, color: 'ffffffCC', size: 21, font: p.font })],
+              spacing: { after: 0 },
+            })] : []),
+          ],
+          borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
+          shading: { type: ShadingType.SOLID, fill: solidPrimary, color: solidPrimary },
+          margins: { top: 240, bottom: 240, left: 300, right: 200 },
+          verticalAlign: VerticalAlign.CENTER,
+        }),
+        new TableCell({
+          width: { size: 40, type: WidthType.PERCENTAGE },
+          children: contactParts.map(v => new Paragraph({
+            children: [new TextRun({ text: v, color: 'ffffffCC', size: 18, font: p.font })],
+            alignment: AlignmentType.RIGHT,
+            spacing: { after: 40 },
+          })),
+          borders: { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER },
+          shading: { type: ShadingType.SOLID, fill: solidPrimary, color: solidPrimary },
+          margins: { top: 240, bottom: 240, left: 200, right: 300 },
+          verticalAlign: VerticalAlign.CENTER,
+        }),
+      ],
+    })],
+  });
+  out.push(headerTable);
+  out.push(new Paragraph({ text: '', spacing: { after: 120 } }));
+
+  if (data.summary) { out.push(makeSectionTitle('Summary', ts)); out.push(new Paragraph({ text: data.summary, spacing: { after: 200 } })); }
+  if (data.experience?.length) { out.push(makeSectionTitle('Experience', ts)); data.experience.forEach((e: any) => out.push(...makeExpBlock(e, '▪', p))); }
+  if (data.education?.length) { out.push(makeSectionTitle('Education', ts)); data.education.forEach((e: any) => out.push(...makeEduBlock(e, p))); }
+  if (data.skills?.length) { out.push(makeSectionTitle('Skills', ts)); out.push(...makeSkillsGrid(data.skills, p)); }
+  out.push(...makeOptionalSections(data, ts, '▪', p));
+  return out;
+}
+
+// ─── Bordered Page ────────────────────────────────────────────────────────────
+/**
+ * BorderedPage — Colored border frame around content, centered serif name,
+ * elegant spacing. Simulated with a full-width outer table with colored borders.
+ * Matches PDF BorderedPageLayout.
+ */
+function buildBorderedPageDocx(data: ParsedResumeData, p: DocxPalette): (Paragraph | Table)[] {
+  const font = 'Georgia';
+  const ts: TitleStyle = { uppercase: true, color: hex(p.primary), border: 'bottom', font };
+  const inner: (Paragraph | Table)[] = [];
+  const solidPrimary = hex(p.primary);
+
+  // Name — centered, large
+  inner.push(new Paragraph({
+    children: [new TextRun({ text: data.contact?.name || '', bold: true, color: hex(p.primary), size: 56, font })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 60 },
+  }));
+  const currentTitle = data.experience?.[0]?.title || data.experience?.[0]?.position || '';
+  if (currentTitle) inner.push(new Paragraph({
+    children: [new TextRun({ text: currentTitle, italics: true, color: hex(p.muted), size: 22, font })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 60 },
+  }));
+  const parts = (['email','phone','location','linkedin','github','website'] as const)
+    .map(f => data.contact?.[f]).filter(Boolean) as string[];
+  if (parts.length) inner.push(new Paragraph({
+    children: [new TextRun({ text: parts.join('  |  '), color: hex(p.muted), size: 19, font })],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 300 },
+  }));
+
+  if (data.summary) { inner.push(makeSectionTitle('Summary', ts)); inner.push(new Paragraph({ children: [new TextRun({ text: data.summary, size: 22, font })], spacing: { after: 200 } })); }
+  if (data.experience?.length) { inner.push(makeSectionTitle('Experience', ts)); data.experience.forEach(e => inner.push(...makeExpBlock(e, '•', { ...p, font }))); }
+  if (data.education?.length) { inner.push(makeSectionTitle('Education', ts)); data.education.forEach(e => inner.push(...makeEduBlock(e, { ...p, font }))); }
+  if (data.skills?.length) { inner.push(makeSectionTitle('Skills', ts)); inner.push(...makeSkillsGrid(data.skills, { ...p, font })); }
+  inner.push(...makeOptionalSections(data, ts, '•', { ...p, font }));
+
+  const frameBorder = { style: BorderStyle.SINGLE, size: 18, color: solidPrimary };
+  return [new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [new TableRow({
+      children: [new TableCell({
+        children: inner as Paragraph[],
+        borders: { top: frameBorder, bottom: frameBorder, left: frameBorder, right: frameBorder },
+        margins: { top: 300, bottom: 300, left: 400, right: 400 },
+      })],
+    })],
+  })];
+}
+
 /**
  * Professional — Arial, left 6px accent bar on name, company in secondaryColor italic,
  * UPPERCASE sections with thick bottom border, ▪ square bullets, 3-col competencies grid.
@@ -2920,6 +3286,7 @@ export async function generateDOCXFromRegistry(
 
   console.log(`Generating DOCX for template: ${templateId}`);
 
+  // ── docxjs path ───────────────────────────────────────────────────────────
   try {
     const tplConfig = await getTemplateConfigFromDB(templateId);
 
@@ -2954,8 +3321,13 @@ export async function generateDOCXFromRegistry(
       case 'tech':         children = buildTechDocx(data, palette);         break;
       case 'infographic':  children = buildInfographicDocx(data, palette);  break;
       case 'portfolio':    children = buildPortfolioDocx(data, palette);    break;
-      case 'sidebar':      children = buildSidebarDocx(data, palette);      break;
-      default:             children = buildDefaultDocx(data, palette);
+      case 'sidebar':        children = buildSidebarDocx(data, palette);        break;
+      case 'split_panel':    children = buildSplitPanelDocx(data, palette);    break;
+      case 'column_split':   children = buildColumnSplitDocx(data, palette);   break;
+      case 'ruled_elegant':  children = buildRuledElegantDocx(data, palette);  break;
+      case 'top_accent':     children = buildTopAccentDocx(data, palette);     break;
+      case 'bordered_page':  children = buildBorderedPageDocx(data, palette);  break;
+      default:               children = buildDefaultDocx(data, palette);
     }
 
     // Inject profile photo into the document

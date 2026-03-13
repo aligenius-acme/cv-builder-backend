@@ -238,6 +238,147 @@ function renderReactToHTML(
  * @param customColors - Optional custom color overrides
  * @returns PDF as Buffer
  */
+// ─── Palette map (shared between PDF and DOCX generation) ────────────────────
+
+const PALETTES: Record<string, { primary: string; secondary: string; text: string; muted: string; bg: string }> = {
+  navy:     { primary: '#1e3a8a', secondary: '#3b82f6', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
+  ocean:    { primary: '#0c4a6e', secondary: '#0ea5e9', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
+  royal:    { primary: '#3730a3', secondary: '#6366f1', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
+  slate:    { primary: '#1e293b', secondary: '#475569', text: '#0f172a', muted: '#94a3b8', bg: '#ffffff' },
+  emerald:  { primary: '#065f46', secondary: '#10b981', text: '#064e3b', muted: '#6b7280', bg: '#ffffff' },
+  forest:   { primary: '#14532d', secondary: '#16a34a', text: '#052e16', muted: '#6b7280', bg: '#ffffff' },
+  teal:     { primary: '#134e4a', secondary: '#14b8a6', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
+  burgundy: { primary: '#881337', secondary: '#e11d48', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
+  rust:     { primary: '#7c2d12', secondary: '#ea580c', text: '#1c1917', muted: '#64748b', bg: '#ffffff' },
+  wine:     { primary: '#6b21a8', secondary: '#a855f7', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
+  charcoal: { primary: '#111827', secondary: '#374151', text: '#111827', muted: '#6b7280', bg: '#ffffff' },
+  graphite: { primary: '#374151', secondary: '#6b7280', text: '#111827', muted: '#9ca3af', bg: '#ffffff' },
+  stone:    { primary: '#44403c', secondary: '#78716c', text: '#1c1917', muted: '#a8a29e', bg: '#ffffff' },
+  violet:   { primary: '#4c1d95', secondary: '#7c3aed', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
+  indigo:   { primary: '#312e81', secondary: '#4f46e5', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
+  plum:     { primary: '#581c87', secondary: '#9333ea', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
+};
+
+// Map our DB layoutType strings → LAYOUT_REGISTRY component-name keys
+const LAYOUT_TYPE_TO_REGISTRY: Record<string, string> = {
+  'single-standard': 'BaseLayout',
+  'two-sidebar':     'TwoColumnSidebarLayout',
+  'academic':        'AcademicLayout',
+  'bold-modern':     'BoldModernLayout',
+  'classic':         'ClassicLayout',
+  'contemporary':    'ContemporaryLayout',
+  'executive':       'ExecutiveLayout',
+  'minimal':         'ModernMinimalLayout',
+  'professional':    'ProfessionalLayout',
+  'tech':            'TechLayout',
+  'compact':         'CompactLayout',
+  'timeline':        'TimelineLayout',
+  'portfolio':       'PortfolioLayout',
+  'creative':        'CreativeLayout',
+  'infographic':     'InfographicLayout',
+  'split-panel':     'SplitPanelLayout',
+  'ruled-elegant':   'RuledElegantLayout',
+  'top-accent':      'TopAccentLayout',
+  'column-split':    'ColumnSplitLayout',
+  'bordered-page':   'BorderedPageLayout',
+};
+
+/**
+ * Render resume data to a full HTML document string using the same React
+ * layout components as the PDF pipeline. Photo URLs are resolved to base64
+ * data URIs so they embed correctly without external network requests.
+ *
+ * This is the single source of truth for resume HTML — used by the PDF (Puppeteer) pipeline.
+ */
+export async function generateResumeHTML(
+  templateId: string,
+  resumeData: ParsedResumeData,
+  customColors?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+  }
+): Promise<string> {
+  // Resolve profile photo to base64 data URI so it embeds without auth
+  let data = resumeData;
+  if (data.contact?.photoUrl) {
+    const dataUri = await resolvePhotoUrl(data.contact.photoUrl);
+    if (dataUri) {
+      data = { ...data, contact: { ...data.contact, photoUrl: dataUri } };
+    }
+  }
+
+  const dbTemplate = await prisma.resumeTemplate.findUnique({
+    where: { id: templateId },
+    select: { templateConfig: true },
+  });
+
+  let templateComponent: React.ReactElement;
+  let config: ExtendedTemplateConfig;
+
+  if (dbTemplate?.templateConfig && typeof dbTemplate.templateConfig === 'object') {
+    const modularConfig = dbTemplate.templateConfig as any;
+
+    if (modularConfig.layoutType) {
+      const paletteId: string = modularConfig.colorPalette || 'navy';
+      const palette = PALETTES[paletteId] || PALETTES.navy;
+      config = {
+        ...getTemplateConfig(templateId),
+        primaryColor: palette.primary,
+        secondaryColor: palette.secondary,
+        textColor: palette.text,
+        mutedColor: palette.muted,
+        backgroundColor: palette.bg,
+        accentColor: palette.secondary,
+      };
+      const registryKey = LAYOUT_TYPE_TO_REGISTRY[modularConfig.layoutType] || 'BaseLayout';
+      const LayoutComponent = getLayoutComponent(registryKey as LayoutType);
+      console.log(`[generateResumeHTML] layoutType=${modularConfig.layoutType} → ${registryKey}, palette=${paletteId}`);
+      templateComponent = React.createElement(LayoutComponent, { data, config });
+    } else if (modularConfig.layoutComponent) {
+      config = getTemplateConfig(templateId);
+      const LayoutComponent = getLayoutComponent(modularConfig.layoutComponent as LayoutType);
+      templateComponent = React.createElement(LayoutComponent, { data, config });
+    } else if (modularConfig.components) {
+      try {
+        templateComponent = await TemplateAssembler.assembleTemplate(modularConfig as TemplateConfig, data);
+        config = {
+          ...getTemplateConfig(templateId),
+          primaryColor: modularConfig.colorScheme?.primary || '#1e3a8a',
+          secondaryColor: modularConfig.colorScheme?.secondary || '#3b82f6',
+          accentColor: modularConfig.colorScheme?.accent || '#60a5fa',
+          textColor: modularConfig.colorScheme?.text || '#1e293b',
+          mutedColor: modularConfig.colorScheme?.muted || '#64748b',
+          backgroundColor: modularConfig.colorScheme?.background || '#ffffff',
+        };
+      } catch {
+        config = getTemplateConfig(templateId);
+        templateComponent = React.createElement(getLayoutComponent(), { data, config });
+      }
+    } else {
+      config = getTemplateConfig(templateId);
+      templateComponent = React.createElement(getLayoutComponent(), { data, config });
+    }
+  } else {
+    config = getTemplateConfig(templateId);
+    templateComponent = React.createElement(getLayoutComponent(), { data, config });
+  }
+
+  if (customColors) {
+    config = { ...config, ...customColors };
+  }
+
+  return renderReactToHTML(templateComponent, config);
+}
+
+/**
+ * Generate PDF from React template
+ *
+ * @param templateId - Template variant ID (e.g., 'london-navy')
+ * @param resumeData - Parsed resume data
+ * @param customColors - Optional custom color overrides
+ * @returns PDF as Buffer
+ */
 export async function generatePDFFromReact(
   templateId: string,
   resumeData: ParsedResumeData,
@@ -253,174 +394,8 @@ export async function generatePDFFromReact(
   try {
     console.log(`Starting PDF generation for template: ${templateId}`);
 
-    // 1. Try to get modular template configuration from database
-    const dbTemplate = await prisma.resumeTemplate.findUnique({
-      where: { id: templateId },
-      select: { templateConfig: true },
-    });
-
-    // Resolve profile photo to base64 data URI so Puppeteer can render it
-    // (Cloudinary uses authenticated access mode which Puppeteer cannot fetch)
-    if (resumeData.contact?.photoUrl) {
-      const dataUri = await resolvePhotoUrl(resumeData.contact.photoUrl);
-      if (dataUri) {
-        resumeData = { ...resumeData, contact: { ...resumeData.contact, photoUrl: dataUri } }; // eslint-disable-line no-param-reassign
-      }
-    }
-
-    let templateComponent: React.ReactElement;
-    let config: ExtendedTemplateConfig;
-
-    // 2. Check for template config
-    if (dbTemplate?.templateConfig && typeof dbTemplate.templateConfig === 'object') {
-      const modularConfig = dbTemplate.templateConfig as any;
-
-      // PRIORITY 1: Check for layoutType (our new templateConfig format)
-      if (modularConfig.layoutType) {
-        console.log(`Using layoutType system for: ${templateId}`);
-
-        const PALETTES: Record<string, { primary: string; secondary: string; text: string; muted: string; bg: string }> = {
-          navy:     { primary: '#1e3a8a', secondary: '#3b82f6', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
-          ocean:    { primary: '#0c4a6e', secondary: '#0ea5e9', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
-          royal:    { primary: '#3730a3', secondary: '#6366f1', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
-          slate:    { primary: '#1e293b', secondary: '#475569', text: '#0f172a', muted: '#94a3b8', bg: '#ffffff' },
-          emerald:  { primary: '#065f46', secondary: '#10b981', text: '#064e3b', muted: '#6b7280', bg: '#ffffff' },
-          forest:   { primary: '#14532d', secondary: '#16a34a', text: '#052e16', muted: '#6b7280', bg: '#ffffff' },
-          teal:     { primary: '#134e4a', secondary: '#14b8a6', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
-          burgundy: { primary: '#881337', secondary: '#e11d48', text: '#0f172a', muted: '#64748b', bg: '#ffffff' },
-          rust:     { primary: '#7c2d12', secondary: '#ea580c', text: '#1c1917', muted: '#64748b', bg: '#ffffff' },
-          wine:     { primary: '#6b21a8', secondary: '#a855f7', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
-          charcoal: { primary: '#111827', secondary: '#374151', text: '#111827', muted: '#6b7280', bg: '#ffffff' },
-          graphite: { primary: '#374151', secondary: '#6b7280', text: '#111827', muted: '#9ca3af', bg: '#ffffff' },
-          stone:    { primary: '#44403c', secondary: '#78716c', text: '#1c1917', muted: '#a8a29e', bg: '#ffffff' },
-          violet:   { primary: '#4c1d95', secondary: '#7c3aed', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
-          indigo:   { primary: '#312e81', secondary: '#4f46e5', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
-          plum:     { primary: '#581c87', secondary: '#9333ea', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
-        };
-
-        const paletteId: string = modularConfig.colorPalette || 'navy';
-        const palette = PALETTES[paletteId] || PALETTES.navy;
-        const baseConfig = getTemplateConfig(templateId);
-
-        config = {
-          ...baseConfig,
-          primaryColor: palette.primary,
-          secondaryColor: palette.secondary,
-          textColor: palette.text,
-          mutedColor: palette.muted,
-          backgroundColor: palette.bg,
-          accentColor: palette.secondary,
-        };
-
-        // Map our DB layoutType strings → LAYOUT_REGISTRY component-name keys
-        const LAYOUT_TYPE_TO_REGISTRY: Record<string, string> = {
-          'single-standard': 'BaseLayout',
-          'two-sidebar':     'TwoColumnSidebarLayout',
-          'academic':        'AcademicLayout',
-          'bold-modern':     'BoldModernLayout',
-          'classic':         'ClassicLayout',
-          'contemporary':    'ContemporaryLayout',
-          'executive':       'ExecutiveLayout',
-          'minimal':         'ModernMinimalLayout',
-          'professional':    'ProfessionalLayout',
-          'tech':            'TechLayout',
-          'compact':         'CompactLayout',
-          'timeline':        'TimelineLayout',
-          'portfolio':       'PortfolioLayout',
-          'creative':        'CreativeLayout',
-          'infographic':     'InfographicLayout',
-          'split-panel':     'SplitPanelLayout',
-          'ruled-elegant':   'RuledElegantLayout',
-          'top-accent':      'TopAccentLayout',
-          'column-split':    'ColumnSplitLayout',
-          'bordered-page':   'BorderedPageLayout',
-        };
-        const registryKey = LAYOUT_TYPE_TO_REGISTRY[modularConfig.layoutType] || 'BaseLayout';
-        const LayoutComponent = getLayoutComponent(registryKey as LayoutType);
-        console.log(`Using layout: ${modularConfig.layoutType} → ${registryKey}, palette: ${paletteId}`);
-        templateComponent = React.createElement(LayoutComponent, {
-          data: resumeData,
-          config,
-        });
-      }
-      // PRIORITY 2: Check for layoutComponent (legacy system)
-      else if (modularConfig.layoutComponent) {
-        console.log(`Using layout component system for: ${templateId}`);
-        config = getTemplateConfig(templateId);
-
-        const layoutType = (modularConfig.layoutComponent as LayoutType);
-        const LayoutComponent = getLayoutComponent(layoutType);
-
-        console.log(`Using layout: ${layoutType}`);
-        templateComponent = React.createElement(LayoutComponent, {
-          data: resumeData,
-          config,
-        });
-      }
-      // PRIORITY 3: Check for modular components (old system)
-      else if (modularConfig.components) {
-        console.log(`Using modular template system for: ${templateId}`);
-
-        try {
-          // Assemble template using TemplateAssembler
-          templateComponent = await TemplateAssembler.assembleTemplate(
-            modularConfig as TemplateConfig,
-            resumeData
-          );
-
-          // Use colors from modular config for HTML wrapper
-          config = {
-            ...getTemplateConfig(templateId),
-            primaryColor: modularConfig.colorScheme?.primary || '#1e3a8a',
-            secondaryColor: modularConfig.colorScheme?.secondary || '#3b82f6',
-            accentColor: modularConfig.colorScheme?.accent || '#60a5fa',
-            textColor: modularConfig.colorScheme?.text || '#1e293b',
-            mutedColor: modularConfig.colorScheme?.muted || '#64748b',
-            backgroundColor: modularConfig.colorScheme?.background || '#ffffff',
-          };
-        } catch (assemblerError) {
-          console.warn(`TemplateAssembler failed, falling back to BaseLayout:`, assemblerError);
-          // Fall back to BaseLayout
-          config = getTemplateConfig(templateId);
-          const LayoutComponent = getLayoutComponent();
-          console.log(`Using fallback layout: BaseLayout`);
-          templateComponent = React.createElement(LayoutComponent, {
-            data: resumeData,
-            config,
-          });
-        }
-      }
-      // PRIORITY 4: No special config, use BaseLayout
-      else {
-        console.log(`Using BaseLayout (no layout/components specified) for: ${templateId}`);
-        config = getTemplateConfig(templateId);
-        const LayoutComponent = getLayoutComponent();
-        templateComponent = React.createElement(LayoutComponent, {
-          data: resumeData,
-          config,
-        });
-      }
-    } else {
-      // Template not in database or no config, use BaseLayout
-      console.log(`Using BaseLayout (no DB config) for: ${templateId}`);
-      config = getTemplateConfig(templateId);
-      const LayoutComponent = getLayoutComponent();
-      templateComponent = React.createElement(LayoutComponent, {
-        data: resumeData,
-        config,
-      });
-    }
-
-    // 3. Apply custom colors if provided
-    if (customColors) {
-      config = {
-        ...config,
-        ...customColors,
-      };
-    }
-
-    // 4. Render React to HTML
-    const html = renderReactToHTML(templateComponent, config);
+    // Generate the full HTML using the shared pipeline
+    const html = await generateResumeHTML(templateId, resumeData, customColors);
 
     // 5. Get browser instance
     const browser = await getBrowser();
