@@ -23,11 +23,19 @@ import { RuledElegantLayout, metadata as ruledElegantMetadata } from './RuledEle
 import { TopAccentLayout, metadata as topAccentMetadata } from './TopAccentLayout';
 import { ColumnSplitLayout, metadata as columnSplitMetadata } from './ColumnSplitLayout';
 import { BorderedPageLayout, metadata as borderedPageMetadata } from './BorderedPageLayout';
+import { DarkModeLayout, metadata as darkModeMetadata } from './DarkModeLayout';
+import { DiagonalHeroLayout, metadata as diagonalHeroMetadata } from './DiagonalHeroLayout';
+import { MagazineLayout, metadata as magazineMetadata } from './MagazineLayout';
+import { HighlightBandLayout, metadata as highlightBandMetadata } from './HighlightBandLayout';
+import { StackedCardsLayout, metadata as stackedCardsMetadata } from './StackedCardsLayout';
+import { MonogramLayout, metadata as monogramMetadata } from './MonogramLayout';
+import { TimelineDotsLayout, metadata as timelineDotsMetadata } from './TimelineDotsLayout';
+import { CompactTableLayout, metadata as compactTableMetadata } from './CompactTableLayout';
 import { LayoutType, LayoutProps, LayoutMetadata } from './types';
 import * as React from 'react';
 
 /**
- * Registry of all available layout components (15 unique layouts)
+ * Registry of all available layout components (28 layouts)
  */
 export const LAYOUT_REGISTRY: Record<LayoutType, React.FC<LayoutProps>> = {
   // Original 5 layouts
@@ -57,6 +65,16 @@ export const LAYOUT_REGISTRY: Record<LayoutType, React.FC<LayoutProps>> = {
   TopAccentLayout,
   ColumnSplitLayout,
   BorderedPageLayout,
+
+  // 8 new layouts
+  DarkModeLayout,
+  DiagonalHeroLayout,
+  MagazineLayout,
+  HighlightBandLayout,
+  StackedCardsLayout,
+  MonogramLayout,
+  TimelineDotsLayout,
+  CompactTableLayout,
 };
 
 /**
@@ -90,6 +108,16 @@ export const LAYOUT_METADATA: Record<LayoutType, LayoutMetadata> = {
   TopAccentLayout: topAccentMetadata,
   ColumnSplitLayout: columnSplitMetadata,
   BorderedPageLayout: borderedPageMetadata,
+
+  // 8 new layouts
+  DarkModeLayout: darkModeMetadata,
+  DiagonalHeroLayout: diagonalHeroMetadata,
+  MagazineLayout: magazineMetadata,
+  HighlightBandLayout: highlightBandMetadata,
+  StackedCardsLayout: stackedCardsMetadata,
+  MonogramLayout: monogramMetadata,
+  TimelineDotsLayout: timelineDotsMetadata,
+  CompactTableLayout: compactTableMetadata,
 };
 
 /**
@@ -156,4 +184,12 @@ export {
   TopAccentLayout,
   ColumnSplitLayout,
   BorderedPageLayout,
+  DarkModeLayout,
+  DiagonalHeroLayout,
+  MagazineLayout,
+  HighlightBandLayout,
+  StackedCardsLayout,
+  MonogramLayout,
+  TimelineDotsLayout,
+  CompactTableLayout,
 };

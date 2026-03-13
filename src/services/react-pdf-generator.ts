@@ -281,6 +281,14 @@ const LAYOUT_TYPE_TO_REGISTRY: Record<string, string> = {
   'top-accent':      'TopAccentLayout',
   'column-split':    'ColumnSplitLayout',
   'bordered-page':   'BorderedPageLayout',
+  'dark-mode':       'DarkModeLayout',
+  'diagonal-hero':   'DiagonalHeroLayout',
+  'magazine':        'MagazineLayout',
+  'highlight-band':  'HighlightBandLayout',
+  'stacked-cards':   'StackedCardsLayout',
+  'monogram':        'MonogramLayout',
+  'timeline-dots':   'TimelineDotsLayout',
+  'compact-table':   'CompactTableLayout',
 };
 
 /**
@@ -772,8 +780,9 @@ const THUMBNAIL_DATA_SPACIOUS: ParsedResumeData = {
 /** Pick the right sample dataset for a given layoutType */
 function chooseThumbnailData(layoutType: string | undefined): ParsedResumeData {
   if (!layoutType) return THUMBNAIL_DATA_NARROW;
-  if (['two-sidebar', 'compact', 'infographic', 'split-panel', 'column-split'].includes(layoutType)) return THUMBNAIL_DATA_WIDE;
+  if (['two-sidebar', 'compact', 'infographic', 'split-panel', 'column-split', 'magazine', 'timeline-dots'].includes(layoutType)) return THUMBNAIL_DATA_WIDE;
   if (layoutType === 'minimal') return THUMBNAIL_DATA_SPACIOUS;
+  if (layoutType === 'dark-mode') return THUMBNAIL_DATA_NARROW;
   return THUMBNAIL_DATA_NARROW;
 }
 
@@ -784,7 +793,7 @@ function chooseThumbnailData(layoutType: string | undefined): ParsedResumeData {
 //
 // THUMB_VERSION: bump this number whenever layout rendering code changes so that
 // stale disk-cached thumbnails are ignored and fresh ones are generated.
-const THUMB_VERSION = 5;
+const THUMB_VERSION = 7;
 
 const THUMB_CACHE_DIR = path.join(__dirname, '../../thumbnails');
 
@@ -875,6 +884,11 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
       violet:   { primary: '#4c1d95', secondary: '#7c3aed', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
       indigo:   { primary: '#312e81', secondary: '#4f46e5', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
       plum:     { primary: '#581c87', secondary: '#9333ea', text: '#1e1b4b', muted: '#64748b', bg: '#ffffff' },
+      midnight: { primary: '#0a0a0a', secondary: '#262626', text: '#0a0a0a', muted: '#737373', bg: '#ffffff' },
+      coral:    { primary: '#c0392b', secondary: '#e74c3c', text: '#1a1a1a', muted: '#6b7280', bg: '#ffffff' },
+      sage:     { primary: '#4a7c59', secondary: '#6aaa7e', text: '#1a2e1d', muted: '#6b7280', bg: '#ffffff' },
+      gold:     { primary: '#92660a', secondary: '#c9820e', text: '#1c1708', muted: '#78716c', bg: '#ffffff' },
+      sky:      { primary: '#0369a1', secondary: '#0284c7', text: '#0c1a2e', muted: '#64748b', bg: '#ffffff' },
     };
 
     const LAYOUT_TYPE_TO_REGISTRY: Record<string, string> = {
@@ -898,6 +912,14 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
       'top-accent':      'TopAccentLayout',
       'column-split':    'ColumnSplitLayout',
       'bordered-page':   'BorderedPageLayout',
+      'dark-mode':       'DarkModeLayout',
+      'diagonal-hero':   'DiagonalHeroLayout',
+      'magazine':        'MagazineLayout',
+      'highlight-band':  'HighlightBandLayout',
+      'stacked-cards':   'StackedCardsLayout',
+      'monogram':        'MonogramLayout',
+      'timeline-dots':   'TimelineDotsLayout',
+      'compact-table':   'CompactTableLayout',
     };
 
     // Resolve config, layout component, and pick the right sample data

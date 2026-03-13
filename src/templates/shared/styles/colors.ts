@@ -212,6 +212,41 @@ export const colorPalettes: Record<string, ColorPalette> = {
     warning: '#d97706',      // Dark amber
     error: '#ef4444',        // Red
   },
+  midnight: {
+    primary: '#0a0a0a', secondary: '#262626', accent: '#525252',
+    text: '#0a0a0a', textLight: '#262626', textMuted: '#737373',
+    background: '#ffffff', backgroundAlt: '#fafafa',
+    border: '#d4d4d4', borderLight: '#e5e5e5',
+    success: '#22c55e', warning: '#eab308', error: '#ef4444',
+  },
+  coral: {
+    primary: '#c0392b', secondary: '#e74c3c', accent: '#f1948a',
+    text: '#1a1a1a', textLight: '#3d3d3d', textMuted: '#6b7280',
+    background: '#ffffff', backgroundAlt: '#fff5f5',
+    border: '#fca5a5', borderLight: '#fecaca',
+    success: '#10b981', warning: '#f59e0b', error: '#dc2626',
+  },
+  sage: {
+    primary: '#4a7c59', secondary: '#6aaa7e', accent: '#a7c4b5',
+    text: '#1a2e1d', textLight: '#3d5c44', textMuted: '#6b7280',
+    background: '#ffffff', backgroundAlt: '#f0f7f2',
+    border: '#b7d4c0', borderLight: '#d4e8da',
+    success: '#059669', warning: '#f59e0b', error: '#ef4444',
+  },
+  gold: {
+    primary: '#92660a', secondary: '#c9820e', accent: '#f6c358',
+    text: '#1c1708', textLight: '#3d2e10', textMuted: '#78716c',
+    background: '#ffffff', backgroundAlt: '#fefce8',
+    border: '#f6d860', borderLight: '#fef08a',
+    success: '#10b981', warning: '#d97706', error: '#ef4444',
+  },
+  sky: {
+    primary: '#0369a1', secondary: '#0284c7', accent: '#38bdf8',
+    text: '#0c1a2e', textLight: '#1e3a5f', textMuted: '#64748b',
+    background: '#ffffff', backgroundAlt: '#f0f9ff',
+    border: '#bae6fd', borderLight: '#e0f2fe',
+    success: '#10b981', warning: '#f59e0b', error: '#ef4444',
+  },
 };
 
 /**

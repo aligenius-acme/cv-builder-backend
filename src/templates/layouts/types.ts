@@ -38,7 +38,15 @@ export type LayoutType =
   | 'RuledElegantLayout'
   | 'TopAccentLayout'
   | 'ColumnSplitLayout'
-  | 'BorderedPageLayout';
+  | 'BorderedPageLayout'
+  | 'DarkModeLayout'
+  | 'DiagonalHeroLayout'
+  | 'MagazineLayout'
+  | 'HighlightBandLayout'
+  | 'StackedCardsLayout'
+  | 'MonogramLayout'
+  | 'TimelineDotsLayout'
+  | 'CompactTableLayout';
 
 /**
  * Layout metadata for organizing and categorizing layouts
