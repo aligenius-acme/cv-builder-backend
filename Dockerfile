@@ -1,53 +1,60 @@
 # CV Builder Backend Dockerfile
-# Multi-stage build for production
+# Multi-stage build for production — includes Chromium for Puppeteer
 
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Skip Puppeteer's bundled Chromium download — we use system Chromium at runtime
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
 RUN npm ci
 
-# Copy source code
 COPY . .
 
-# Generate Prisma client
 RUN npx prisma generate
-
-# Build TypeScript
 RUN npm run build
 
 # Stage 2: Production
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+# Tell Puppeteer to use the system-installed Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Install Chromium and its runtime dependencies
+RUN apt-get update && apt-get install -y \
+  chromium \
+  fonts-liberation \
+  fonts-noto-color-emoji \
+  --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 backend
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs backend
 
-# Copy necessary files from builder
+# Copy build artifacts
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
-# Create uploads directory
+# Create uploads directory (for any temp files — Cloudinary is the real store)
 RUN mkdir -p uploads && chown -R backend:nodejs uploads
 
 USER backend
 
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
 
 CMD ["node", "dist/server.js"]
