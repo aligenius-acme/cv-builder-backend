@@ -1,9 +1,13 @@
 import Redis from 'ioredis';
 
+const isRemoteRedis = !!(process.env.REDIS_PASSWORD);
+
 const redisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
   password: process.env.REDIS_PASSWORD || undefined,
+  // Upstash and other cloud Redis providers require TLS
+  tls: isRemoteRedis ? {} : undefined,
   maxRetriesPerRequest: 3,
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
