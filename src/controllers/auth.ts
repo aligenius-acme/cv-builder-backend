@@ -6,7 +6,7 @@ import { AuthenticatedRequest } from '../types';
 import { ValidationError, AuthenticationError, ConflictError, NotFoundError } from '../utils/errors';
 import { generateToken as generateSecureToken } from '../utils/encryption';
 import { UserRole } from '@prisma/client';
-import { emailService } from '../services/email';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../services/sendgridService';
 
 // Register new user
 export const register = async (
@@ -51,7 +51,7 @@ export const register = async (
 
     // Send verification email (non-blocking)
     if (user.emailVerifyToken) {
-      emailService.sendVerificationEmail(user.email, user.emailVerifyToken, firstName).catch((err) => {
+      sendVerificationEmail(user.email, user.emailVerifyToken, firstName).catch((err) => {
         console.error('Failed to send verification email:', err);
       });
     }
@@ -322,7 +322,7 @@ export const forgotPassword = async (
     });
 
     // Send password reset email (non-blocking)
-    emailService.sendPasswordResetEmail(user.email, resetToken, user.firstName || undefined).catch((err) => {
+    sendPasswordResetEmail(user.email, resetToken, user.firstName || undefined).catch((err) => {
       console.error('Failed to send password reset email:', err);
     });
 
@@ -468,7 +468,7 @@ export const resendVerification = async (
     });
 
     // Send verification email
-    await emailService.sendVerificationEmail(user.email, verifyToken, user.firstName || undefined);
+    await sendVerificationEmail(user.email, verifyToken, user.firstName || undefined);
 
     res.json({
       success: true,
