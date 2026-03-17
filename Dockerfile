@@ -16,6 +16,12 @@ COPY prisma ./prisma/
 
 RUN npm ci
 
+# Explicitly download Puppeteer's Chrome into the cache dir.
+# 'npm ci' post-install may skip this silently; this command is authoritative.
+RUN npx puppeteer browsers install chrome \
+  && echo "Chrome installed:" \
+  && find /root/.cache/puppeteer -name "chrome" -o -name "chrome-headless-shell" 2>/dev/null | head -5
+
 COPY . .
 
 RUN npx prisma generate
