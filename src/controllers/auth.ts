@@ -6,7 +6,7 @@ import { AuthenticatedRequest } from '../types';
 import { ValidationError, AuthenticationError, ConflictError, NotFoundError } from '../utils/errors';
 import { generateToken as generateSecureToken } from '../utils/encryption';
 import { UserRole } from '@prisma/client';
-import { sendVerificationEmail, sendPasswordResetEmail } from '../services/sendgridService';
+import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/sendgridService';
 
 // Register new user
 export const register = async (
@@ -49,12 +49,15 @@ export const register = async (
       },
     });
 
-    // Send verification email (non-blocking)
+    // Send verification + welcome emails (non-blocking)
     if (user.emailVerifyToken) {
       sendVerificationEmail(user.email, user.emailVerifyToken, firstName).catch((err) => {
         console.error('Failed to send verification email:', err);
       });
     }
+    sendWelcomeEmail(user.email, firstName).catch((err) => {
+      console.error('Failed to send welcome email:', err);
+    });
 
     // Generate JWT
     const token = generateToken({
@@ -115,6 +118,11 @@ export const login = async (
 
     if (!isValid) {
       throw new AuthenticationError('Invalid email or password');
+    }
+
+    // Enforce email verification for local accounts
+    if (!user.emailVerified) {
+      throw new AuthenticationError('Please verify your email before logging in. Check your inbox for the verification link.');
     }
 
     // Update last login
