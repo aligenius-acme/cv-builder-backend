@@ -322,7 +322,13 @@ export const forgotPassword = async (
     });
 
     // Send password reset email (non-blocking)
-    sendPasswordResetEmail(user.email, resetToken, user.firstName || undefined).catch((err) => {
+    sendPasswordResetEmail(user.email, resetToken, user.firstName || undefined).then((sent) => {
+      if (sent) {
+        console.log(`Password reset email sent to ${user.email}`);
+      } else {
+        console.error(`Password reset email FAILED for ${user.email} — check SENDGRID_API_KEY and sender verification`);
+      }
+    }).catch((err) => {
       console.error('Failed to send password reset email:', err);
     });
 
