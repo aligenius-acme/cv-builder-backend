@@ -153,7 +153,8 @@ export async function getAllTemplates(filters?: TemplateFilters): Promise<Templa
 
   // Add thumbnail URLs for templates without preview images
   // Use full URL to ensure frontend can access backend endpoint
-  const apiUrl = process.env.API_URL || 'http://localhost:3001/api';
+  const port = process.env.PORT || '3001';
+  const apiUrl = process.env.API_URL || `http://localhost:${port}/api`;
   const templatesWithThumbnails = templates.map(template => ({
     ...template,
     previewImageUrl: template.previewImageUrl || `${apiUrl}/templates/${template.id}/thumbnail`,
@@ -174,7 +175,8 @@ export async function getTemplateById(id: string): Promise<TemplateMetadata | nu
 
   // Add thumbnail URL if not present
   // Use full URL to ensure frontend can access backend endpoint
-  const apiUrl = process.env.API_URL || 'http://localhost:3001/api';
+  const port = process.env.PORT || '3001';
+  const apiUrl = process.env.API_URL || `http://localhost:${port}/api`;
   return {
     ...template,
     previewImageUrl: template.previewImageUrl || `${apiUrl}/templates/${template.id}/thumbnail`,
