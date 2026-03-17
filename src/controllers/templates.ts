@@ -6,6 +6,7 @@ import { generateTemplateHTML } from '../services/template-html-generator';
 import { prisma } from '../utils/prisma';
 import { NotFoundError, ValidationError } from '../utils/errors';
 import * as TemplateRegistry from '../services/template-registry';
+import { v2 as cloudinary } from 'cloudinary';
 
 // Get all available templates
 export const getTemplates = async (
@@ -256,9 +257,35 @@ export const previewTemplate = async (
 };
 
 /**
+/**
+ * Upload a thumbnail buffer to Cloudinary and persist the URL to the DB.
+ * Fire-and-forget safe — errors are logged but not re-thrown.
+ */
+async function persistThumbnailToCloudinary(templateId: string, buffer: Buffer): Promise<string | null> {
+  try {
+    const url = await new Promise<string>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          { folder: 'cv-builder/thumbnails', public_id: templateId, format: 'jpg', overwrite: true, resource_type: 'image' },
+          (err, result) => (err || !result ? reject(err ?? new Error('No result')) : resolve(result.secure_url))
+        )
+        .end(buffer);
+    });
+    await prisma.resumeTemplate.update({ where: { id: templateId }, data: { previewImageUrl: url } });
+    console.log(`Thumbnail cached to Cloudinary: ${templateId}`);
+    return url;
+  } catch (err) {
+    console.error(`Failed to persist thumbnail to Cloudinary for ${templateId}:`, err);
+    return null;
+  }
+}
+
+/**
  * GET /:templateId/thumbnail
- * Serve a Puppeteer JPEG screenshot for the template.
- * Results are cached in-memory; first call triggers generation.
+ * Serve a template thumbnail.
+ * - If a Cloudinary URL is stored → redirect (fast path, no Puppeteer).
+ * - Otherwise → generate with Puppeteer, upload to Cloudinary, then serve.
+ *   On next request the Cloudinary URL is used directly.
  */
 export const getThumbnail = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -274,16 +301,15 @@ export const getThumbnail = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // If an external thumbnail URL exists, redirect to it
+    // Fast path: already have a Cloudinary (or other external) URL
     if (template.previewImageUrl && !template.previewImageUrl.startsWith('/api/')) {
       res.redirect(template.previewImageUrl);
       return;
     }
 
+    // Slow path: generate with Puppeteer
     const { generateTemplateThumbnail, clearThumbnailCache } = await import('../services/react-pdf-generator');
 
-    // Hard timeout: clear this template's cache entry on failure so the next
-    // request retries from scratch rather than serving a broken cached promise.
     const TIMEOUT_MS = 60_000;
     const thumbnailBuffer = await Promise.race([
       generateTemplateThumbnail(templateId),
@@ -295,11 +321,11 @@ export const getThumbnail = async (req: Request, res: Response): Promise<void> =
       ),
     ]);
 
+    // Upload to Cloudinary in the background so the next request uses the fast path
+    persistThumbnailToCloudinary(templateId, thumbnailBuffer).catch(() => {});
+
     res.setHeader('Content-Type', 'image/jpeg');
-    // Cache in browser for 24 h; stale-while-revalidate lets subsequent requests
-    // be served instantly while a fresh copy is fetched in background.
     res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
-    // ETag lets browsers skip the body on repeat visits when nothing changed
     const etag = `"${templateId}-${thumbnailBuffer.length}"`;
     res.setHeader('ETag', etag);
     if (req.headers['if-none-match'] === etag) {
@@ -310,8 +336,6 @@ export const getThumbnail = async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`Thumbnail error for ${req.params.templateId}: ${msg}`);
-    // Return a proper HTTP error so the frontend img tag shows its broken-image
-    // state rather than a JSON body which produces a CORB-blocked response.
     res.status(500).end();
   }
 };

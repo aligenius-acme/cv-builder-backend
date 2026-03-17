@@ -1,0 +1,40 @@
+name: Upload Template Thumbnails
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'prisma/seeds/templates.ts'
+      - 'src/templates/**'
+      - 'src/services/react-pdf-generator.ts'
+  workflow_dispatch:  # manual trigger from GitHub Actions UI
+
+jobs:
+  upload-thumbnails:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Upload thumbnails to Cloudinary
+        run: npx ts-node --transpile-only scripts/upload-thumbnails.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          # GitHub-hosted ubuntu runners have Chrome pre-installed
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
