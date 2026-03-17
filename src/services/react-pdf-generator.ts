@@ -3,7 +3,7 @@ import * as React from 'react';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import path from 'path';
 import fs from 'fs/promises';
-import { existsSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import * as https from 'https';
 import * as http from 'http';
 import { v2 as cloudinary } from 'cloudinary';
@@ -19,68 +19,21 @@ import { prisma } from '../utils/prisma';
 let browserInstance: Browser | null = null;
 
 /**
- * Resolve the Chromium executable path.
- * Priority:
- *   1. PUPPETEER_EXECUTABLE_PATH env var
- *   2. Common system paths (chromium, chromium-browser)
- *   3. Scan PUPPETEER_CACHE_DIR for Puppeteer's downloaded Chrome binary
- *   4. Return undefined → let Puppeteer resolve it internally
+ * Resolve the Chromium executable path for Puppeteer.
+ * Checks PUPPETEER_EXECUTABLE_PATH env var first, then common system paths.
+ * Returns undefined to let Puppeteer use its own default (works in local dev).
  */
 function resolveChromiumPath(): string | undefined {
-  // 1. Explicit env var
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    console.log(`Chromium: PUPPETEER_EXECUTABLE_PATH = ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
-
-  // 2. Common system paths
-  const systemCandidates = [
-    '/usr/local/bin/chromium-wrapper',
+  const systemPaths = [
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
     '/usr/local/bin/chromium',
     '/snap/bin/chromium',
   ];
-  for (const p of systemCandidates) {
-    if (existsSync(p)) {
-      console.log(`Chromium: found system binary at ${p}`);
-      return p;
-    }
-  }
-
-  // 3. Scan Puppeteer cache for its downloaded Chrome
-  const cacheDir =
-    process.env.PUPPETEER_CACHE_DIR ||
-    path.join(process.env.HOME || '/root', '.cache', 'puppeteer');
-  console.log(`Chromium: scanning Puppeteer cache at ${cacheDir}`);
-
-  for (const browserName of ['chrome', 'chrome-headless-shell']) {
-    const browserDir = path.join(cacheDir, browserName);
-    if (!existsSync(browserDir)) continue;
-    try {
-      const versions = readdirSync(browserDir);
-      for (const version of versions) {
-        // Puppeteer v20+ layout: <browser>/<platform>-<version>/<binary-dir>/<binary>
-        const binaryCandidates = [
-          path.join(browserDir, version, 'chrome-linux64', 'chrome'),
-          path.join(browserDir, version, 'chrome-linux64', 'chrome-headless-shell'),
-          path.join(browserDir, version, 'chrome-linux', 'chrome'),
-          path.join(browserDir, version, 'chrome', 'chrome'),
-        ];
-        for (const bp of binaryCandidates) {
-          if (existsSync(bp)) {
-            console.log(`Chromium: found Puppeteer cache binary at ${bp}`);
-            return bp;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn(`Chromium: error scanning ${browserDir}: ${e}`);
-    }
-  }
-
-  console.log(`Chromium: no binary found anywhere — letting Puppeteer resolve internally`);
-  return undefined;
+  return systemPaths.find(p => existsSync(p));
 }
 
 /**
@@ -93,7 +46,7 @@ async function getBrowser(): Promise<Browser> {
   }
 
   const executablePath = resolveChromiumPath();
-  console.log(`Launching new Puppeteer browser instance${executablePath ? ` (${executablePath})` : ' (bundled)'}...`);
+  console.log('Launching Puppeteer browser instance...');
 
   browserInstance = await puppeteer.launch({
     headless: true,
