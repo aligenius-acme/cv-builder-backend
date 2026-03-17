@@ -26,8 +26,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-# Tell Puppeteer to use the system-installed Chromium
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Install Chromium and its runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -36,6 +34,18 @@ RUN apt-get update && apt-get install -y \
   fonts-noto-color-emoji \
   --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
+
+# Locate the Chromium binary (package may install as 'chromium' or 'chromium-browser')
+# and create a stable symlink so PUPPETEER_EXECUTABLE_PATH always resolves.
+RUN set -e; \
+  CHROMIUM_BIN=$(which chromium 2>/dev/null || which chromium-browser 2>/dev/null || echo ""); \
+  if [ -z "$CHROMIUM_BIN" ]; then echo "ERROR: chromium not found after install"; exit 1; fi; \
+  echo "Chromium binary: $CHROMIUM_BIN"; \
+  ln -sf "$CHROMIUM_BIN" /usr/local/bin/chromium-wrapper; \
+  /usr/local/bin/chromium-wrapper --version
+
+# Tell Puppeteer to use the system-installed Chromium via the resolved symlink
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/chromium-wrapper
 
 # Create non-root user
 RUN groupadd --system --gid 1001 nodejs \
