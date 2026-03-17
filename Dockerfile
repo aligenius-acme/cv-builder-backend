@@ -47,8 +47,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
-# Create uploads directory (for any temp files — Cloudinary is the real store)
-RUN mkdir -p uploads && chown -R backend:nodejs uploads
+# Create required directories
+RUN mkdir -p uploads thumbnails && chown -R backend:nodejs uploads thumbnails
 
 USER backend
 
