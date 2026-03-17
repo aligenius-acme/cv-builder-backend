@@ -11,6 +11,9 @@ import { performanceMiddleware } from './middleware/performance';
 
 const app = express();
 
+// Trust Koyeb/reverse proxy — required for rate limiting and IP detection
+app.set('trust proxy', 1);
+
 // Security headers with Helmet
 // Helmet helps secure Express apps by setting various HTTP headers
 app.use(helmet({
