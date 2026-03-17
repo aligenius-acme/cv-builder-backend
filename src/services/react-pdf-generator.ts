@@ -52,25 +52,6 @@ function resolveChromiumPath(): string | undefined {
   const cacheDir =
     process.env.PUPPETEER_CACHE_DIR ||
     path.join(process.env.HOME || '/root', '.cache', 'puppeteer');
-
-  // Log exactly what is (or isn't) inside the cache directory
-  if (existsSync(cacheDir)) {
-    try {
-      const top = readdirSync(cacheDir);
-      console.log(`Chromium: cache dir ${cacheDir} top-level entries: [${top.join(', ')}]`);
-      for (const entry of top) {
-        const sub = path.join(cacheDir, entry);
-        try {
-          const kids = readdirSync(sub);
-          console.log(`Chromium:   ${entry}/ → [${kids.join(', ')}]`);
-        } catch { /* not a dir */ }
-      }
-    } catch (e) {
-      console.log(`Chromium: could not read cache dir: ${e}`);
-    }
-  } else {
-    console.log(`Chromium: cache dir ${cacheDir} does not exist`);
-  }
   console.log(`Chromium: scanning Puppeteer cache at ${cacheDir}`);
 
   for (const browserName of ['chrome', 'chrome-headless-shell']) {
