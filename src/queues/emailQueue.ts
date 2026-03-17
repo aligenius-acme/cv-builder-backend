@@ -12,14 +12,14 @@ export interface EmailJobData {
 // Create email queue
 export const emailQueue = createQueue('email');
 
-// Process email jobs using SendGrid
+// Process email jobs using Resend
 emailQueue.process(async (job: Job<EmailJobData>) => {
   const { to, subject, html, text } = job.data;
 
   const success = await sendEmail({ to, subject, html, text });
 
   if (!success) {
-    throw new Error(`SendGrid failed to send email to ${to}`);
+    throw new Error(`Resend failed to send email to ${to}`);
   }
 
   console.log(`Email sent successfully to ${to}`);

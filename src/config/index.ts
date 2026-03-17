@@ -63,11 +63,10 @@ export const config = {
     },
   },
 
-  // Email (SendGrid - FREE 100/day)
+  // Email (Resend)
   email: {
-    sendgridApiKey: process.env.SENDGRID_API_KEY || "",
-    fromEmail: process.env.EMAIL_FROM_ADDRESS || "noreply@jobtools.ai",
-    fromName: process.env.EMAIL_FROM_NAME || "JobTools AI",
+    fromEmail: process.env.EMAIL_FROM_ADDRESS || "noreply@jobtools.io",
+    fromName: process.env.EMAIL_FROM_NAME || "Job Tools",
   },
 
   // Sentry Error Monitoring (FREE 5K errors/month)

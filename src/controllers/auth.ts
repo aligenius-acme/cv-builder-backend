@@ -326,7 +326,7 @@ export const forgotPassword = async (
       if (sent) {
         console.log(`Password reset email sent to ${user.email}`);
       } else {
-        console.error(`Password reset email FAILED for ${user.email} — check SENDGRID_API_KEY and sender verification`);
+        console.error(`Password reset email FAILED for ${user.email} — check RESEND_API_KEY and sender verification`);
       }
     }).catch((err) => {
       console.error('Failed to send password reset email:', err);
