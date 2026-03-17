@@ -19,6 +19,33 @@ import { prisma } from '../utils/prisma';
 let browserInstance: Browser | null = null;
 
 /**
+ * Resolve the Chromium executable path.
+ * Priority: PUPPETEER_EXECUTABLE_PATH env var → common system paths → let Puppeteer find its own.
+ */
+function resolveChromiumPath(): string | undefined {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    console.log(`Chromium: using PUPPETEER_EXECUTABLE_PATH = ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  // Fallback: try common Linux paths (covers different Debian/Ubuntu package names)
+  const candidates = [
+    '/usr/local/bin/chromium-wrapper', // our Dockerfile symlink
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/local/bin/chromium',
+    '/snap/bin/chromium',
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) {
+      console.log(`Chromium: found at ${p}`);
+      return p;
+    }
+  }
+  console.log('Chromium: no system binary found — letting Puppeteer use its bundled version');
+  return undefined;
+}
+
+/**
  * Get or create a Puppeteer browser instance
  * Reuses the same instance for better performance
  */
@@ -27,14 +54,12 @@ async function getBrowser(): Promise<Browser> {
     return browserInstance;
   }
 
-  console.log('Launching new Puppeteer browser instance...');
+  const executablePath = resolveChromiumPath();
+  console.log(`Launching new Puppeteer browser instance${executablePath ? ` (${executablePath})` : ' (bundled)'}...`);
 
   browserInstance = await puppeteer.launch({
     headless: true,
-    // Use system Chromium when PUPPETEER_EXECUTABLE_PATH is set (Docker / Koyeb)
-    ...(process.env.PUPPETEER_EXECUTABLE_PATH
-      ? { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH }
-      : {}),
+    ...(executablePath ? { executablePath } : {}),
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
