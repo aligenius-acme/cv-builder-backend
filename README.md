@@ -10,7 +10,7 @@ AI-powered resume customization and job search platform backend API.
 - **Cache & Queue**: Redis with ioredis and Bull
 - **AI**: OpenAI GPT-4o-mini
 - **Storage**: Cloudinary
-- **Email**: SendGrid / SMTP / Gmail OAuth2
+- **Email**: Resend (noreply@jobtools.io)
 - **Authentication**: JWT with bcrypt
 - **Payment**: Stripe
 
