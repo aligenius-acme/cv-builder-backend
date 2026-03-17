@@ -49,38 +49,18 @@ export const register = async (
       },
     });
 
-    // Send verification + welcome emails (non-blocking)
+    // Send verification email (non-blocking) — welcome email sent after verification
     if (user.emailVerifyToken) {
-      sendVerificationEmail(user.email, user.emailVerifyToken, firstName).catch((err) => {
+      sendVerificationEmail(user.email, user.emailVerifyToken, firstName).then((sent) => {
+        if (!sent) console.error(`Verification email FAILED for ${user.email} — check RESEND_API_KEY`);
+      }).catch((err) => {
         console.error('Failed to send verification email:', err);
       });
     }
-    sendWelcomeEmail(user.email, firstName).catch((err) => {
-      console.error('Failed to send welcome email:', err);
-    });
-
-    // Generate JWT
-    const token = generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
 
     res.status(201).json({
       success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          emailVerified: user.emailVerified,
-          aiCredits: user.aiCredits,
-          aiCreditsUsed: user.aiCreditsUsed,
-        },
-        token,
-      },
+      message: 'Account created. Please check your email to verify your account before logging in.',
     });
   } catch (error) {
     next(error);
@@ -436,6 +416,13 @@ export const verifyEmail = async (
         emailVerified: true,
         emailVerifyToken: null,
       },
+    });
+
+    // Send welcome email now that email is verified
+    sendWelcomeEmail(user.email, user.firstName || undefined).then((sent) => {
+      if (!sent) console.error(`Welcome email FAILED for ${user.email}`);
+    }).catch((err) => {
+      console.error('Failed to send welcome email:', err);
     });
 
     res.json({
