@@ -1,44 +1,34 @@
 # CV Builder Backend Dockerfile
-# Multi-stage build — Puppeteer downloads its own Chrome in the builder stage,
-# which is then copied to the runner so no system Chromium install is needed.
+# Multi-stage build for production
 
-# Stage 1: Build
+# ─── Stage 1: Build TypeScript ────────────────────────────────────────────────
 FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Allow Puppeteer to download its own Chrome during npm ci.
-# The cache lands in /root/.cache/puppeteer and is copied to the runner below.
-ENV PUPPETEER_CACHE_DIR=/root/.cache/puppeteer
+# Skip Chrome download in the build stage — we install it in the runner stage
+# directly so there is no cross-stage cache copy that can silently fail.
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 COPY package*.json ./
 COPY prisma ./prisma/
 
 RUN npm ci
 
-# Explicitly download Puppeteer's Chrome into the cache dir.
-# 'npm ci' post-install may skip this silently; this command is authoritative.
-RUN npx puppeteer browsers install chrome \
-  && echo "Chrome installed:" \
-  && find /root/.cache/puppeteer -name "chrome" -o -name "chrome-headless-shell" 2>/dev/null | head -5
-
 COPY . .
 
 RUN npx prisma generate
 RUN npm run build
 
-# Stage 2: Production
+# ─── Stage 2: Production runner ───────────────────────────────────────────────
 FROM node:20-slim AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
-# Point Puppeteer at the cache directory we copy from the builder
 ENV PUPPETEER_CACHE_DIR=/app/.cache/puppeteer
-# Skip re-download — Chrome is already in the cache
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-# Install runtime libraries required by Puppeteer's bundled Chrome on Debian slim
+# Install runtime libraries required by Puppeteer's Chrome on Debian slim
 RUN apt-get update && apt-get install -y \
   fonts-liberation \
   fonts-noto-color-emoji \
@@ -64,14 +54,21 @@ RUN apt-get update && apt-get install -y \
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs backend
 
-# Copy build artifacts
-COPY --from=builder /app/dist ./dist
+# Copy node_modules first — stable layer, only invalidated when package.json changes
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/prisma ./prisma
 
-# Copy Puppeteer's downloaded Chrome from the builder stage
-COPY --from=builder /root/.cache/puppeteer /app/.cache/puppeteer
+# Download Puppeteer's Chrome directly into the runner image.
+# Placed after node_modules so it is layer-cached unless dependencies change.
+# PUPPETEER_CACHE_DIR is already set above; this command is authoritative and
+# will fail the build if Chrome cannot be downloaded.
+RUN npx puppeteer browsers install chrome \
+  && echo "=== Puppeteer Chrome install complete ===" \
+  && find /app/.cache/puppeteer -type f -name "chrome" -o -name "chrome-headless-shell" 2>/dev/null
+
+# Copy remaining build artifacts
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
 
 # Create required directories and fix ownership
 RUN mkdir -p uploads thumbnails \
