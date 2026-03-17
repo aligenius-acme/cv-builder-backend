@@ -37,38 +37,48 @@ function resolveChromiumPath(): string | undefined {
 }
 
 /**
- * Get or create a Puppeteer browser instance
- * Reuses the same instance for better performance
+ * Get or create a Puppeteer browser instance.
+ *
+ * Production (BROWSERLESS_TOKEN set): connects to Browserless.io remote Chrome
+ * over WebSocket — no local Chrome binary required.
+ *
+ * Development / local: launches a local Chrome/Chromium binary.
  */
 async function getBrowser(): Promise<Browser> {
   if (browserInstance && browserInstance.connected) {
     return browserInstance;
   }
 
-  const executablePath = resolveChromiumPath();
-  console.log('Launching Puppeteer browser instance...');
+  const token = process.env.BROWSERLESS_TOKEN;
 
-  browserInstance = await puppeteer.launch({
-    headless: true,
-    ...(executablePath ? { executablePath } : {}),
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--disable-gpu',
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process',
-    ],
-    timeout: 30000,
-  });
+  if (token) {
+    console.log('Connecting to Browserless.io remote Chrome...');
+    browserInstance = await puppeteer.connect({
+      browserWSEndpoint: `wss://chrome.browserless.io?token=${token}`,
+    });
+  } else {
+    const executablePath = resolveChromiumPath();
+    console.log('Launching local Puppeteer browser instance...');
+    browserInstance = await puppeteer.launch({
+      headless: true,
+      ...(executablePath ? { executablePath } : {}),
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+      ],
+      timeout: 30000,
+    });
+  }
 
-  // Handle browser disconnect — reset slot counter so queued requests don't deadlock
+  // On disconnect: clear singleton + drain thumbnail wait queue so no request deadlocks
   browserInstance.on('disconnected', () => {
-    console.log('Browser instance disconnected — resetting thumbnail slot counter');
+    console.log('Browser disconnected — will reconnect on next request');
     browserInstance = null;
-    // Drain the wait queue so queued thumbnail requests can fail-fast and retry
-    // instead of waiting forever for slots that will never be released.
     activeThumbnailCount = 0;
     const waiting = thumbnailWaitQueue.splice(0);
     waiting.forEach(resolve => resolve());
@@ -78,11 +88,16 @@ async function getBrowser(): Promise<Browser> {
 }
 
 /**
- * Close the browser instance (call on app shutdown)
+ * Release the browser instance on app shutdown.
+ * Disconnects from Browserless or closes a local browser.
  */
 export async function closeBrowser(): Promise<void> {
   if (browserInstance && browserInstance.connected) {
-    await browserInstance.close();
+    if (process.env.BROWSERLESS_TOKEN) {
+      await browserInstance.disconnect();
+    } else {
+      await browserInstance.close();
+    }
     browserInstance = null;
     console.log('Browser instance closed');
   }
