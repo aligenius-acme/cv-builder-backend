@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireAdmin } from '../middleware/auth';
 import {
   getResumePerformanceScore,
   analyzeSkillGap,
@@ -17,8 +17,8 @@ router.get('/examples', getResumeExamples);
 // Protected routes
 router.use(authenticate);
 
-// Career Dashboard
-router.get('/dashboard-stats', getCareerDashboardStats);
+// Career Dashboard — admin only
+router.get('/dashboard-stats', requireAdmin, getCareerDashboardStats);
 
 // Resume Performance Score (AI-powered, rate limited)
 router.get('/performance-score/:resumeId', aiLimiter, checkAICredits, getResumePerformanceScore);
