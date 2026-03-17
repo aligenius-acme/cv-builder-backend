@@ -20,6 +20,7 @@ import aiFeaturesRoutes from './aiFeatures';
 import uploadRoutes from './upload';
 import monitoringRoutes from './monitoring';
 import affiliatesRoutes from './affiliates';
+import publicRoutes from './public';
 
 const router = Router();
 
@@ -45,5 +46,6 @@ router.use('/ai-features', aiFeaturesRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/monitoring', monitoringRoutes);
 router.use('/affiliates', affiliatesRoutes);
+router.use('/public', publicRoutes);
 
 export default router;
