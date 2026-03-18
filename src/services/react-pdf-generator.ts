@@ -1,6 +1,7 @@
 import * as ReactDOMServer from 'react-dom/server';
 import * as React from 'react';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import chromium from '@sparticuz/chromium';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
@@ -19,61 +20,48 @@ import { prisma } from '../utils/prisma';
 let browserInstance: Browser | null = null;
 
 /**
- * Resolve the Chromium executable path for Puppeteer.
- * Checks PUPPETEER_EXECUTABLE_PATH env var first, then common system paths.
- * Returns undefined to let Puppeteer use its own default (works in local dev).
+ * Fallback: resolve a system Chromium path when @sparticuz/chromium is unavailable.
  */
 function resolveChromiumPath(): string | undefined {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    return process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-  const systemPaths = [
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/usr/local/bin/chromium',
-    '/snap/bin/chromium',
-  ];
-  return systemPaths.find(p => existsSync(p));
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+  return ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome-stable']
+    .find(p => existsSync(p));
 }
 
 /**
  * Get or create a Puppeteer browser instance.
  *
- * Production (BROWSERLESS_TOKEN set): connects to Browserless.io remote Chrome
- * over WebSocket — no local Chrome binary required.
- *
- * Development / local: launches a local Chrome/Chromium binary.
+ * Priority:
+ *   1. @sparticuz/chromium — pre-compiled Chromium bundled in node_modules,
+ *      works in any container without downloading anything at runtime.
+ *   2. PUPPETEER_EXECUTABLE_PATH / system paths — local dev fallback.
  */
 async function getBrowser(): Promise<Browser> {
   if (browserInstance && browserInstance.connected) {
     return browserInstance;
   }
 
-  const token = process.env.BROWSERLESS_TOKEN;
-
-  if (token) {
-    console.log('Connecting to Browserless.io remote Chrome...');
-    browserInstance = await puppeteer.connect({
-      browserWSEndpoint: `wss://chrome.browserless.io?token=${token}`,
-    });
-  } else {
-    const executablePath = resolveChromiumPath();
-    console.log('Launching local Puppeteer browser instance...');
-    browserInstance = await puppeteer.launch({
-      headless: true,
-      ...(executablePath ? { executablePath } : {}),
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process',
-      ],
-      timeout: 30000,
-    });
+  // @sparticuz/chromium decompresses its bundled binary to /tmp on first call.
+  // This works in Docker containers (Koyeb) and locally alike.
+  let executablePath: string | undefined;
+  try {
+    executablePath = await chromium.executablePath();
+    console.log(`Launching browser via @sparticuz/chromium (${executablePath})...`);
+  } catch {
+    executablePath = resolveChromiumPath();
+    console.log(`Launching browser via system Chrome (${executablePath ?? 'bundled'})...`);
   }
+
+  browserInstance = await puppeteer.launch({
+    headless: true,
+    executablePath,
+    args: [
+      ...chromium.args,
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process',
+    ],
+    timeout: 30000,
+  });
 
   // On disconnect: clear singleton + drain thumbnail wait queue so no request deadlocks
   browserInstance.on('disconnected', () => {
@@ -89,15 +77,10 @@ async function getBrowser(): Promise<Browser> {
 
 /**
  * Release the browser instance on app shutdown.
- * Disconnects from Browserless or closes a local browser.
  */
 export async function closeBrowser(): Promise<void> {
   if (browserInstance && browserInstance.connected) {
-    if (process.env.BROWSERLESS_TOKEN) {
-      await browserInstance.disconnect();
-    } else {
-      await browserInstance.close();
-    }
+    await browserInstance.close();
     browserInstance = null;
     console.log('Browser instance closed');
   }
