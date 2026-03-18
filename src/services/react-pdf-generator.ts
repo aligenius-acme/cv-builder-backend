@@ -18,6 +18,10 @@ import { prisma } from '../utils/prisma';
 
 // Browser instance singleton for reuse
 let browserInstance: Browser | null = null;
+// Serialises concurrent getBrowser() calls so only one decompress/launch runs at a time
+let browserInitPromise: Promise<Browser> | null = null;
+// Cached executable path — chromium.executablePath() decompresses once, result reused
+let cachedExecutablePath: string | undefined;
 
 /**
  * Fallback: resolve a system Chromium path when @sparticuz/chromium is unavailable.
@@ -28,33 +32,23 @@ function resolveChromiumPath(): string | undefined {
     .find(p => existsSync(p));
 }
 
-/**
- * Get or create a Puppeteer browser instance.
- *
- * Priority:
- *   1. @sparticuz/chromium — pre-compiled Chromium bundled in node_modules,
- *      works in any container without downloading anything at runtime.
- *   2. PUPPETEER_EXECUTABLE_PATH / system paths — local dev fallback.
- */
-async function getBrowser(): Promise<Browser> {
-  if (browserInstance && browserInstance.connected) {
-    return browserInstance;
+async function initBrowser(): Promise<Browser> {
+  // Resolve executable path once — @sparticuz/chromium decompresses to /tmp on
+  // first call; caching prevents concurrent requests writing the same file (ETXTBSY).
+  if (!cachedExecutablePath) {
+    try {
+      cachedExecutablePath = await chromium.executablePath();
+      console.log(`Chromium path resolved: ${cachedExecutablePath}`);
+    } catch {
+      cachedExecutablePath = resolveChromiumPath();
+      console.log(`Chromium path (system fallback): ${cachedExecutablePath ?? 'bundled'}`);
+    }
   }
 
-  // @sparticuz/chromium decompresses its bundled binary to /tmp on first call.
-  // This works in Docker containers (Koyeb) and locally alike.
-  let executablePath: string | undefined;
-  try {
-    executablePath = await chromium.executablePath();
-    console.log(`Launching browser via @sparticuz/chromium (${executablePath})...`);
-  } catch {
-    executablePath = resolveChromiumPath();
-    console.log(`Launching browser via system Chrome (${executablePath ?? 'bundled'})...`);
-  }
-
-  browserInstance = await puppeteer.launch({
+  console.log('Launching browser...');
+  const browser = await puppeteer.launch({
     headless: true,
-    executablePath,
+    executablePath: cachedExecutablePath,
     args: [
       ...chromium.args,
       '--disable-web-security',
@@ -63,8 +57,7 @@ async function getBrowser(): Promise<Browser> {
     timeout: 30000,
   });
 
-  // On disconnect: clear singleton + drain thumbnail wait queue so no request deadlocks
-  browserInstance.on('disconnected', () => {
+  browser.on('disconnected', () => {
     console.log('Browser disconnected — will reconnect on next request');
     browserInstance = null;
     activeThumbnailCount = 0;
@@ -72,7 +65,25 @@ async function getBrowser(): Promise<Browser> {
     waiting.forEach(resolve => resolve());
   });
 
-  return browserInstance;
+  return browser;
+}
+
+/**
+ * Get or create a Puppeteer browser instance.
+ * Serialised via a promise lock so concurrent calls never trigger parallel
+ * decompress/launch (which causes ETXTBSY on @sparticuz/chromium).
+ */
+async function getBrowser(): Promise<Browser> {
+  if (browserInstance && browserInstance.connected) {
+    return browserInstance;
+  }
+  if (browserInitPromise) {
+    return browserInitPromise;
+  }
+  browserInitPromise = initBrowser()
+    .then(b => { browserInstance = b; return b; })
+    .finally(() => { browserInitPromise = null; });
+  return browserInitPromise;
 }
 
 /**
