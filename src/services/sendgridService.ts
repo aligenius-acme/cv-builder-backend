@@ -1,7 +1,11 @@
 import { Resend } from 'resend';
 import config from '../config';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
+function getResendClient(): Resend {
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
+  return resend;
+}
 
 const FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS || 'noreply@jobtools.io';
 const FROM_NAME = process.env.EMAIL_FROM_NAME || 'Job Tools';
@@ -28,7 +32,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   }
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: FROM,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,

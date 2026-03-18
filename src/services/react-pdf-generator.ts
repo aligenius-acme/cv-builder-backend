@@ -36,12 +36,19 @@ async function initBrowser(): Promise<Browser> {
   // Resolve executable path once — @sparticuz/chromium decompresses to /tmp on
   // first call; caching prevents concurrent requests writing the same file (ETXTBSY).
   if (!cachedExecutablePath) {
-    try {
-      cachedExecutablePath = await chromium.executablePath();
-      console.log(`Chromium path resolved: ${cachedExecutablePath}`);
-    } catch {
-      cachedExecutablePath = resolveChromiumPath();
-      console.log(`Chromium path (system fallback): ${cachedExecutablePath ?? 'bundled'}`);
+    // PUPPETEER_EXECUTABLE_PATH always wins — needed for local dev on Windows/Mac
+    // where @sparticuz/chromium returns a Linux-only /tmp path that doesn't exist.
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      cachedExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+      console.log(`Chromium path (env): ${cachedExecutablePath}`);
+    } else {
+      try {
+        cachedExecutablePath = await chromium.executablePath();
+        console.log(`Chromium path resolved: ${cachedExecutablePath}`);
+      } catch {
+        cachedExecutablePath = resolveChromiumPath();
+        console.log(`Chromium path (system fallback): ${cachedExecutablePath ?? 'bundled'}`);
+      }
     }
   }
 

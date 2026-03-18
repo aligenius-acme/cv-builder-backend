@@ -4,26 +4,41 @@
 
 The React PDF Generator service provides high-quality PDF generation from React templates using Puppeteer. It renders React components server-side and converts them to PDF with accurate colors, fonts, and formatting.
 
+It also handles template thumbnail generation (JPEG screenshots) used by the template browser UI.
+
 ## Features
 
 - ✅ React component rendering to PDF
-- ✅ Browser instance reuse for performance
+- ✅ Browser instance reuse for performance (singleton with reconnect)
+- ✅ Concurrency-safe browser init (promise lock prevents ETXTBSY)
 - ✅ Custom color theming support
-- ✅ Multiple template layouts (20+ options)
+- ✅ Multiple template layouts (20+ options, 165 templates)
 - ✅ Memory management and cleanup
 - ✅ Timeout handling
 - ✅ A4 format with proper margins
 - ✅ Color accuracy and font embedding
 - ✅ File size optimization (<500KB)
 - ✅ Fast generation (<5 seconds per PDF)
+- ✅ Template thumbnail generation (JPEG screenshots)
+- ✅ Thumbnail concurrency limit (max 3 simultaneous)
 
 ## Installation
 
 Dependencies are already installed:
-- `puppeteer@^23.10.4` - Headless browser for PDF generation
-- `react@^18.3.1` - React for component rendering
-- `react-dom@^18.3.1` - React DOM for server-side rendering
-- `@types/react` and `@types/react-dom` - TypeScript types
+
+- `puppeteer@^23.10.4` — Headless browser orchestration
+- `@sparticuz/chromium` — Pre-compiled Chromium binary bundled inside `node_modules`; decompresses to `/tmp` at runtime. **No Chrome download required at build or deploy time.**
+- `react@^18.3.1` — React for component rendering
+- `react-dom@^18.3.1` — React DOM for server-side rendering
+- `@types/react` and `@types/react-dom` — TypeScript types
+
+### How Chromium is resolved
+
+At startup the service calls `chromium.executablePath()` from `@sparticuz/chromium`, which decompresses the bundled binary to `/tmp/chromium` on first call and returns the path. This works in any containerised environment (Koyeb, Fly.io, Railway, etc.) without internet access or pre-installed Chrome.
+
+Fallback chain (if `@sparticuz/chromium` fails):
+1. `PUPPETEER_EXECUTABLE_PATH` env var (useful for local dev / CI)
+2. System paths: `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/usr/bin/google-chrome-stable`
 
 ## Usage
 
@@ -33,7 +48,6 @@ Dependencies are already installed:
 import { generatePDFFromReact } from './services/react-pdf-generator';
 import { ParsedResumeData } from './types';
 
-// Your resume data
 const resumeData: ParsedResumeData = {
   contact: {
     name: 'John Smith',
@@ -45,16 +59,9 @@ const resumeData: ParsedResumeData = {
   experience: [...],
   education: [...],
   skills: ['JavaScript', 'React', 'Node.js'],
-  // ... other fields
 };
 
-// Generate PDF
-const pdfBuffer = await generatePDFFromReact(
-  'london-navy',  // Template ID
-  resumeData
-);
-
-// Save to file or send to client
+const pdfBuffer = await generatePDFFromReact('london-navy', resumeData);
 fs.writeFileSync('resume.pdf', pdfBuffer);
 ```
 
@@ -65,9 +72,9 @@ const pdfBuffer = await generatePDFFromReact(
   'berlin-ocean',
   resumeData,
   {
-    primaryColor: '#c2410c',    // Custom primary color
-    secondaryColor: '#9a3412',   // Custom secondary color
-    accentColor: '#ffedd5',      // Custom accent color
+    primaryColor: '#c2410c',
+    secondaryColor: '#9a3412',
+    accentColor: '#ffedd5',
   }
 );
 ```
@@ -113,109 +120,145 @@ console.log('Browser connected:', health.browserConnected);
 console.log('Can generate PDF:', health.canGeneratePDF);
 ```
 
+## Thumbnail System
+
+Template thumbnails (used in the template browser UI) are served from Cloudinary. The flow is:
+
+1. **Fast path** — if `previewImageUrl` in the DB is a Cloudinary (or other external) URL, the thumbnail endpoint redirects to it instantly. No Puppeteer involved.
+2. **Slow path** — if no URL is stored, Puppeteer generates a JPEG screenshot, the result is served immediately, and the image is uploaded to Cloudinary in the background. The next request uses the fast path.
+
+### Pre-generating thumbnails (recommended)
+
+Run the upload script locally or via GitHub Actions to populate all 165 templates upfront:
+
+```bash
+# Local (requires CLOUDINARY_* and DATABASE_URL env vars)
+npx ts-node --transpile-only scripts/upload-thumbnails.ts
+
+# Force re-upload all (even already-uploaded templates)
+npx ts-node --transpile-only scripts/upload-thumbnails.ts --force
+
+# Upload single template
+npx ts-node --transpile-only scripts/upload-thumbnails.ts --only=london-navy
+```
+
+The GitHub Actions workflow (`.github/workflows/upload-thumbnails.yml`) runs automatically when template files change, or can be triggered manually from the Actions UI.
+
+Required GitHub secrets: `DATABASE_URL`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+
 ## Available Templates
 
-The service supports 20+ template layouts with 15+ color palettes:
+The service supports 20 template layouts with 165 variants:
 
 ### Professional Templates
-- `london-navy` - Classic elegance, traditional formatting
-- `dublin-slate` - Clean traditional layout
-- `stockholm-*` - Refined Scandinavian design
-- `chicago-*` - Bold executive header
-- `boston-*` - Compact academic layout
+- `london-*` — Classic elegance, traditional formatting
+- `dublin-*` — Clean traditional layout
+- `stockholm-*` — Refined Scandinavian design
+- `chicago-*` — Bold executive header
+- `boston-*` — Compact academic layout
 
 ### Modern Templates
-- `berlin-ocean` - Modern left-aligned with accent bars
-- `amsterdam-teal` - Ultra-minimal with whitespace
-- `copenhagen-*` - Clean two-column with sidebar
-- `vancouver-*` - Modern right sidebar
-- `singapore-*` - Tech-focused design
+- `berlin-*` — Modern left-aligned with accent bars
+- `amsterdam-*` — Ultra-minimal with whitespace
+- `copenhagen-*` — Clean two-column with sidebar
+- `vancouver-*` — Modern right sidebar
+- `singapore-*` — Tech-focused design
 
 ### Creative Templates
-- `tokyo-violet` - Bold banner design
-- `sydney-*` - Timeline-based layout
-- `barcelona-*` - Colorful sidebar design
-- `milan-*` - Fashion-forward elegant
-- `rio-*` - Vibrant and eye-catching
+- `tokyo-*` — Bold banner design
+- `sydney-*` — Timeline-based layout
+- `barcelona-*` — Colorful sidebar design
+- `milan-*` — Fashion-forward elegant
+- `rio-*` — Vibrant and eye-catching
 
 ### Simple Templates
-- `toronto-graphite` - Simple and professional
-- `seattle-*` - Minimal clean design
-- `austin-*` - Casual yet professional
-- `denver-*` - Entry-level friendly
-- `phoenix-*` - Basic clean format
+- `toronto-*` — Simple and professional
+- `seattle-*` — Minimal clean design
+- `austin-*` — Casual yet professional
+- `denver-*` — Entry-level friendly
+- `phoenix-*` — Basic clean format
 
-See `src/services/templates.ts` for complete list of template variants.
+### New Layout Types (added)
+- `split-panel` — 33% colored sidebar, 67% white body
+- `ruled-elegant` — Serif, horizontal ruled section dividers
+- `top-accent` — 8px top strip, name left / contact right
+- `column-split` — Full-width header, 58/42 two-column body
+- `bordered-page` — Colored border frame, centered serif name
+
+See `prisma/seeds/templates.ts` for the complete list of template IDs.
 
 ## Performance
 
 ### Benchmarks
 
-Based on test results:
-- **First generation**: ~2.3 seconds
-- **Subsequent generations**: ~2.3 seconds (browser reuse)
-- **File size**: ~118 KB per PDF
-- **Success criteria**: < 5 seconds per generation ✅
+- **First generation** (cold start, Chromium decompression): ~5–8 seconds
+- **Subsequent generations**: ~2–3 seconds (browser instance reused)
+- **File size**: ~100–150 KB per PDF
+- **Thumbnail generation**: ~1–2 seconds (browser reused)
 
 ### Optimization Features
 
-1. **Browser Instance Reuse**: Single browser instance is reused across multiple PDF generations
-2. **Memory Management**: Pages are closed after generation, browser is kept alive
-3. **Timeout Protection**: All operations have configurable timeouts
-4. **Graceful Shutdown**: Browser is properly closed on app shutdown
+1. **Browser instance reuse** — single Puppeteer instance shared across all requests
+2. **Promise lock** — `browserInitPromise` ensures only one `chromium.executablePath()` decompress/launch runs at a time, preventing `ETXTBSY` errors under concurrent load
+3. **Cached executable path** — `cachedExecutablePath` stores the resolved path after first call
+4. **Thumbnail concurrency limit** — max 3 thumbnails generated simultaneously; additional requests queue
+5. **Auto-reconnect** — `browser.on('disconnected')` resets state so the next request re-launches
 
 ## API Reference
 
 ### `generatePDFFromReact(templateId, resumeData, customColors?)`
 
-Generate a PDF from React template.
+Generate a PDF from a React template.
 
 **Parameters:**
-- `templateId` (string): Template variant ID (e.g., 'london-navy')
+- `templateId` (string): Template variant ID (e.g., `'london-navy'`)
 - `resumeData` (ParsedResumeData): Resume data to render
 - `customColors` (object, optional): Custom color overrides
   - `primaryColor` (string): Primary color hex code
   - `secondaryColor` (string): Secondary color hex code
   - `accentColor` (string): Accent color hex code
 
-**Returns:** `Promise<Buffer>` - PDF as Buffer
-
-**Throws:** Error if generation fails
+**Returns:** `Promise<Buffer>` — PDF as Buffer
 
 ### `generatePDFWithTimeout(templateId, resumeData, customColors?, timeoutMs?)`
 
 Generate PDF with timeout protection.
 
-**Parameters:**
-- Same as `generatePDFFromReact`
+**Parameters:** Same as `generatePDFFromReact`, plus:
 - `timeoutMs` (number, optional): Timeout in milliseconds (default: 10000)
 
-**Returns:** `Promise<Buffer>` - PDF as Buffer
-
-**Throws:** Error if generation fails or times out
+**Returns:** `Promise<Buffer>` — PDF as Buffer
 
 ### `batchGeneratePDFs(requests)`
 
 Generate multiple PDFs in sequence.
 
 **Parameters:**
-- `requests` (array): Array of generation requests
-  - `templateId` (string): Template variant ID
-  - `resumeData` (ParsedResumeData): Resume data
-  - `customColors` (object, optional): Custom colors
+- `requests` (array): `{ templateId, resumeData, customColors? }[]`
 
-**Returns:** `Promise<Buffer[]>` - Array of PDF Buffers
+**Returns:** `Promise<Buffer[]>`
 
-**Throws:** Error if any generation fails
+### `generateTemplateThumbnail(templateId)`
+
+Generate a JPEG thumbnail screenshot for a template (using sample resume data).
+
+**Returns:** `Promise<Buffer>` — JPEG image as Buffer
+
+### `warmupThumbnails()`
+
+Pre-generate thumbnails for all templates in the database. Used by the `/thumbnails/regenerate` endpoint.
+
+**Returns:** `Promise<void>`
+
+### `clearThumbnailCache(templateId?)`
+
+Clear the in-memory thumbnail cache. Pass `templateId` to clear a single entry, or omit to clear all.
 
 ### `healthCheck()`
 
 Check if browser is connected and can generate PDFs.
 
-**Returns:** `Promise<object>`
-- `browserConnected` (boolean): Browser connection status
-- `canGeneratePDF` (boolean): Whether PDF generation works
-- `error` (string, optional): Error message if failed
+**Returns:** `Promise<{ browserConnected: boolean; canGeneratePDF: boolean; error?: string }>`
 
 ### `closeBrowser()`
 
@@ -241,75 +284,16 @@ try {
 
 ## Graceful Shutdown
 
-The service automatically handles graceful shutdown:
-
 ```typescript
-// Automatic cleanup on shutdown
+import { closeBrowser } from './services/react-pdf-generator';
+
+// Registered automatically in server.ts:
 process.on('SIGTERM', () => closeBrowser());
 process.on('SIGINT', () => closeBrowser());
 
 // Manual cleanup
-import { closeBrowser } from './services/react-pdf-generator';
-
-// On app shutdown
 await closeBrowser();
 ```
-
-## Testing
-
-Run the test suite:
-
-```bash
-npm run test:pdf-generator
-# or
-npx ts-node src/test-pdf-generator.ts
-```
-
-The test suite includes:
-1. Health check test
-2. Basic PDF generation
-3. Custom colors test
-4. Multiple templates test
-5. Performance test (browser reuse)
-6. File size validation
-
-Test output is saved to `test-output/` directory.
-
-## Troubleshooting
-
-### Browser Launch Failed
-
-If Puppeteer fails to launch:
-
-1. Install Chrome/Chromium manually
-2. Set `PUPPETEER_EXECUTABLE_PATH` environment variable
-3. Check system resources (memory, disk space)
-
-### PDF Generation Timeout
-
-If generation takes too long:
-
-1. Increase timeout: `generatePDFWithTimeout(..., 30000)`
-2. Check browser resources
-3. Simplify resume data (remove large images)
-
-### File Size Too Large
-
-If PDFs exceed 500KB:
-
-1. Reduce number of sections
-2. Optimize images (if using photos)
-3. Simplify formatting
-4. Use simpler templates
-
-### Memory Leaks
-
-If memory usage grows over time:
-
-1. Ensure `closeBrowser()` is called on shutdown
-2. Check that pages are being closed after generation
-3. Monitor browser instance count
-4. Restart browser periodically: `await closeBrowser(); await getBrowser();`
 
 ## Architecture
 
@@ -319,49 +303,93 @@ If memory usage grows over time:
 └─────────────────────────────────────────────────────────────┘
 
 1. Input: Resume Data + Template ID + Colors
-           ↓
-2. Get Template Config (from templates.ts)
-           ↓
-3. Create React Component (BaseTemplate)
-           ↓
+          ↓
+2. Get Template Config (from template registry)
+          ↓
+3. Create React Component (layout-specific)
+          ↓
 4. Render to HTML String (ReactDOMServer)
-           ↓
+          ↓
 5. Wrap in Full HTML Document with Styles
-           ↓
-6. Get/Create Puppeteer Browser Instance (reused)
-           ↓
+          ↓
+6. Get/Create Puppeteer Browser Instance (singleton, locked)
+          ↓
 7. Create New Page
-           ↓
+          ↓
 8. Set HTML Content
-           ↓
-9. Generate PDF (with proper settings)
-           ↓
+          ↓
+9. Generate PDF (A4, proper margins)
+          ↓
 10. Close Page (keep browser alive)
-           ↓
+          ↓
 11. Return PDF Buffer
+
+┌─────────────────────────────────────────────────────────────┐
+│                  Thumbnail Serving Flow                     │
+└─────────────────────────────────────────────────────────────┘
+
+GET /:templateId/thumbnail
+          ↓
+DB lookup previewImageUrl
+          ↓
+  External URL? ──→ 302 redirect to Cloudinary (fast path)
+          ↓
+  No URL → generate with Puppeteer
+          ↓
+  Serve JPEG immediately
+          ↓
+  Upload to Cloudinary in background → update DB
 ```
 
-## Best Practices
+## Troubleshooting
 
-1. **Reuse Browser Instance**: Don't call `closeBrowser()` between requests
-2. **Use Timeouts**: Always use `generatePDFWithTimeout()` in production
-3. **Error Handling**: Wrap all calls in try-catch blocks
-4. **Memory Management**: Close browser on app shutdown
-5. **File Size**: Monitor PDF sizes, keep under 500KB
-6. **Performance**: Batch multiple requests if possible
-7. **Testing**: Test with real resume data before deploying
+### Chromium decompress is slow on first request
 
-## Future Enhancements
+`@sparticuz/chromium` decompresses its binary from `node_modules` to `/tmp` on the first call to `chromium.executablePath()`. This adds ~3–5 seconds to the very first PDF/thumbnail request after a cold start. Subsequent requests reuse the running browser instance and are fast.
 
-Potential improvements:
+### `spawn ETXTBSY` under concurrent load
 
-- [ ] Add watermark support
-- [ ] Support for custom fonts (Google Fonts)
-- [ ] Multi-page resume support with page numbers
-- [ ] Header/footer customization
-- [ ] PDF metadata (title, author, keywords)
-- [ ] Compression options for smaller file sizes
-- [ ] Parallel batch processing
-- [ ] PDF/A format support for archival
-- [ ] Accessibility features (tagged PDF)
-- [ ] Custom page sizes (Letter, Legal, etc.)
+This happens when multiple requests all try to decompress the Chromium binary simultaneously. The `browserInitPromise` lock prevents this: only one init runs at a time, all other callers await the same promise.
+
+### PDF generation timeout
+
+If generation takes too long:
+
+1. Increase timeout: `generatePDFWithTimeout(..., 30000)`
+2. Check available memory (Chromium needs ~200MB)
+3. Simplify resume data (remove large photo URLs)
+
+### File size too large
+
+If PDFs exceed 500KB:
+
+1. Reduce number of sections
+2. Optimize profile photos (serve smaller images from Cloudinary)
+3. Use simpler templates (avoid heavy background images)
+
+### Memory usage growing
+
+1. Ensure `closeBrowser()` is called on shutdown
+2. Verify pages are being closed after each generation
+3. `browser.on('disconnected')` resets `browserInstance` automatically — check logs for unexpected disconnects
+
+### Thumbnails showing 500 in production
+
+All thumbnails should be pre-uploaded to Cloudinary using `scripts/upload-thumbnails.ts` or the GitHub Actions workflow. If a thumbnail still hits the slow path (Puppeteer) in production and times out, check that:
+- The GitHub Actions secrets are configured
+- The workflow ran successfully after the last template seed
+- `previewImageUrl` is set in the database for the affected template
+
+## Local Development
+
+For local development, Puppeteer uses its bundled Chromium (downloaded on `npm install`) unless you set `PUPPETEER_EXECUTABLE_PATH` to point to a local Chrome binary.
+
+```bash
+# No extra setup needed — Puppeteer downloads Chromium on npm install
+npm install
+
+# Optional: use system Chrome
+PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable npm run dev
+```
+
+In CI (GitHub Actions), Chrome is pre-installed at `/usr/bin/google-chrome-stable`. Set `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true` and `PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable` to use it directly.
