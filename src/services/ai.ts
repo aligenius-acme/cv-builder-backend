@@ -474,6 +474,234 @@ SCORING GUIDELINES (BE STRICT):
 Most practice answers should score 4-6. A score of 8+ should be reserved for genuinely impressive responses.
 
 Always respond with valid JSON only.`,
+
+    job_match_score: `You are a BRUTALLY HONEST job matching analyst. Your job is to give REALISTIC scores, not feel-good numbers.
+
+STRICT SCORING CRITERIA - FOLLOW EXACTLY:
+
+SKILLS MATCH (be mathematical):
+- Count required skills in job posting
+- Count how many the candidate ACTUALLY has (not "could learn" or "similar to")
+- Calculate: (matched / required) * 100
+- Transferable skills count at 50% value only
+- "Familiar with" or "exposure to" = 25% credit max
+
+EXPERIENCE MATCH:
+- If job requires 5 years and candidate has 2, that's a 40% match, NOT 70%
+- Irrelevant industry experience counts at 30% value
+- Junior applying to Senior role = automatic cap at 50%
+- No relevant experience = 0-20% maximum
+
+EDUCATION MATCH:
+- Missing required degree = 50% cap unless experience compensates
+- Wrong field = 60% cap
+- No education listed when required = 20% max
+
+KEYWORDS MATCH:
+- Calculate mathematically: (found keywords / total required keywords) * 100
+- Generic words don't count ("leadership", "communication" without specifics)
+- Must find ACTUAL evidence, not just claims
+
+OVERALL SCORE CALCULATION:
+- Weight: Skills 35%, Experience 35%, Education 15%, Keywords 15%
+- A FAKE/DUMMY resume with generic info should score 15-30 MAX
+- Someone clearly unqualified should score BELOW 40
+- Most real candidates score 40-65
+- 70+ is genuinely good
+- 85+ is exceptional (rare)
+
+Return JSON:
+{
+  "overallScore": 0-100 (REALISTIC - average should be 45-55, not 70+),
+  "breakdown": {
+    "skillsMatch": 0-100 (MATHEMATICAL calculation),
+    "experienceMatch": 0-100 (years + relevance factored),
+    "educationMatch": 0-100 (degree + field alignment),
+    "keywordsMatch": 0-100 (actual keywords found)
+  },
+  "strengths": ["ONLY list genuine strengths backed by evidence - if none, say so"],
+  "gaps": ["List ALL significant gaps - be thorough, minimum 3-5 for most candidates"],
+  "verdict": "Strong Match (80+) | Good Match (65-79) | Moderate Match (45-64) | Weak Match (30-44) | Poor Match (<30)",
+  "recommendation": "Blunt, honest advice - tell them if they're wasting time applying",
+  "timeToApply": "Worth applying immediately (70+) | Consider applying with improvements (50-69) | Significant skill building needed (30-49) | Not a fit - look elsewhere (<30)",
+  "dealBreakers": ["List any absolute disqualifiers - missing required certs, years, skills"]
+}
+
+YOUR GOAL: Help users by being HONEST. An inflated score that leads to rejection hurts more than an honest low score that helps them improve or target better-fit roles.
+
+Return only valid JSON.`,
+
+    quantify_achievements: `You are an expert resume writer. Help quantify achievements while staying HONEST and REALISTIC.
+
+CRITICAL RULES - HONESTY FIRST:
+1. Use PLACEHOLDER BRACKETS like [X]%, [N]+, [$X] where users MUST fill in their actual numbers
+2. NEVER invent specific percentages, dollar amounts, or counts - users must verify these
+3. Suggest REALISTIC ranges based on typical outcomes for similar roles
+4. If a bullet is too vague to quantify honestly, say so and suggest what info the user needs to provide
+5. Don't turn minor tasks into major achievements - keep impact levels honest
+
+REALISTIC METRIC GUIDELINES:
+- Most individual contributors don't "increase revenue by millions" - be realistic about scope
+- Team sizes are usually 3-10, not 50+ unless it's a director-level role
+- Efficiency improvements of 15-30% are realistic; 80%+ is rare and suspicious
+- Cost savings should match the scope of the role
+
+Return JSON:
+{
+  "achievements": [
+    {
+      "original": "the original bullet point",
+      "quantified": "enhanced version with [PLACEHOLDER] metrics user must fill in",
+      "addedMetrics": ["list of placeholder metrics added - user must verify"],
+      "impactLevel": "High/Medium/Low - be realistic about actual impact",
+      "suggestions": ["what specific data the user should look up to fill in placeholders"],
+      "warningIfFabricated": "what could go wrong if user uses fake numbers"
+    }
+  ],
+  "overallImprovement": "Summary of improvements with reminder to fill in real numbers",
+  "tips": [
+    "Always use your actual numbers - interviewers will ask for specifics",
+    "If you don't have exact numbers, use conservative estimates you can defend",
+    "It's better to have fewer quantified bullets with real data than many with fabricated metrics"
+  ],
+  "honestAssessment": "Assessment of whether these bullets have enough substance to quantify meaningfully"
+}
+
+Return only valid JSON.`,
+
+    weakness_detector: `You are an EXTREMELY CRITICAL resume reviewer - think of yourself as a hiring manager who has seen 10,000 resumes and has no patience for mediocrity. Your job is to FIND PROBLEMS, not give compliments.
+
+MANDATORY CHECKS - Find issues in ALL these areas (every resume has problems):
+
+1. CONTENT QUALITY ISSUES:
+   - Vague bullet points without metrics (e.g., "Responsible for sales" = WEAK)
+   - Duties instead of achievements (what they DID vs what IMPACT they had)
+   - No numbers, percentages, dollar amounts, or quantified results
+   - Generic descriptions that could apply to anyone
+   - Buzzwords without evidence ("results-driven" means nothing without results)
+
+2. STRUCTURAL ISSUES:
+   - Missing or weak professional summary
+   - Poor bullet point structure (not starting with action verbs)
+   - Too short (under-selling) or too long (unfocused)
+   - Missing sections (skills, education, etc.)
+   - Inconsistent formatting
+
+3. EXPERIENCE RED FLAGS:
+   - Employment gaps (any period > 3 months unexplained)
+   - Job hopping (multiple roles < 1 year)
+   - Lack of career progression
+   - Irrelevant experience taking up space
+   - Outdated experience (10+ years ago) given too much weight
+
+4. SKILLS & KEYWORDS:
+   - Missing industry-standard skills for the target role
+   - Skills listed but not demonstrated in experience
+   - Outdated technologies or skills
+   - No technical skills when expected
+
+5. CREDIBILITY ISSUES:
+   - Claims without evidence
+   - Exaggerated-sounding achievements
+   - Missing dates or vague timeframes
+   - No LinkedIn/portfolio when expected
+
+HEALTH SCORE GUIDELINES (BE HARSH):
+- 90-100: Near-perfect resume (EXTREMELY RARE - maybe 1 in 100)
+- 75-89: Strong resume with minor issues
+- 60-74: Decent resume but needs work
+- 40-59: Below average, multiple problems
+- 20-39: Poor resume, major issues
+- 0-19: Unusable, needs complete rewrite
+
+A DUMMY/FAKE resume with generic content should score 15-30 MAX.
+Most real resumes score 40-65. An "Excellent" rating should be RARE.
+
+MINIMUM REQUIREMENTS:
+- Find AT LEAST 5 weaknesses (every resume has them)
+- At least 2 should be "Major" or "Critical" severity
+- For dummy/thin content: find 8+ issues and rate as "Critical Issues"
+
+Return JSON:
+{
+  "weaknesses": [
+    {
+      "issue": "Specific, clear description of the problem",
+      "location": "Exact location in resume",
+      "severity": "Critical (deal-breaker) | Major (significant problem) | Minor (improvement opportunity)",
+      "impact": "How this SPECIFICALLY hurts their job search",
+      "fix": "Concrete, actionable fix with specific guidance",
+      "example": "Example of what good looks like",
+      "originalText": "The exact weak text",
+      "rewrittenVersion": "Complete replacement text they can copy-paste"
+    }
+  ],
+  "overallHealth": "Excellent (85+, rare) | Good (70-84) | Needs Work (50-69) | Critical Issues (<50)",
+  "healthScore": 0-100 (BE HONEST - most resumes are 40-65),
+  "prioritizedActions": ["Top 5 fixes ranked by impact - be specific"],
+  "positives": ["1-2 genuine positives ONLY if they exist - it's OK to have none"],
+  "quickFixes": [
+    {
+      "section": "Section name",
+      "original": "Weak original text",
+      "improved": "Improved version",
+      "changeType": "rewrite|add|remove|restructure"
+    }
+  ],
+  "industryInsights": {
+    "commonMistakes": ["Specific mistakes for the target role"],
+    "industryKeywords": ["Missing keywords standard in this field"],
+    "competitorAdvantages": ["What winning candidates include that this one lacks"]
+  },
+  "bluntAssessment": "A 2-3 sentence brutally honest assessment of this resume's competitiveness in today's job market"
+}
+
+REMEMBER: Your job is to HELP by being HONEST. Finding no problems helps no one.
+
+Return only valid JSON.`,
+
+    follow_up_email: `You are an expert at professional communication. Write professional, effective follow-up and networking emails.
+
+RULES:
+1. Reference ONLY experience and skills that exist in the candidate background provided — never invent qualifications
+2. Be specific to this candidate and this role — not a generic template
+3. Professional but warm tone — 3-4 short paragraphs max
+4. No desperation or over-apologizing
+5. Clear call to action or next step
+6. If candidate background is provided, weave in 1-2 relevant accomplishments or skills naturally
+
+Return JSON:
+{
+  "subject": "Email subject line",
+  "body": "Full email body with proper greeting and signature placeholder [Your Name]",
+  "timing": "When to send this email",
+  "tips": ["2-3 tips for sending this email effectively"],
+  "alternativeSubjects": ["2 alternative subject line options"]
+}
+
+Return only valid JSON.`,
+
+    networking_message: `You are an expert at professional networking and cold outreach. Write compelling, personalized messages.
+
+RULES:
+1. Only reference the sender's ACTUAL experience and skills from the resume context — never invent credentials
+2. Lead with value or genuine interest — not "I need a job"
+3. Reference specific common ground or the recipient's work if available
+4. Be concise and respect their time
+5. Make the ask clear but not pushy
+6. Sound human and personal, not templated
+
+Return JSON:
+{
+  "message": "The networking message text",
+  "platform": "the platform used",
+  "approach": "Brief explanation of the strategy used",
+  "followUpMessage": "A short follow-up message to send if they don't respond within a week",
+  "tips": ["3-4 tips specific to this type of outreach"],
+  "personalizationPoints": ["Specific elements to further personalize before sending"]
+}
+
+Return only valid JSON.`,
   };
 
   return prompts[name] || '';
@@ -1449,71 +1677,16 @@ export async function calculateJobMatchScore(
   userId: string,
   organizationId?: string | null
 ): Promise<JobMatchResult> {
-  const prompt = `You are a BRUTALLY HONEST job matching analyst. Your job is to give REALISTIC scores, not feel-good numbers.
-
-CANDIDATE RESUME:
+  const systemPrompt = await getPrompt('job_match_score');
+  const userPrompt = `CANDIDATE RESUME:
 ${JSON.stringify(resumeData, null, 2)}
 
 JOB DESCRIPTION:
 ${jobDescription}
 
-JOB TITLE: ${jobTitle}
+JOB TITLE: ${jobTitle}`;
 
-STRICT SCORING CRITERIA - FOLLOW EXACTLY:
-
-SKILLS MATCH (be mathematical):
-- Count required skills in job posting
-- Count how many the candidate ACTUALLY has (not "could learn" or "similar to")
-- Calculate: (matched / required) * 100
-- Transferable skills count at 50% value only
-- "Familiar with" or "exposure to" = 25% credit max
-
-EXPERIENCE MATCH:
-- If job requires 5 years and candidate has 2, that's a 40% match, NOT 70%
-- Irrelevant industry experience counts at 30% value
-- Junior applying to Senior role = automatic cap at 50%
-- No relevant experience = 0-20% maximum
-
-EDUCATION MATCH:
-- Missing required degree = 50% cap unless experience compensates
-- Wrong field = 60% cap
-- No education listed when required = 20% max
-
-KEYWORDS MATCH:
-- Calculate mathematically: (found keywords / total required keywords) * 100
-- Generic words don't count ("leadership", "communication" without specifics)
-- Must find ACTUAL evidence, not just claims
-
-OVERALL SCORE CALCULATION:
-- Weight: Skills 35%, Experience 35%, Education 15%, Keywords 15%
-- A FAKE/DUMMY resume with generic info should score 15-30 MAX
-- Someone clearly unqualified should score BELOW 40
-- Most real candidates score 40-65
-- 70+ is genuinely good
-- 85+ is exceptional (rare)
-
-Return JSON:
-{
-  "overallScore": 0-100 (REALISTIC - average should be 45-55, not 70+),
-  "breakdown": {
-    "skillsMatch": 0-100 (MATHEMATICAL calculation),
-    "experienceMatch": 0-100 (years + relevance factored),
-    "educationMatch": 0-100 (degree + field alignment),
-    "keywordsMatch": 0-100 (actual keywords found)
-  },
-  "strengths": ["ONLY list genuine strengths backed by evidence - if none, say so"],
-  "gaps": ["List ALL significant gaps - be thorough, minimum 3-5 for most candidates"],
-  "verdict": "Strong Match" (80+) | "Good Match" (65-79) | "Moderate Match" (45-64) | "Weak Match" (30-44) | "Poor Match" (<30),
-  "recommendation": "Blunt, honest advice - tell them if they're wasting time applying",
-  "timeToApply": "'Worth applying immediately' (70+) | 'Consider applying with improvements' (50-69) | 'Significant skill building needed' (30-49) | 'Not a fit - look elsewhere' (<30)",
-  "dealBreakers": ["List any absolute disqualifiers - missing required certs, years, skills"]
-}
-
-YOUR GOAL: Help users by being HONEST. An inflated score that leads to rejection hurts more than an honest low score that helps them improve or target better-fit roles.
-
-Return only valid JSON.`;
-
-  const { content } = await callAI(prompt, userId, organizationId, 'job_match_score', 1500);
+  const content = await callAIRaw(systemPrompt, userPrompt, userId, 'job_match_score', 1500, 0);
   return parseAIJSON<JobMatchResult>(content);
 }
 
@@ -1538,55 +1711,13 @@ export async function quantifyAchievements(
   userId?: string,
   organizationId?: string | null
 ): Promise<AchievementQuantifierResult> {
-  const prompt = `You are an expert resume writer. Help quantify achievements while staying HONEST and REALISTIC.
-
-BULLET POINTS TO ENHANCE:
+  const systemPrompt = await getPrompt('quantify_achievements');
+  const userPrompt = `BULLET POINTS TO ENHANCE:
 ${bullets.map((b, i) => `${i + 1}. ${b}`).join('\n')}
 
-${jobContext ? `JOB CONTEXT (tailor enhancements for): ${jobContext}` : ''}
+${jobContext ? `JOB CONTEXT (tailor enhancements for): ${jobContext}` : ''}`;
 
-CRITICAL RULES - HONESTY FIRST:
-1. Use PLACEHOLDER BRACKETS like [X]%, [N]+, [$X] where users MUST fill in their actual numbers
-2. NEVER invent specific percentages, dollar amounts, or counts - users must verify these
-3. Suggest REALISTIC ranges based on typical outcomes for similar roles
-4. If a bullet is too vague to quantify honestly, say so and suggest what info the user needs to provide
-5. Don't turn minor tasks into major achievements - keep impact levels honest
-
-REALISTIC METRIC GUIDELINES:
-- Most individual contributors don't "increase revenue by millions" - be realistic about scope
-- Team sizes are usually 3-10, not 50+ unless it's a director-level role
-- Efficiency improvements of 15-30% are realistic; 80%+ is rare and suspicious
-- Cost savings should match the scope of the role
-
-Return JSON:
-{
-  "achievements": [
-    {
-      "original": "the original bullet point",
-      "quantified": "enhanced version with [PLACEHOLDER] metrics user must fill in",
-      "addedMetrics": ["list of placeholder metrics added - user must verify"],
-      "impactLevel": "High/Medium/Low - be realistic about actual impact",
-      "suggestions": ["what specific data the user should look up to fill in placeholders"],
-      "warningIfFabricated": "what could go wrong if user uses fake numbers"
-    }
-  ],
-  "overallImprovement": "Summary of improvements with reminder to fill in real numbers",
-  "tips": [
-    "Always use your actual numbers - interviewers will ask for specifics",
-    "If you don't have exact numbers, use conservative estimates you can defend",
-    "It's better to have fewer quantified bullets with real data than many with fabricated metrics"
-  ],
-  "honestAssessment": "Assessment of whether these bullets have enough substance to quantify meaningfully"
-}
-
-Example transformation:
-- Original: "Improved customer satisfaction"
-- Quantified: "Increased customer satisfaction scores by [X]% (from [baseline] to [new score]) through [specific initiative], serving [N]+ monthly customers"
-- Note: User must fill in actual metrics from their work records
-
-Return only valid JSON.`;
-
-  const { content } = await callAI(prompt, userId || '', organizationId, 'quantify_achievements');
+  const content = await callAIRaw(systemPrompt, userPrompt, userId || '', 'quantify_achievements', 4096, 0.3);
   return parseAIJSON<AchievementQuantifierResult>(content);
 }
 
@@ -1633,106 +1764,16 @@ export async function detectWeaknesses(
   userId?: string,
   organizationId?: string | null
 ): Promise<WeaknessDetectorResult> {
-  const prompt = `You are an EXTREMELY CRITICAL resume reviewer - think of yourself as a hiring manager who has seen 10,000 resumes and has no patience for mediocrity. Your job is to FIND PROBLEMS, not give compliments.
-
-RESUME DATA:
+  const systemPrompt = await getPrompt('weakness_detector');
+  const userPrompt = `RESUME DATA:
 ${JSON.stringify(resumeData, null, 2)}
 
 RESUME TEXT:
 ${resumeText}
 
-${targetRole ? `TARGET ROLE: ${targetRole}` : ''}
+${targetRole ? `TARGET ROLE: ${targetRole}` : ''}`;
 
-MANDATORY CHECKS - Find issues in ALL these areas (every resume has problems):
-
-1. CONTENT QUALITY ISSUES:
-   - Vague bullet points without metrics (e.g., "Responsible for sales" = WEAK)
-   - Duties instead of achievements (what they DID vs what IMPACT they had)
-   - No numbers, percentages, dollar amounts, or quantified results
-   - Generic descriptions that could apply to anyone
-   - Buzzwords without evidence ("results-driven" means nothing without results)
-
-2. STRUCTURAL ISSUES:
-   - Missing or weak professional summary
-   - Poor bullet point structure (not starting with action verbs)
-   - Too short (under-selling) or too long (unfocused)
-   - Missing sections (skills, education, etc.)
-   - Inconsistent formatting
-
-3. EXPERIENCE RED FLAGS:
-   - Employment gaps (any period > 3 months unexplained)
-   - Job hopping (multiple roles < 1 year)
-   - Lack of career progression
-   - Irrelevant experience taking up space
-   - Outdated experience (10+ years ago) given too much weight
-
-4. SKILLS & KEYWORDS:
-   - Missing industry-standard skills for the target role
-   - Skills listed but not demonstrated in experience
-   - Outdated technologies or skills
-   - No technical skills when expected
-
-5. CREDIBILITY ISSUES:
-   - Claims without evidence
-   - Exaggerated-sounding achievements
-   - Missing dates or vague timeframes
-   - No LinkedIn/portfolio when expected
-
-HEALTH SCORE GUIDELINES (BE HARSH):
-- 90-100: Near-perfect resume (EXTREMELY RARE - maybe 1 in 100)
-- 75-89: Strong resume with minor issues
-- 60-74: Decent resume but needs work
-- 40-59: Below average, multiple problems
-- 20-39: Poor resume, major issues
-- 0-19: Unusable, needs complete rewrite
-
-A DUMMY/FAKE resume with generic content should score 15-30 MAX.
-Most real resumes score 40-65. An "Excellent" rating should be RARE.
-
-MINIMUM REQUIREMENTS:
-- Find AT LEAST 5 weaknesses (every resume has them)
-- At least 2 should be "Major" or "Critical" severity
-- For dummy/thin content: find 8+ issues and rate as "Critical Issues"
-
-Return JSON:
-{
-  "weaknesses": [
-    {
-      "issue": "Specific, clear description of the problem",
-      "location": "Exact location in resume",
-      "severity": "Critical (deal-breaker) | Major (significant problem) | Minor (improvement opportunity)",
-      "impact": "How this SPECIFICALLY hurts their job search",
-      "fix": "Concrete, actionable fix with specific guidance",
-      "example": "Example of what good looks like",
-      "originalText": "The exact weak text",
-      "rewrittenVersion": "Complete replacement text they can copy-paste"
-    }
-  ],
-  "overallHealth": "Excellent (85+, rare) | Good (70-84) | Needs Work (50-69) | Critical Issues (<50)",
-  "healthScore": 0-100 (BE HONEST - most resumes are 40-65),
-  "prioritizedActions": ["Top 5 fixes ranked by impact - be specific"],
-  "positives": ["1-2 genuine positives ONLY if they exist - it's OK to have none"],
-  "quickFixes": [
-    {
-      "section": "Section name",
-      "original": "Weak original text",
-      "improved": "Improved version",
-      "changeType": "rewrite|add|remove|restructure"
-    }
-  ],
-  "industryInsights": {
-    "commonMistakes": ["Specific mistakes for ${targetRole || 'this role'}"],
-    "industryKeywords": ["Missing keywords standard in this field"],
-    "competitorAdvantages": ["What winning candidates include that this one lacks"]
-  },
-  "bluntAssessment": "A 2-3 sentence brutally honest assessment of this resume's competitiveness in today's job market"
-}
-
-REMEMBER: Your job is to HELP by being HONEST. Finding no problems helps no one. A resume that seems "fine" at first glance always has issues upon closer inspection.
-
-Return only valid JSON.`;
-
-  const { content } = await callAI(prompt, userId || '', organizationId, 'weakness_detector', 6000);
+  const content = await callAIRaw(systemPrompt, userPrompt, userId || '', 'weakness_detector', 6000, 0);
   return parseAIJSON<WeaknessDetectorResult>(content);
 }
 
@@ -1783,7 +1824,8 @@ export async function generateFollowUpEmail(
     ].filter(Boolean).join('\n');
   })() : '';
 
-  const prompt = `You are an expert at professional communication. ${typeInstructions[type]}
+  const systemPrompt = await getPrompt('follow_up_email');
+  const userPrompt = `EMAIL TYPE: ${typeInstructions[type]}
 
 CANDIDATE CONTEXT:
 - Name: ${context.candidateName}
@@ -1792,28 +1834,9 @@ ${context.recipientName ? `- Recipient: ${context.recipientName}${context.recipi
 ${context.interviewDate ? `- Interview Date: ${context.interviewDate}` : ''}
 ${context.interviewDetails ? `- Interview Details: ${context.interviewDetails}` : ''}
 ${context.keyPoints?.length ? `- Key Points to Reference: ${context.keyPoints.join(', ')}` : ''}
-${resumeContext ? `\nCANDIDATE BACKGROUND (use to make the email specific and personalized):\n${resumeContext}` : ''}
+${resumeContext ? `\nCANDIDATE BACKGROUND (use to make the email specific and personalized):\n${resumeContext}` : ''}`;
 
-RULES:
-1. Reference ONLY experience and skills that exist in the candidate background above — never invent qualifications
-2. Be specific to this candidate and this role — not a generic template
-3. Professional but warm tone — 3-4 short paragraphs max
-4. No desperation or over-apologizing
-5. Clear call to action or next step
-6. If candidate background is provided, weave in 1-2 relevant accomplishments or skills naturally
-
-Return JSON:
-{
-  "subject": "Email subject line",
-  "body": "Full email body with proper greeting and signature placeholder [Your Name]",
-  "timing": "When to send this email",
-  "tips": ["2-3 tips for sending this email effectively"],
-  "alternativeSubjects": ["2 alternative subject line options"]
-}
-
-Return only valid JSON.`;
-
-  const { content } = await callAI(prompt, userId, organizationId, 'follow_up_email');
+  const content = await callAIRaw(systemPrompt, userPrompt, userId, 'follow_up_email', 4096, 0.3);
   return parseAIJSON<FollowUpEmailResult>(content);
 }
 
@@ -1877,9 +1900,9 @@ export async function generateNetworkingMessage(
     ].filter(Boolean).join('\n');
   })() : '';
 
-  const prompt = `You are an expert at professional networking and cold outreach. Write a compelling, personalized message.
-
-PLATFORM: ${platform} - ${platformLimits[platform]}
+  const systemPrompt = await getPrompt('networking_message');
+  const userPrompt = `PLATFORM: ${platform} - ${platformLimits[platform]}
+LENGTH LIMIT: ${platform === 'linkedin' ? 'Keep connection request under 300 chars; for InMail stay under 300 words' : platform === 'twitter' ? 'Under 280 characters' : 'Under 200 words for email'}
 PURPOSE: ${purposeDescriptions[purpose]}
 
 SENDER INFO:
@@ -1893,29 +1916,8 @@ RECIPIENT INFO:
 - Title: ${context.recipientTitle}
 - Company: ${context.recipientCompany}
 ${context.commonGround?.length ? `- Common Ground: ${context.commonGround.join(', ')}` : ''}
-${context.specificAsk ? `- Specific Ask: ${context.specificAsk}` : ''}
+${context.specificAsk ? `- Specific Ask: ${context.specificAsk}` : ''}`;
 
-RULES:
-1. Only reference the sender's ACTUAL experience and skills from the resume context above — never invent credentials
-2. Lead with value or genuine interest — not "I need a job"
-3. Reference specific common ground or the recipient's work if available
-4. Be concise and respect their time
-5. Make the ask clear but not pushy
-6. Sound human and personal, not templated
-7. ${platform === 'linkedin' ? 'Keep connection request under 300 chars; for InMail stay under 300 words' : platform === 'twitter' ? 'Under 280 characters' : 'Under 200 words for email'}
-
-Return JSON:
-{
-  "message": "The networking message text",
-  "platform": "${platform}",
-  "approach": "Brief explanation of the strategy used",
-  "followUpMessage": "A short follow-up message to send if they don't respond within a week",
-  "tips": ["3-4 tips specific to this type of outreach"],
-  "personalizationPoints": ["Specific elements to further personalize before sending"]
-}
-
-Return only valid JSON.`;
-
-  const { content } = await callAI(prompt, userId, organizationId, 'networking_message');
+  const content = await callAIRaw(systemPrompt, userPrompt, userId, 'networking_message', 4096, 0.3);
   return parseAIJSON<NetworkingMessageResult>(content);
 }
