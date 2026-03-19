@@ -113,154 +113,110 @@ Job Keywords:
 {job_keywords}
 
 CRITICAL SCORING RULES - FOLLOW EXACTLY:
-1. INCOMPLETE RESUME DETECTION: If sections contain actual placeholder text ("Lorem ipsum", "Dolor sit amet", "[Company Name]", "[Your Name]", "[Add description here]"), mark that section as incomplete and score it 0-15. Generic-sounding but real company names are NOT placeholders — only flag text that is literally a template placeholder
-2. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% - NOT 70%+. Count actual keyword presence, not approximations.
-3. DOMAIN/FIELD MISMATCH = SEVERE PENALTY: First, identify the primary field of the job (e.g. digital marketing, software engineering, healthcare, finance, sales). Then identify the primary field of the resume. If they are fundamentally different fields with no meaningful overlap, the score CANNOT exceed 30, regardless of any soft-skill matches. A software engineer applying to a marketing role, a nurse applying to an accounting role, a designer applying to a data science role — these are domain mismatches. Shared soft skills like "communication", "analytics", "project management", or "data-driven thinking" do NOT count as keyword matches when there is a domain mismatch.
-4. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly
-5. VAGUE CONTENT = LOW SCORE: Generic phrases like "team player" or "hard worker" without specifics score poorly
-6. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak
-7. IRRELEVANT EXPERIENCE = DOES NOT COUNT: Don't give credit for unrelated skills
-8. SHORT/THIN RESUMES score LOW: A resume with minimal content cannot score high
-9. EVALUATE ALL SECTIONS: Score must account for experience, education, skills, certifications, projects, volunteer work, awards, AND languages — do not ignore sections that appear after skills
-10. LABELLED URLS ARE NOT RISKY: Lines like "LinkedIn: linkedin.com/in/user" or "GitHub: github.com/user" are correctly formatted for ATS. Do NOT flag these as special character issues. Only flag URLs embedded inside pipe-separated strings or inside bullet points without labels
+1. INCOMPLETE RESUME DETECTION: If sections contain actual placeholder text ("Lorem ipsum", "[Company Name]", "[Your Name]", "[Add description here]"), mark that section incomplete and score it 0-15. Real company names are NOT placeholders.
+2. KEYWORD MATCHING IS MATHEMATICAL: If job requires 20 keywords and resume has 8, that's 40% — NOT 70%+. Count actual keyword presence, not approximations.
+3. DOMAIN/FIELD MISMATCH = SEVERE PENALTY: Identify the primary field of the job and the resume. If fundamentally different with no meaningful overlap, score CANNOT exceed 30. Shared soft skills like "communication", "analytics", "project management" do NOT count as keyword matches when there is a domain mismatch.
+4. MISSING KEYWORDS = MAJOR PENALTY: Each missing required skill drops the score significantly.
+5. VAGUE CONTENT = LOW SCORE: Generic phrases without specifics score poorly.
+6. NO METRICS = PENALTY: Bullet points without numbers/percentages/results are weak.
+7. IRRELEVANT EXPERIENCE = DOES NOT COUNT.
+8. SHORT/THIN RESUMES score LOW.
+9. EVALUATE ALL SECTIONS: experience, education, skills, certifications, projects, volunteer work, awards, languages.
+10. LABELLED URLS ARE NOT RISKY: "LinkedIn: linkedin.com/in/user" is correctly formatted. Only flag URLs inside pipe-separated strings or unlabelled in bullet points.
 
 SCORE GUIDELINES (BE STRICT):
 - 90-100: Near-perfect keyword match, quantified achievements, directly relevant experience (RARE)
 - 75-89: Strong match with most keywords, good metrics, relevant background
 - 60-74: Moderate match, some relevant keywords, lacks quantification
 - 40-59: Weak match, missing many keywords, vague descriptions
-- 20-39: Poor match, mostly irrelevant content or domain mismatch
-- 0-19: Essentially no match — different field entirely
+- 20-39: Poor match, mostly irrelevant or domain mismatch
+- 0-19: Essentially no match
 
 A resume missing 50%+ of required skills should score BELOW 50.
-A resume from a completely different field/domain should score BELOW 30.
+A resume from a completely different field should score BELOW 30.
 
-CRITICAL: You MUST provide ALL fields below. Do NOT skip quickWins, actionPlan, or detailedRecommendations - they are REQUIRED.
+HARD SCORE CEILING BASED ON MISSING KEYWORDS (NON-NEGOTIABLE):
+- >70% keywords missing → score CANNOT exceed 40
+- >50% keywords missing → score CANNOT exceed 55
+- >30% keywords missing → score CANNOT exceed 70
 
-Provide a detailed analysis as JSON (ALL FIELDS REQUIRED):
+TOKEN ECONOMY: Be concise in all text fields. Do NOT reproduce the full resume. Prioritise completing all required fields over verbose explanations.
+
+Return only valid JSON with ALL fields populated:
 {
-  "score": 0-100 (BE HONEST - most resumes score 40-70, not 80+),
-  "keywordMatchPercentage": ACTUAL percentage calculated mathematically,
-  "matchedKeywords": [...keywords ACTUALLY found - must exist verbatim or as clear synonyms],
-  "missingKeywords": [...keywords NOT in resume - be thorough],
+  "score": 0-100 (BE HONEST — most resumes score 40-70),
+  "keywordMatchPercentage": calculated mathematically,
+  "matchedKeywords": [...keywords actually found — verbatim or clear synonyms],
+  "missingKeywords": [...keywords NOT in resume — be thorough],
   "sectionScores": {
-    "summary": 0-100 (score based on job keyword presence — 0 if missing, 10-30 if no job keywords appear, 40-60 if 1-2 keywords, 70+ only if multiple job keywords appear naturally),
-    "experience": 0-100 (score based on relevance to THIS job — irrelevant experience from a different domain scores 10-25 regardless of quality; quantified achievements in the right domain score higher),
-    "skills": 0-100 (count ONLY skills that match job requirements — a skills list of 20 unrelated technologies scores 10-20; only relevant matching skills contribute to this score),
-    "education": 0-100 (relevant degree/field scores higher; unrelated degree scores 20-40; missing preferred certifications reduce score),
-    "formatting": 0-100 (structure, readability, ATS-friendliness — this is the only section scored purely on quality, not domain relevance)
+    "summary": 0-100,
+    "experience": 0-100,
+    "skills": 0-100,
+    "education": 0-100,
+    "formatting": 0-100
   },
-  "formattingIssues": [...any formatting problems with specific line/section references],
-  "recommendations": [
-    "CRITICAL - [SPECIFIC SECTION]: [EXACT PROBLEM]. FIX: [DETAILED SOLUTION WITH EXAMPLE]. IMPACT: +X points. EXAMPLE: 'Change [current text] to [improved version with metrics/keywords]'",
-    "HIGH PRIORITY - Add missing keyword '[KEYWORD]' to [SPECIFIC SECTION]. SUGGESTION: '[Exact sentence showing how to naturally incorporate this keyword]'. This keyword appears in X% of successful applications.",
-    "URGENT - [SECTION] lacks quantifiable metrics. ADD: Specific numbers, percentages, dollar amounts, team sizes, user counts. BEFORE: '[vague bullet]' AFTER: '[quantified version]' (+5-10 points)",
-    "IMMEDIATE - Missing [X] critical keywords: [list]. These appear in 80%+ of accepted resumes. Add to: [specific sections with exact placement suggestions]",
-    "REQUIRED - Strengthen [SECTION] by: [3-5 specific, numbered steps with examples]. Current score: X/100, Target: Y/100",
-    ... (minimum 10-15 SPECIFIC recommendations, prioritized by impact)
-  ],
+  "formattingIssues": [...specific formatting problems],
+  "recommendations": ["MINIMUM 10 SPECIFIC recommendations — each must name the exact section, quote current text, and provide improved version with keywords"],
   "detailedRecommendations": {
     "criticalIssues": [
       {
-        "issue": "Specific critical issue found in THIS resume",
-        "location": "Exact section and position (e.g. 'Experience - [Company Name], bullet 2')",
-        "currentText": "The exact current text from the resume",
-        "suggestedText": "The exact improved replacement text with job keywords naturally incorporated",
-        "reasoning": "Why this is hurting the ATS score and recruiter appeal",
+        "issue": "Specific issue in THIS resume",
+        "location": "Exact section and bullet (e.g. 'Experience - Acme Corp, bullet 2')",
+        "currentText": "Exact current text",
+        "suggestedText": "Exact improved text with job keywords",
+        "reasoning": "Why this hurts the ATS score",
         "estimatedScoreImpact": "+X points",
         "priority": "CRITICAL|HIGH|MEDIUM",
-        "keywords": ["keywords being added"],
-        "implementation": "Step-by-step instructions to make this specific change"
+        "keywords": ["keywords added"],
+        "implementation": "How to make this change"
       }
     ],
     "missingKeywordDetails": [
       {
-        "keyword": "Specific missing keyword",
-        "importance": "CRITICAL|HIGH|MEDIUM - appears in X% of job postings",
-        "suggestedLocation": "Which section to add it to",
+        "keyword": "Missing keyword",
+        "importance": "Required|Preferred",
+        "suggestedLocation": "Which section to add it",
         "exampleUsage": "Exact sentence showing natural incorporation",
-        "relatedKeywords": ["synonyms or related terms to also include"],
-        "currentGap": "Why this is missing and what it costs"
+        "relatedKeywords": ["synonyms to also include"],
+        "currentGap": "Impact of this gap"
       }
     ],
     "sectionBySection": {
       "summary": {
         "currentScore": 0-100,
-        "issues": ["Specific issue 1", "Specific issue 2", ...],
-        "improvements": [
-          {
-            "change": "What to change",
-            "before": "Current version",
-            "after": "Improved version with keywords",
-            "impact": "+X points"
-          }
-        ]
+        "issues": ["specific issues"],
+        "improvements": [{ "change": "...", "before": "...", "after": "...", "impact": "+X points" }]
       },
       "experience": {
         "currentScore": 0-100,
-        "issues": ["List every weak bullet point with specifics"],
-        "improvements": [
-          {
-            "bulletPoint": "Current bullet",
-            "weaknesses": ["No metrics", "Missing keyword X", "Too vague"],
-            "enhanced": "Stronger version with [KEYWORD] resulting in [METRIC] improvement for [SCOPE]",
-            "impact": "+X points",
-            "keywordsAdded": ["list"]
-          }
-        ]
+        "issues": ["specific weak bullets"],
+        "improvements": [{ "bulletPoint": "...", "weaknesses": [], "enhanced": "...", "impact": "+X points", "keywordsAdded": [] }]
       },
       "skills": {
         "currentScore": 0-100,
-        "matched": ["skills that match job"],
-        "missing": ["CRITICAL skills not listed - add these NOW"],
-        "irrelevant": ["skills to remove or de-emphasize"],
-        "reorder": "Put [these skills] first because they match job requirements"
+        "matched": ["skills matching job"],
+        "missing": ["critical skills to add NOW"],
+        "irrelevant": ["skills to de-emphasise"],
+        "reorder": "Put [these skills] first"
       }
     }
   },
   "quickWins": [
-    "REQUIRED - Minimum 3 items specific to THIS resume. Each must be a concrete 5-minute fix with the exact current text, the exact replacement, and the estimated point impact. Format: 'Change [exact current text] to [exact improved text] in [section] (+X points, <5 min)'"
+    "Change '[exact current text]' to '[exact improved text]' in [section] (+X points, <5 min)",
+    "Add keyword '[keyword]' to [section] — suggested: '[exact sentence]' (+X points, <2 min)",
+    "Quantify '[vague bullet]' — add [metric type] to make it '[quantified version]' (+X points, <5 min)"
   ],
-  "atsExtractedView": "plain text as an ATS would see it",
-  "riskyElements": [
-    "SPECIFIC element (e.g., 'Table in Experience section') - ATS will ignore this. SOLUTION: [exact fix]",
-    ...
-  ],
-  "honestAssessment": "A blunt 2-3 sentence assessment of this resume's actual competitiveness WITH specific numbers: 'This resume will be rejected by X% of ATS systems because [reasons]. Missing X critical keywords. Needs [specific improvements].'",
-  "competitorComparison": "Compared to top candidates, this resume is [X]% weaker in [areas]. Top resumes have [specific elements this one lacks].",
+  "riskyElements": ["Specific ATS-unfriendly element — SOLUTION: exact fix"],
+  "honestAssessment": "Blunt 2-3 sentence assessment with specific numbers: X keywords matched out of Y, will be filtered by Z% of ATS systems, needs [specific improvements].",
+  "applyVerdict": "Apply Now|Apply With Changes|Don't Apply — [one sentence reason with the main blocker or green light]",
+  "competitorComparison": ["Top candidates have [specific thing this resume lacks]", "Winning resumes include [specific element missing here]", "This resume falls short on [specific dimension vs. competitors]"],
   "actionPlan": {
-    "step1": "REQUIRED - IMMEDIATE (5 min): [Most critical single fix for this specific resume — quote the exact text to change and what to change it to]",
-    "step2": "REQUIRED - HIGH PRIORITY (15 min): Add the top 3 missing critical keywords to the resume. Name the exact keywords and which sections to add them to.",
-    "step3": "REQUIRED - IMPORTANT (30 min): Quantify any bullet points that currently lack metrics. Specify exactly which bullets need numbers and what kind of metric to add (users, revenue, time saved, % improvement).",
-    "estimatedScoreAfterFixes": "REQUIRED - Must show current and projected score: e.g. '52/100 → 74/100'"
+    "step1": "IMMEDIATE (5 min): [Most critical single fix — quote exact text to change and replacement]",
+    "step2": "HIGH PRIORITY (15 min): [Add top 3 missing keywords — name them and which sections]",
+    "step3": "IMPORTANT (30 min): [Quantify unmetricised bullets — name which ones and what metrics to add]",
+    "estimatedScoreAfterFixes": "e.g. '52/100 → 74/100'"
   }
 }
-
-HARD SCORE CEILING BASED ON MISSING KEYWORDS (NON-NEGOTIABLE):
-- Count total required job keywords provided
-- Count how many are GENUINELY ABSENT from the resume
-- If >70% of required keywords missing → score CANNOT exceed 40, regardless of writing quality
-- If >50% of required keywords missing → score CANNOT exceed 55
-- If >30% of required keywords missing → score CANNOT exceed 70
-- Good formatting or writing quality does NOT override this ceiling
-- A well-written resume that lacks critical skills is still a poor match
-
-MANDATORY REQUIREMENTS - FAILURE TO INCLUDE THESE WILL RESULT IN REJECTION:
-1. quickWins array: MINIMUM 3 items with exact before/after examples
-2. actionPlan object: ALL 4 fields required (step1, step2, step3, estimatedScoreAfterFixes)
-3. detailedRecommendations.criticalIssues: MINIMUM 3 items with complete before/after examples
-4. detailedRecommendations.missingKeywordDetails: At least 3 missing keywords with exact usage examples
-5. recommendations array: MINIMUM 15 specific items
-
-BE EXTREMELY SPECIFIC. Every recommendation must include:
-1. EXACT location (which section/bullet)
-2. CURRENT problematic text (quote it)
-3. IMPROVED version (write it out completely)
-4. KEYWORDS being added
-5. ESTIMATED point impact
-6. WHY it matters
-
-If ANY of the required fields (quickWins, actionPlan, detailedRecommendations) are missing or incomplete, the response is INVALID.
 
 Return only valid JSON with ALL required fields populated.`,
 
@@ -1185,7 +1141,12 @@ Do NOT award points for keywords that appear in the confirmed-missing list above
 
   const { content } = await callAI(prompt, userId, organizationId, 'ats_analysis', 6000);
 
-  return parseAIJSON<ATSAnalysis>(content);
+  const result = parseAIJSON<ATSAnalysis>(content);
+
+  // Always set atsExtractedView from the actual resume text — no need for AI to reproduce it
+  result.atsExtractedView = resumeText;
+
+  return result;
 }
 
 // Run Truth Guard check
