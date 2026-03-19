@@ -140,12 +140,14 @@ HARD SCORE CEILING BASED ON MISSING KEYWORDS (NON-NEGOTIABLE):
 - >50% keywords missing → score CANNOT exceed 55
 - >30% keywords missing → score CANNOT exceed 70
 
-TOKEN ECONOMY: Be concise in all text fields. Do NOT reproduce the full resume. Prioritise completing all required fields over verbose explanations.
+TOKEN ECONOMY: Be concise in all text fields. Do NOT reproduce the full resume. Fill fields in the ORDER listed below — earlier fields are higher priority.
 
-Return only valid JSON with ALL fields populated:
+Return only valid JSON with ALL fields populated IN THIS ORDER (most critical first):
 {
   "score": 0-100 (BE HONEST — most resumes score 40-70),
   "keywordMatchPercentage": calculated mathematically,
+  "applyVerdict": "Apply Now|Apply With Changes|Don't Apply — [one sentence reason with the main blocker or green light]",
+  "honestAssessment": "Blunt 2-3 sentences with specific numbers: X of Y keywords matched, will be filtered by Z% of ATS systems, top fix needed.",
   "matchedKeywords": [...keywords actually found — verbatim or clear synonyms],
   "missingKeywords": [...keywords NOT in resume — be thorough],
   "sectionScores": {
@@ -155,13 +157,26 @@ Return only valid JSON with ALL fields populated:
     "education": 0-100,
     "formatting": 0-100
   },
+  "quickWins": [
+    "Change '[exact current text]' to '[exact improved text]' in [section] (+X points, <5 min)",
+    "Add keyword '[keyword]' to [section] — suggested: '[exact sentence]' (+X points, <2 min)",
+    "Quantify '[vague bullet]' — add [metric type] to make it '[quantified version]' (+X points, <5 min)"
+  ],
+  "actionPlan": {
+    "step1": "IMMEDIATE (5 min): [Most critical single fix — quote exact text to change and replacement]",
+    "step2": "HIGH PRIORITY (15 min): [Add top 3 missing keywords — name them and which sections]",
+    "step3": "IMPORTANT (30 min): [Quantify unmetricised bullets — name which ones and what metrics to add]",
+    "estimatedScoreAfterFixes": "e.g. '52/100 → 74/100'"
+  },
+  "recommendations": ["MINIMUM 10 SPECIFIC — each must name the exact section, quote current text, and provide improved version with keywords"],
   "formattingIssues": [...specific formatting problems],
-  "recommendations": ["MINIMUM 10 SPECIFIC recommendations — each must name the exact section, quote current text, and provide improved version with keywords"],
+  "riskyElements": ["Specific ATS-unfriendly element — SOLUTION: exact fix"],
+  "competitorComparison": ["Top candidates have [specific thing this resume lacks]", "Winning resumes include [specific element missing here]", "This resume falls short on [specific dimension vs. competitors]"],
   "detailedRecommendations": {
     "criticalIssues": [
       {
         "issue": "Specific issue in THIS resume",
-        "location": "Exact section and bullet (e.g. 'Experience - Acme Corp, bullet 2')",
+        "location": "Exact section and bullet",
         "currentText": "Exact current text",
         "suggestedText": "Exact improved text with job keywords",
         "reasoning": "Why this hurts the ATS score",
@@ -200,21 +215,6 @@ Return only valid JSON with ALL fields populated:
         "reorder": "Put [these skills] first"
       }
     }
-  },
-  "quickWins": [
-    "Change '[exact current text]' to '[exact improved text]' in [section] (+X points, <5 min)",
-    "Add keyword '[keyword]' to [section] — suggested: '[exact sentence]' (+X points, <2 min)",
-    "Quantify '[vague bullet]' — add [metric type] to make it '[quantified version]' (+X points, <5 min)"
-  ],
-  "riskyElements": ["Specific ATS-unfriendly element — SOLUTION: exact fix"],
-  "honestAssessment": "Blunt 2-3 sentence assessment with specific numbers: X keywords matched out of Y, will be filtered by Z% of ATS systems, needs [specific improvements].",
-  "applyVerdict": "Apply Now|Apply With Changes|Don't Apply — [one sentence reason with the main blocker or green light]",
-  "competitorComparison": ["Top candidates have [specific thing this resume lacks]", "Winning resumes include [specific element missing here]", "This resume falls short on [specific dimension vs. competitors]"],
-  "actionPlan": {
-    "step1": "IMMEDIATE (5 min): [Most critical single fix — quote exact text to change and replacement]",
-    "step2": "HIGH PRIORITY (15 min): [Add top 3 missing keywords — name them and which sections]",
-    "step3": "IMPORTANT (30 min): [Quantify unmetricised bullets — name which ones and what metrics to add]",
-    "estimatedScoreAfterFixes": "e.g. '52/100 → 74/100'"
   }
 }
 
