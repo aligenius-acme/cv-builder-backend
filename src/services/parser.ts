@@ -1,8 +1,5 @@
 import mammoth from 'mammoth';
-
-// pdf-parse has quirky exports, use require
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse = require('pdf-parse');
+import { PDFParse } from 'pdf-parse';
 import { prisma } from '../utils/prisma';
 import { ParsedResumeData, ExperienceEntry, EducationEntry, ContactInfo, CertificationEntry, AwardEntry } from '../types';
 import { FileProcessingError } from '../utils/errors';
@@ -29,8 +26,9 @@ export async function parseFile(buffer: Buffer, fileName: string): Promise<strin
 
 // Parse PDF file
 async function parsePDF(buffer: Buffer): Promise<string> {
-  const data = await pdfParse(buffer);
-  return cleanText(data.text);
+  const parser = new PDFParse({ data: buffer });
+  const result = await parser.getText();
+  return cleanText(result.text);
 }
 
 // Parse DOCX file
