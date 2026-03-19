@@ -1313,6 +1313,45 @@ Return only valid JSON.`;
   return parseAIJSON<EnhancedCoverLetterResult>(content);
 }
 
+// Apply ATS-driven improvements to resume data (skills + summary only)
+export async function optimizeResumeForATS(
+  tailoredData: ParsedResumeData,
+  atsAnalysis: ATSAnalysis,
+  userId: string,
+  organizationId?: string | null
+): Promise<ParsedResumeData> {
+  const missingKeywords = atsAnalysis.missingKeywords || [];
+  const quickWins = atsAnalysis.quickWins || [];
+  const summaryIssues = atsAnalysis.detailedRecommendations?.sectionBySection?.summary?.issues || [];
+
+  const prompt = `You are an expert resume optimizer. Apply safe, targeted ATS improvements to this resume.
+
+CURRENT RESUME DATA (JSON):
+${JSON.stringify(tailoredData, null, 2)}
+
+ATS ANALYSIS RESULTS:
+- Missing Keywords (MUST add to skills): ${JSON.stringify(missingKeywords)}
+- Quick Wins: ${JSON.stringify(quickWins)}
+- Summary Issues: ${JSON.stringify(summaryIssues)}
+
+RULES — apply these changes and NOTHING ELSE:
+1. SKILLS: Add ALL missing keywords to the skills array. Skip duplicates (case-insensitive). Preserve all existing skills.
+2. SUMMARY: If summary exists and has issues listed above, rewrite it to naturally incorporate the most important missing keywords. Same tone and approximate length. Do NOT invent new facts — only rephrase using words from the existing summary plus the missing keywords.
+3. Do NOT modify experience entries, education, certifications, projects, or contact info.
+4. Do NOT add skills beyond those listed in "Missing Keywords".
+5. Return ONLY the complete, valid JSON object matching the exact same structure as the input. No markdown, no explanation.`;
+
+  const { content } = await callAI(prompt, userId, organizationId, 'ats_optimize', 4096);
+  const result = parseAIJSON<ParsedResumeData>(content);
+
+  // Safety fallbacks — if AI drops any critical section, restore from original
+  if (!result.experience || result.experience.length === 0) result.experience = tailoredData.experience;
+  if (!result.education || result.education.length === 0) result.education = tailoredData.education;
+  if (!result.contact) result.contact = tailoredData.contact;
+
+  return result;
+}
+
 // Generate plain text from structured resume data
 export function generateResumeText(data: ParsedResumeData): string {
   const lines: string[] = [];

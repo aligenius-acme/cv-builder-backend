@@ -39,23 +39,31 @@ async function parseDOCX(buffer: Buffer): Promise<string> {
 
 // Clean and normalize text, stripping common footer/header artifacts
 function cleanText(text: string): string {
-  const lines = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\t+/g, ' ')
-    .split('\n');
+  const normalized = text
+    // Common PDF ligature substitutions (special unicode glyphs pdf-parse often outputs)
+    .replace(/ﬁ/g, 'fi').replace(/ﬂ/g, 'fl').replace(/ﬃ/g, 'ffi')
+    .replace(/ﬀ/g, 'ff').replace(/ﬄ/g, 'ffl').replace(/ﬅ/g, 'st').replace(/ﬆ/g, 'st')
+    // Smart quotes → straight
+    .replace(/['']/g, "'").replace(/[""]/g, '"')
+    // End-of-line hyphenation: "develop-\nment" → "development"
+    .replace(/(\w)-\n\s*(\w)/g, '$1$2')
+    // Normalize line endings and tabs
+    .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+    .replace(/\t+/g, ' ');
+
+  const lines = normalized.split('\n');
 
   const filtered = lines.filter(line => {
     const trimmed = line.trim();
     if (!trimmed) return true; // keep blank lines for now (collapsed below)
 
-    // Page numbers: "1", "- 1 of 3 -", "-- 1 of 3 --", "2 of 5", "Page 2", "Page 2 of 5", "- 3 -", "3 | 5"
+    // Page numbers: "1", "- 1 of 3 -", "2 of 5", "Page 2", "3 | 5"
     if (/^-?\s*\d+\s*-?$/.test(trimmed)) return false;
     if (/^page\s+\d+(\s+of\s+\d+)?$/i.test(trimmed)) return false;
     if (/^-*\s*\d+\s+of\s+\d+\s*-*$/.test(trimmed)) return false;
     if (/^\d+\s*[|\/]\s*\d+$/.test(trimmed)) return false;
 
-    // Confidential / draft watermarks often appear as single short lines
+    // Confidential / draft watermarks
     if (/^(confidential|draft|curriculum vitae|resume|cv)$/i.test(trimmed)) return false;
 
     return true;
@@ -93,25 +101,25 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
   // Section header patterns - more flexible matching
   // Patterns now handle: "SECTION:", "Section", "SECTION", "Section Name", etc.
   const sectionPatterns: { pattern: RegExp; section: string }[] = [
-    // Summary patterns (must check before experience to catch "Experience Summary")
-    { pattern: /^(professional\s+)?summary:?$|^profile:?$|^about(\s+me)?:?$|^objective:?$|^career\s+(objective|summary):?$|^experience\s+summary:?$|^summary\s+of\s+(experience|qualifications):?$|^executive\s+summary:?$|^personal\s+statement:?$|^introduction:?$/i, section: 'summary' },
-    // Experience patterns (work history with jobs)
-    { pattern: /^work\s+experience:?$|^employment(\s+history)?:?$|^work\s+history:?$|^professional\s+experience:?$|^career\s+history:?$|^relevant\s+experience:?$|^job\s+history:?$|^experience:?$|^positions?\s+held:?$/i, section: 'experience' },
-    // Education patterns
-    { pattern: /^education(al)?(\s+background)?:?$|^academic(\s+background)?:?$|^qualifications:?$|^academic\s+credentials:?$|^schooling:?$|^degrees?:?$/i, section: 'education' },
-    // Skills patterns
-    { pattern: /^(technical\s+)?skills:?$|^core\s+competencies:?$|^competencies:?$|^expertise:?$|^technologies:?$|^areas?\s+of\s+expertise:?$|^key\s+skills:?$|^skills?\s+(summary|set):?$|^proficiencies:?$|^abilities:?$|^technical\s+proficiencies:?$/i, section: 'skills' },
-    // Certifications patterns
-    { pattern: /^certifications?:?$|^licenses?(\s+(&|and)\s+certifications?)?:?$|^professional\s+certifications?:?$|^credentials:?$|^professional\s+development:?$|^training:?$|^courses?:?$/i, section: 'certifications' },
-    // Projects patterns
-    { pattern: /^projects?:?$|^personal\s+projects?:?$|^key\s+projects?:?$|^notable\s+projects?:?$|^side\s+projects?:?$|^portfolio:?$|^selected\s+projects?:?$/i, section: 'projects' },
-    // Languages patterns
-    { pattern: /^languages?:?$|^language\s+skills?:?$|^language\s+proficiency:?$|^foreign\s+languages?:?$/i, section: 'languages' },
-    // Awards patterns
-    { pattern: /^awards?:?$|^honors?(\s+(&|and)\s+awards?)?:?$|^achievements?:?$|^recognition:?$|^accomplishments?:?$|^distinctions?:?$/i, section: 'awards' },
-    // Additional sections
-    { pattern: /^publications?:?$|^research:?$|^papers?:?$/i, section: 'projects' },
-    { pattern: /^volunteer(ing)?(\s+experience)?:?$|^community\s+(service|involvement):?$/i, section: 'experience' },
+    // Summary
+    { pattern: /^(professional\s+)?summary:?$|^profile:?$|^about(\s+me)?:?$|^objective:?$|^career\s+(objective|summary):?$|^experience\s+summary:?$|^summary\s+of\s+(experience|qualifications):?$|^executive\s+summary:?$|^personal\s+statement:?$|^introduction:?$|^professional\s+profile:?$|^work\s+summary:?$|^overview:?$/i, section: 'summary' },
+    // Experience
+    { pattern: /^work\s+experience:?$|^employment(\s+history)?:?$|^work\s+history:?$|^professional\s+experience:?$|^career\s+history:?$|^relevant\s+experience:?$|^job\s+history:?$|^experience:?$|^positions?\s+held:?$|^professional\s+background:?$|^technical\s+experience:?$|^industry\s+experience:?$/i, section: 'experience' },
+    // Education
+    { pattern: /^education(al)?(\s+background)?:?$|^academic(\s+background)?:?$|^qualifications:?$|^academic\s+credentials:?$|^schooling:?$|^degrees?:?$|^academic\s+history:?$|^educational\s+qualifications:?$/i, section: 'education' },
+    // Skills
+    { pattern: /^(technical\s+)?skills:?$|^core\s+competencies:?$|^competencies:?$|^expertise:?$|^technologies:?$|^areas?\s+of\s+expertise:?$|^key\s+skills:?$|^skills?\s+(summary|set):?$|^proficiencies:?$|^abilities:?$|^technical\s+proficiencies:?$|^technical\s+expertise:?$|^tools?\s+and\s+technologies:?$|^tech\s+stack:?$|^technology\s+stack:?$/i, section: 'skills' },
+    // Certifications
+    { pattern: /^certifications?:?$|^licenses?(\s+(&|and)\s+certifications?)?:?$|^professional\s+certifications?:?$|^credentials:?$|^professional\s+development:?$|^training:?$|^courses?:?$|^certificate(s)?:?$|^accreditations?:?$/i, section: 'certifications' },
+    // Projects
+    { pattern: /^projects?:?$|^personal\s+projects?:?$|^key\s+projects?:?$|^notable\s+projects?:?$|^side\s+projects?:?$|^portfolio:?$|^selected\s+projects?:?$|^freelance\s+projects?:?$|^open\s+source:?$/i, section: 'projects' },
+    // Languages
+    { pattern: /^languages?:?$|^language\s+skills?:?$|^language\s+proficiency:?$|^foreign\s+languages?:?$|^spoken\s+languages?:?$/i, section: 'languages' },
+    // Awards
+    { pattern: /^awards?:?$|^honors?(\s+(&|and)\s+awards?)?:?$|^achievements?:?$|^recognition:?$|^accomplishments?:?$|^distinctions?:?$|^scholarships?:?$/i, section: 'awards' },
+    // Extra sections
+    { pattern: /^publications?:?$|^research:?$|^papers?:?$|^conference\s+papers?:?$/i, section: 'projects' },
+    { pattern: /^volunteer(ing)?(\s+experience)?:?$|^community\s+(service|involvement):?$|^extracurricular:?$/i, section: 'experience' },
     { pattern: /^interests?:?$|^hobbies?:?$|^activities?:?$/i, section: 'interests' },
     { pattern: /^references?:?$/i, section: 'references' },
   ];
@@ -181,9 +189,16 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
     }
   }
 
-  // Fallback: Extract skills from full text if none found via sections
-  if (data.skills.length === 0) {
-    data.skills = extractSkillsFromText(rawText);
+  // Always supplement section-parsed skills with full-text keyword scan.
+  // This catches skills mentioned in experience/project bullets that weren't
+  // in a dedicated skills section, and also acts as fallback when section
+  // parsing produced nothing.
+  const textScannedSkills = extractSkillsFromText(rawText);
+  const existingSkillsLower = new Set((data.skills as string[]).map(s => s.toLowerCase()));
+  for (const s of textScannedSkills) {
+    if (!existingSkillsLower.has(s.toLowerCase())) {
+      (data.skills as string[]).push(s);
+    }
   }
 
   // Fallback: If no experience found via sections, try to extract from full text
@@ -279,45 +294,57 @@ function extractLanguagesFromText(text: string): string[] {
 // Extract contact information
 function extractContactInfo(lines: string[]): ContactInfo {
   const contact: ContactInfo = {};
-  const text = lines.slice(0, 10).join(' '); // Usually contact info is at the top
+  // Search first 15 lines — some resume templates put more header content than expected
+  const headerText = lines.slice(0, 15).join(' ');
 
-  // Name (assume first non-empty line that's not an email/phone)
-  for (const line of lines.slice(0, 5)) {
-    if (!/@/.test(line) && !/\d{3}.*\d{3}/.test(line) && line.length < 50) {
-      contact.name = line;
+  // Name: first line that doesn't look like contact info or a job title subtitle
+  for (const line of lines.slice(0, 6)) {
+    const cleaned = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
+    if (
+      cleaned.length > 1 &&
+      cleaned.length < 70 &&
+      !/@/.test(cleaned) &&
+      !/https?:\/\//i.test(cleaned) &&
+      !/\d{3}.*\d{3}/.test(cleaned) &&      // not a phone
+      !/^(engineer|developer|designer|manager|analyst|consultant|architect|director|lead|senior|junior|full.stack|front.end|back.end|software|product|data|devops)/i.test(cleaned)
+    ) {
+      contact.name = cleaned;
       break;
     }
   }
 
   // Email
-  const emailMatch = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
-  if (emailMatch) {
-    contact.email = emailMatch[0];
-  }
+  const emailMatch = headerText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  if (emailMatch) contact.email = emailMatch[0];
 
-  // Phone
-  const phoneMatch = text.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-  if (phoneMatch) {
-    contact.phone = phoneMatch[0];
-  }
+  // Phone — handles international (+XX), US, and common formats
+  const phoneMatch = headerText.match(
+    /(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+\d{1,3}[-.\s]\d{1,4}[-.\s]\d{1,4}[-.\s]?\d{1,9}/
+  );
+  if (phoneMatch) contact.phone = phoneMatch[0].trim();
 
-  // LinkedIn
-  const linkedinMatch = text.match(/linkedin\.com\/in\/[\w-]+/i);
-  if (linkedinMatch) {
-    contact.linkedin = `https://${linkedinMatch[0]}`;
-  }
+  // LinkedIn — handle URL variants and common OCR/typo issues
+  // Matches: linkedin.com/in/x, lnkd.in/x, linke...in.com/in/x (typos)
+  const linkedinMatch = headerText.match(
+    /(?:https?:\/\/)?(?:www\.)?lin(?:ke?d?(?:ei|ie)?|fied?)in\.com\/in\/([\w-]+)/i
+  );
+  if (linkedinMatch) contact.linkedin = `https://linkedin.com/in/${linkedinMatch[1]}`;
 
   // GitHub
-  const githubMatch = text.match(/github\.com\/[\w-]+/i);
-  if (githubMatch) {
-    contact.github = `https://${githubMatch[0]}`;
-  }
+  const githubMatch = headerText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([\w-]+)/i);
+  if (githubMatch) contact.github = `https://github.com/${githubMatch[1]}`;
 
-  // Location (city, state pattern)
-  const locationMatch = text.match(/([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*([A-Z]{2})/);
-  if (locationMatch) {
-    contact.location = locationMatch[0];
-  }
+  // Portfolio / personal website (any URL that is not LinkedIn or GitHub)
+  const websiteMatch = headerText.match(
+    /https?:\/\/(?!(?:www\.)?(?:lin(?:ke?d?(?:ei|ie)?|fied?)in|github)\.com)[\w.-]+\.[a-z]{2,}(?:\/[\w./-]*)?/i
+  );
+  if (websiteMatch) contact.website = websiteMatch[0];
+
+  // Location — handle "City, ST", "City, ST ZIP", "City, Country"
+  const locationMatch = headerText.match(
+    /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?),\s*(?:[A-Z]{2}(?:\s+\d{5})?|[A-Z][a-zA-Z]{2,})\b/
+  );
+  if (locationMatch) contact.location = locationMatch[0];
 
   return contact;
 }
@@ -376,28 +403,38 @@ function processSection(
 function parseCertifications(content: string[]): CertificationEntry[] {
   const certifications: CertificationEntry[] = [];
 
+  // Common issuer names — used to detect when an issuer appears on its own line
+  // (happens with two-column PDF layouts that pdf-parse serialises row-by-row)
+  const KNOWN_ISSUERS = /^(microsoft|google|amazon|aws|coursera|udemy|linkedin\s+learning|pluralsight|meta|oracle|cisco|comptia|pmi|scrum\s+alliance|ibm|salesforce|adobe|edx|datacamp|udacity|harvard|mit|stanford|duke|johns\s+hopkins|yale|columbia)(\s+certified)?$/i;
+
   for (const line of content) {
-    if (line.length < 5) continue;
+    const trimmed = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
+    if (trimmed.length < 3) continue;
 
-    const cert: CertificationEntry = { name: line };
+    // If this looks like a standalone issuer name, attach it to the previous cert
+    if (KNOWN_ISSUERS.test(trimmed) && certifications.length > 0) {
+      const last = certifications[certifications.length - 1];
+      if (!last.issuer) last.issuer = trimmed;
+      continue;
+    }
 
-    // Try to extract date
-    const dateMatch = line.match(/\b(19|20)\d{2}\b/);
+    const cert: CertificationEntry = { name: trimmed };
+
+    // Extract year if present
+    const dateMatch = trimmed.match(/\b(19|20)\d{2}\b/);
     if (dateMatch) {
       cert.date = dateMatch[0];
-      cert.name = line.replace(dateMatch[0], '').trim();
+      cert.name = trimmed.replace(dateMatch[0], '').trim().replace(/\s{2,}/g, ' ');
     }
 
-    // Try to extract issuer (often after a dash or comma)
-    const parts = cert.name.split(/[-–—,]/);
+    // Extract issuer if separated by dash/comma/pipe
+    const parts = cert.name.split(/\s+[-–—|,]\s+/);
     if (parts.length > 1) {
       cert.name = parts[0].trim();
-      cert.issuer = parts.slice(1).join(',').trim();
+      cert.issuer = parts.slice(1).join(', ').trim();
     }
 
-    if (cert.name.length > 3) {
-      certifications.push(cert);
-    }
+    if (cert.name.length > 3) certifications.push(cert);
   }
 
   return certifications;
@@ -629,56 +666,280 @@ function parseEducation(content: string[]): EducationEntry[] {
   return education;
 }
 
+// Known subsection header patterns within a skills block
+const SKILL_SECTION_HEADER_RE = /^(web\s+technologies|back-?end\s+technologies|front-?end\s+technologies|microsoft\s+stack|frameworks?\s+(?:and\s+(?:libraries|tools))?|cloud\s+(?:technologies|services|platforms?)|tools?\s+(?:and\s+version\s+control)?|development\s+practices|technical\s+skills?|programming\s+languages?|languages?\s+(?:and\s+frameworks?)?|databases?\s*(?:and\s+data\s+management)?|data\s+(?:management|storage|tools?|engineering)|devops\s*(?:and\s+deployment)?|deployment\s*(?:and\s+infrastructure)?|other\s+skills?|soft\s+skills?|core\s+competencies|infrastructure|version\s+control|methodologies?|operating\s+systems?|ide\s+(?:and\s+tools?)?|testing\s+(?:and\s+qa)?|mobile\s+(?:development|technologies)?|security(?:\s+tools?)?|networking|apis?\s+(?:and\s+integrations?)?|server\s+management|systems?\s+administration|machine\s+learning|data\s+science|analytics|visualization|reporting|platforms?\s+and\s+tools?):?$/i;
+
+// Detect generic subsection category headers (multi-word plain-text headings with no skill chars)
+function isSkillSubsectionHeader(line: string): boolean {
+  if (/[,;|•·]/.test(line)) return false;          // Has delimiters → it's a skill list
+  if (line.length > 55) return false;               // Long lines are skill rows, not headers
+  if (!/^[A-Z]/.test(line)) return false;           // Must start with capital
+  const words = line.trim().split(/\s+/);
+  if (words.length < 2) return false;               // Single words are standalone skills
+  if (/\.[a-zA-Z]/.test(line)) return false;        // Has .ext (Node.js, ASP.NET) → skill
+  if (/[+#_()\[\]\/]/.test(line)) return false;     // Has special chars → skill
+  // Any word that's a known tech name → treat as a skill line, not a header
+  const knownTech = /^(react|angular|vue|node|express|django|flask|rails|spring|laravel|graphql|docker|kubernetes|aws|azure|gcp|git|linux|python|java|typescript|javascript|kotlin|swift|rust|php|ruby|sql|nosql|mongodb|mysql|postgresql|redis|nginx|bootstrap|tailwind|material|redux|nextjs|nestjs|webpack|vite|sass|scss|css|html|bash|powershell|terraform|ansible|jenkins|gradle|maven|agile|scrum|kanban|devops|microservices|serverless|api|rest|sdk|orm|cli|postman|github|docker|kestrel|zustand|shadcn|antd|supabase|prisma|jest|cypress)$/i;
+  if (words.some(w => knownTech.test(w))) return false;
+  return true; // Looks like "DevOps and Deployment", "Databases and Data Management" etc.
+}
+
+// Comprehensive known multi-word skill phrases — sorted longest-first for greedy matching.
+// Used when PDF table layouts produce space-separated skill rows (no commas).
+// When a phrase contains "&", it also matches the PDF font-encoding variant where
+// "&" is decoded as "G" (a common artifact from symbol-font PDFs). This is handled
+// in extractSkillsFromSpaceSeparated() via normalized comparison — NOT via string
+// replacement — so other PDFs that legitimately use "G" (e.g. "G Suite") are unaffected.
+const MULTI_WORD_SKILLS: { phrase: string; tokens: string[] }[] = ([
+  // 5-token
+  'Webpack Module Federation Architecture',
+  // 4-token
+  'Production Monitoring & Debugging',
+  'Port & Process Management',
+  'Ubuntu (Linux) Servers',
+  "Let's Encrypt (Certbot)",
+  "Let's Encrypt(Certbot)",
+  'VPS hosting (Hostinger)',
+  'Google Cloud Platform',
+  'Amazon Web Services',
+  'Microsoft Azure Cloud',
+  'React Testing Library',
+  'React Hook Form',
+  'Test Driven Development',
+  'Object Oriented Programming',
+  // 3-token
+  'Reverse Proxy Configuration',
+  'Environment-based Configurations',
+  'GitHub Actions Workflows',
+  'Webpack Module Federation',
+  'Bash/Shell Scripting',
+  'ASP.NET Core',
+  'CI/CD Pipelines',
+  'SQL Server',
+  'Azure DevOps',
+  'Entity Framework',
+  'Visual Studio',
+  'Visual Studio Code',
+  'Apollo GraphQL',
+  'Spring Boot',
+  'Spring Framework',
+  'Angular Material',
+  'Google Cloud',
+  'AWS Lambda',
+  'AWS S3',
+  'AWS EC2',
+  'Power BI',
+  'Power Apps',
+  'Power Automate',
+  'Machine Learning',
+  'Deep Learning',
+  'Data Structures',
+  'Design Patterns',
+  'Agile Scrum',
+  'Agile Methodology',
+  'G Suite',
+  'Google Workspace',
+  'Ubuntu Servers',
+  'Linux Servers',
+  'NoSQL Databases',
+  // 2-token
+  'RTK Query',
+  'React Query',
+  'React Native',
+  'React Router',
+  'React Hook',
+  'Material UI',
+  'Tailwind CSS',
+  'Ant Design',
+  'Schema Migration',
+  'Redux Toolkit',
+  'Redux Saga',
+  'Redux Thunk',
+  'Rest API',
+  'REST API',
+  'Web API',
+  'WEB APIs',
+  'NET MVC',
+  '.NET MVC',
+  'VPS hosting',
+  'Reverse Proxy',
+  'Shell Scripting',
+  'GitHub Actions',
+  'GitHub Copilot',
+  'Apollo Client',
+  'Apollo Server',
+  'Angular JS',
+  'AngularJS',
+  'Azure Functions',
+  'Azure Storage',
+  'Azure Blob',
+  'EF Core',
+  'Socket IO',
+  'Socket.IO',
+  'Vue Router',
+  'Nuxt JS',
+  'NuxtJS',
+  'Svelte Kit',
+  'SvelteKit',
+  'Chakra UI',
+  'Next UI',
+  'Styled Components',
+  'Framer Motion',
+  'Three JS',
+  'ThreeJS',
+  'React Three',
+  'Storybook Documentation',
+  'Jest Testing',
+  'Unit Testing',
+  'Integration Testing',
+  'End To',
+  'CI CD',
+  'Dev Tools',
+  'VS Code',
+  'Agile Scrum',
+  'Scrum Master',
+  'Product Owner',
+  'Data Science',
+  'Natural Language',
+  'Computer Vision',
+  'Reinforcement Learning',
+  'Neural Networks',
+  'Decision Trees',
+  'Random Forest',
+] as string[]).map(phrase => ({ phrase, tokens: phrase.split(/\s+/) }))
+  .sort((a, b) => b.tokens.length - a.tokens.length || b.phrase.length - a.phrase.length);
+
+// Normalise a string for phrase matching. Handles the common PDF font-encoding
+// artifact where "&" is decoded as the letter "G" (from symbol/Wingdings-style fonts).
+// Comparison-only — the raw tokens and canonical phrase are never mutated.
+function normaliseForMatch(s: string): string {
+  return s
+    .replace(/\bG\b/g, '&')  // "&" encoded as "G" in some PDFs
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Extract individual skills from a space-separated row (PDF table/grid layout).
+// Uses greedy multi-word matching (longest phrase first) so e.g. "RTK Query" is
+// kept as one skill instead of being split into "RTK" + "Query".
+// Falls through to individual tokens for anything not in the dictionary — this is
+// intentional: splitting an unknown multi-word skill into words is far better than
+// silently dropping the whole row (which was the previous behaviour).
+function extractSkillsFromSpaceSeparated(line: string): string[] {
+  const rawTokens = line.split(/\s+/).filter(t => t.length > 0);
+  const result: string[] = [];
+
+  // Tokens to skip when they appear as isolated words (separators, stopwords).
+  // "G" is included because pdf-parse sometimes decodes "&" as "G" (symbol font
+  // artifact). Legitimate "G"-prefixed skills like "G Suite" are handled via the
+  // MULTI_WORD_SKILLS dictionary and matched before the single-token fallback runs.
+  const SKIP = /^(and|or|the|a|an|in|on|to|of|is|are|for|with|by|at|&|\+|G)$/;
+
+  let i = 0;
+  while (i < rawTokens.length) {
+    let matched = false;
+
+    // Try longest phrase first (MULTI_WORD_SKILLS is pre-sorted longest→shortest)
+    for (const { phrase, tokens: pt } of MULTI_WORD_SKILLS) {
+      if (i + pt.length > rawTokens.length) continue;
+      const candidate = rawTokens.slice(i, i + pt.length).join(' ');
+      // Compare via normaliseForMatch so "&" and its "G"-encoded variant both match
+      if (normaliseForMatch(candidate) === normaliseForMatch(phrase)) {
+        result.push(phrase); // always push the canonical phrase form
+        i += pt.length;
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      const token = rawTokens[i];
+      // Include the token if it is not a stopword / separator and is not a bare number
+      if (token.length > 1 && !SKIP.test(token) && !/^\d+$/.test(token)) {
+        result.push(token);
+      }
+      i++;
+    }
+  }
+
+  return result;
+}
+
 // Parse skills
 function parseSkills(content: string[]): string[] {
   const skills: string[] = [];
 
-  // Words/phrases to filter out
+  // Words/phrases to filter out from delimiter-split parts
   const filterWords = /^(and|or|including|such as|like|using|with|for|the|a|an|in|on|to|of|is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|could|should|may|might|must|shall|can|need|dare|ought|used|etc|e\.g\.|i\.e\.)$/i;
   const descriptivePhrases = /(for\s+\w+\s+development|for\s+developing|for\s+building|for\s+managing|for\s+deploying|including\s+|such\s+as\s+)/i;
 
-  // Section headers to skip
-  const sectionHeaders = /^(web\s+technologies|back-?end\s+technologies|front-?end\s+technologies|microsoft\s+stack|frameworks?\s+and\s+libraries|cloud\s+technologies|tools?\s+and\s+version\s+control|development\s+practices|technical\s+skills?|programming\s+languages?|databases?|devops|other\s+skills?):?$/i;
-
   for (const line of content) {
-    // Skip section headers
     const cleanLine = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
-    if (sectionHeaders.test(cleanLine)) {
+    if (!cleanLine) continue;
+
+    // Skip known subsection category headers
+    if (SKILL_SECTION_HEADER_RE.test(cleanLine)) continue;
+    if (isSkillSubsectionHeader(cleanLine)) continue;
+
+    const processedLine = cleanLine.replace(descriptivePhrases, ' ').trim();
+
+    // Detect whether the line uses standard delimiters
+    const hasDelimiters = /[,;|•·]/.test(processedLine);
+
+    if (!hasDelimiters) {
+      // No comma/pipe/semicolon → likely a PDF table row with space-separated skills
+      // Use greedy multi-word skill extraction instead of treating the whole line as one token
+      const extracted = extractSkillsFromSpaceSeparated(processedLine);
+      for (const s of extracted) {
+        if (s.length > 1 && s.length < 80 && !filterWords.test(s)) {
+          skills.push(s.replace(/\s+/g, ' '));
+        }
+      }
       continue;
     }
 
-    // Remove descriptive phrases
-    let processedLine = cleanLine.replace(descriptivePhrases, ' ');
-
-    // Split by common delimiters
-    const parts = processedLine.split(/[,;|•·:]/);
+    // Standard delimiter-based parsing (most non-PDF or well-formatted resumes)
+    // Split on commas, semicolons, pipes, bullets; colon only when followed by space
+    const parts = processedLine.split(/[,;|•·]|:\s+/);
 
     for (const part of parts) {
       let skill = part.replace(/^[-*]\s*/, '').trim();
-
-      // Remove leading "and", "or", etc.
       skill = skill.replace(/^(and|or)\s+/i, '').trim();
-
-      // Remove trailing descriptive text
       skill = skill.replace(/\s+(for|including|such as|like|using|with).*$/i, '').trim();
+      if (!skill) continue;
 
-      // Skip if it's a filter word, too short, too long, or ends with a period (likely a sentence)
+      // If a delimiter-split part itself contains multiple space-separated words it's
+      // either a multi-word skill OR multiple skills joined by space (e.g. from a
+      // colon-prefixed category like "Frontend: JavaScript TypeScript React.js").
+      // Run it through the same space-separated extractor to handle both cases.
+      const wordCount = skill.split(/\s+/).length;
+      if (wordCount > 1 && !SKILL_SECTION_HEADER_RE.test(skill) && !isSkillSubsectionHeader(skill)) {
+        const extracted = extractSkillsFromSpaceSeparated(skill);
+        for (const s of extracted) {
+          if (s.length > 1 && s.length < 80 && !filterWords.test(s)) {
+            skills.push(s.replace(/\s+/g, ' '));
+          }
+        }
+        continue;
+      }
+
       if (
         skill.length > 1 &&
-        skill.length < 40 &&
+        skill.length < 60 &&
         !filterWords.test(skill) &&
         !skill.endsWith('.') &&
-        !/^\d+$/.test(skill) && // Skip pure numbers
-        !/^(including|such as|like|using)\s/i.test(skill)
+        !/^\d+$/.test(skill) &&
+        !/^(including|such as|like|using)\s/i.test(skill) &&
+        !SKILL_SECTION_HEADER_RE.test(skill) &&
+        !isSkillSubsectionHeader(skill)
       ) {
-        // Clean up common patterns
-        skill = skill.replace(/\s+/g, ' '); // Normalize whitespace
-        skills.push(skill);
+        skills.push(skill.replace(/\s+/g, ' '));
       }
     }
   }
 
-  return [...new Set(skills)]; // Remove duplicates
+  return [...new Set(skills)];
 }
 
 // Parse projects - handles both simple projects and work experience style entries
@@ -779,27 +1040,72 @@ function parseProjects(content: string[]): { name: string; description: string; 
   return projects;
 }
 
-// Extract skills from full text as fallback
+// Extract skills from full text as fallback / supplement
 function extractSkillsFromText(text: string): string[] {
   const commonSkills = [
-    // Programming languages
-    'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'Go', 'Rust', 'Ruby', 'PHP', 'Swift', 'Kotlin',
-    // Frameworks
-    'React', 'Angular', 'Vue', 'Node.js', 'Express', 'Django', 'Flask', 'Spring', 'Rails',
-    'Next.js', 'Nest.js', '.NET', 'Laravel',
+    // Languages
+    'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'Go', 'Golang', 'Rust',
+    'Ruby', 'PHP', 'Swift', 'Kotlin', 'Scala', 'R', 'MATLAB', 'Perl', 'Dart', 'Elixir',
+    // Frontend frameworks/libs
+    'React', 'Angular', 'Vue', 'Svelte', 'Next.js', 'Nuxt.js', 'Gatsby', 'Remix',
+    'Redux', 'MobX', 'Zustand', 'Recoil', 'Jotai', 'Valtio',
+    'React Query', 'RTK Query', 'SWR', 'Apollo Client',
+    'Webpack', 'Vite', 'Parcel', 'Rollup', 'Esbuild', 'Turbopack',
+    'Tailwind CSS', 'Bootstrap', 'Material UI', 'Chakra UI', 'Ant Design',
+    'ShadCN', 'Radix UI', 'Headless UI', 'Styled Components', 'Emotion',
+    'Framer Motion', 'GSAP', 'Three.js',
+    'SASS', 'SCSS', 'Less', 'CSS', 'HTML',
+    // Backend frameworks
+    'Node.js', 'Express', 'Nest.js', 'Fastify', 'Hapi', 'Koa',
+    'Django', 'Flask', 'FastAPI', 'SQLAlchemy',
+    'Spring', 'Spring Boot', 'Spring MVC', 'Hibernate',
+    'Laravel', 'Symfony', 'CodeIgniter',
+    'Rails', 'Sinatra',
+    'ASP.NET', 'ASP.NET Core', '.NET', '.NET Core', 'Entity Framework',
+    'GraphQL', 'REST', 'gRPC', 'WebSockets', 'Socket.IO',
     // Databases
-    'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQLite', 'Oracle', 'SQL Server',
+    'PostgreSQL', 'MySQL', 'SQLite', 'SQL Server', 'Oracle',
+    'MongoDB', 'Redis', 'Cassandra', 'DynamoDB', 'CouchDB', 'Firebase',
+    'Elasticsearch', 'Neo4j', 'InfluxDB', 'TimescaleDB',
+    'Prisma', 'TypeORM', 'Sequelize', 'Mongoose',
     // Cloud & DevOps
-    'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'CI/CD', 'Jenkins', 'GitHub Actions', 'Terraform',
+    'AWS', 'Azure', 'GCP', 'Google Cloud', 'Heroku', 'Vercel', 'Netlify', 'DigitalOcean',
+    'Docker', 'Kubernetes', 'Terraform', 'Ansible', 'Pulumi',
+    'CI/CD', 'GitHub Actions', 'GitLab CI', 'Jenkins', 'CircleCI', 'Travis CI',
+    'Azure DevOps', 'ArgoCD', 'Helm',
+    'NGINX', 'Apache', 'Caddy', 'Traefik',
+    'Linux', 'Ubuntu', 'Bash', 'Shell',
+    // Testing
+    'Jest', 'Vitest', 'Cypress', 'Playwright', 'Selenium', 'Testing Library',
+    'Mocha', 'Chai', 'Jasmine', 'Karma', 'Supertest',
     // Tools
-    'Git', 'Linux', 'Agile', 'Scrum', 'Jira', 'REST', 'GraphQL', 'API',
+    'Git', 'GitHub', 'GitLab', 'Bitbucket',
+    'Jira', 'Confluence', 'Notion', 'Slack',
+    'Postman', 'Insomnia', 'Swagger',
+    'VS Code', 'IntelliJ', 'WebStorm', 'PyCharm',
+    'Figma', 'Storybook',
+    // Methodologies
+    'Agile', 'Scrum', 'Kanban', 'TDD', 'BDD', 'DDD', 'Microservices', 'Serverless',
+    // Data / ML
+    'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas', 'NumPy',
+    'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision',
+    'Tableau', 'Power BI', 'Grafana', 'Kibana',
+    // Mobile
+    'React Native', 'Flutter', 'Expo', 'Ionic', 'Capacitor',
+    // Other
+    'OAuth', 'JWT', 'SAML', 'SSO', 'LDAP', 'Active Directory',
+    'WebAssembly', 'PWA', 'Electron', 'Tauri',
+    'Stripe', 'Twilio', 'SendGrid',
   ];
 
   const found: string[] = [];
   const textLower = text.toLowerCase();
 
   for (const skill of commonSkills) {
-    if (textLower.includes(skill.toLowerCase())) {
+    // Match as whole word (handle special chars in skill names)
+    const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?<![\\w.])${escaped}(?![\\w.])`, 'i');
+    if (regex.test(textLower)) {
       found.push(skill);
     }
   }

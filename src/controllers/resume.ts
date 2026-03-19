@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { prisma } from '../utils/prisma';
-import { AuthenticatedRequest, ParsedResumeData } from '../types';
+import { Prisma } from '@prisma/client';
+import { AuthenticatedRequest, ParsedResumeData, ATSAnalysis } from '../types';
 import { ValidationError, NotFoundError, QuotaExceededError } from '../utils/errors';
 import { uploadFile, deleteFile, getFile } from '../services/storage';
 import { parseFile, extractResumeData, logParsingError } from '../services/parser';
@@ -732,6 +733,7 @@ export const simulateATS = async (
     const userId = req.user!.id;
     const organizationId = null;
     const { id, versionId } = req.params;
+    const forceRescan = req.query.force === 'true';
 
     const version = await prisma.resumeVersion.findFirst({
       where: { id: versionId, resumeId: id, userId },
@@ -741,6 +743,18 @@ export const simulateATS = async (
       throw new NotFoundError('Version not found');
     }
 
+    // Return cached result if available and force-rescan not requested.
+    // This prevents score fluctuation from repeated AI calls (LLMs are
+    // non-deterministic even at temperature=0 due to GPU float arithmetic).
+    if (!forceRescan && version.atsDetails) {
+      const cached = version.atsDetails as any;
+      const courseRecommendations = await getAffiliateCourses(cached.missingKeywords || []);
+      return res.json({
+        success: true,
+        data: { ...cached, courseRecommendations, _cached: true },
+      }) as any;
+    }
+
     // Get job keywords from stored data
     const jobData = version.jobData as any;
     const keywords = [
@@ -748,7 +762,7 @@ export const simulateATS = async (
       ...(jobData.keywords || []),
     ];
 
-    // Run ATS analysis
+    // Run fresh ATS analysis
     const atsResult = await analyzeATS(
       version.tailoredText,
       keywords,
@@ -756,10 +770,10 @@ export const simulateATS = async (
       organizationId
     );
 
-    // Deduct one credit for this endpoint
+    // Deduct one credit (only for actual AI calls, not cache hits)
     await deductAICredit(userId, req);
 
-    // Update version with new ATS details
+    // Persist result so future requests are served from cache
     await prisma.resumeVersion.update({
       where: { id: versionId },
       data: {
@@ -791,6 +805,7 @@ export const simulateATS = async (
         quickWins: atsResult.quickWins,
         actionPlan: atsResult.actionPlan,
         courseRecommendations,
+        _cached: false,
       },
     });
   } catch (error) {
@@ -1239,6 +1254,80 @@ export const updateVersionContent = async (
       data: {
         id: updated.id,
         tailoredData: merged,
+        tailoredText,
+        updatedAt: updated.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Apply ATS-driven optimizations to version content (AI-powered, 1 credit)
+export const optimizeVersion = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id, versionId } = req.params;
+
+    const version = await prisma.resumeVersion.findFirst({
+      where: { id: versionId, resumeId: id, userId },
+    });
+
+    if (!version) {
+      throw new NotFoundError('Version not found');
+    }
+
+    if (!version.atsDetails) {
+      throw new ValidationError('Run an ATS scan first before optimizing');
+    }
+
+    const tailoredData = version.tailoredData as unknown as ParsedResumeData;
+    const atsAnalysis = version.atsDetails as unknown as ATSAnalysis;
+
+    // Apply improvements directly from the stored ATS analysis — no AI call needed
+    const optimized: ParsedResumeData = { ...tailoredData };
+
+    // 1. Add missing keywords to skills (dedup, case-insensitive)
+    // Handle both string[] and SkillCategory[] formats
+    const missingKeywords: string[] = atsAnalysis.missingKeywords || [];
+    if (missingKeywords.length > 0) {
+      const rawSkills = tailoredData.skills || [];
+      // Flatten SkillCategory[] to string[] if needed
+      const existingSkills: string[] = rawSkills.length > 0 && typeof rawSkills[0] === 'object'
+        ? (rawSkills as any[]).flatMap((cat: any) => cat.items || [])
+        : (rawSkills as string[]);
+      const existingLower = new Set(existingSkills.map(s => s.toLowerCase()));
+      const toAdd = missingKeywords.filter(k => !existingLower.has(k.toLowerCase()));
+      optimized.skills = [...existingSkills, ...toAdd];
+    }
+
+    // 2. Apply the AI-suggested summary improvement if one was provided
+    const suggestedSummary = atsAnalysis.detailedRecommendations?.sectionBySection?.summary?.improvements?.[0];
+    if (suggestedSummary && typeof suggestedSummary === 'object' && 'after' in suggestedSummary && (suggestedSummary as { after?: string }).after) {
+      optimized.summary = (suggestedSummary as { after: string }).after;
+    }
+
+    const tailoredText = generateResumeText(optimized);
+
+    // Save updated version and clear ATS cache — content has changed
+    const updated = await prisma.resumeVersion.update({
+      where: { id: versionId },
+      data: {
+        tailoredData: optimized as any,
+        tailoredText,
+        atsDetails: Prisma.DbNull,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        tailoredData: optimized,
         tailoredText,
         updatedAt: updated.updatedAt,
       },

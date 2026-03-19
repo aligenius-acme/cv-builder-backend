@@ -20,6 +20,7 @@ import {
   downloadResume,
   previewResume,
   updateVersionContent,
+  optimizeVersion,
 } from '../controllers/resume';
 import { uploadLimiter, aiLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
@@ -85,5 +86,8 @@ router.put('/:id/versions/:versionId/content', updateVersionContent);
 
 // ATS simulation (AI-powered, rate limited, credit checked)
 router.post('/:id/versions/:versionId/simulate-ats', aiLimiter, checkAICredits, simulateATS);
+
+// ATS-driven optimization — applies stored ATS suggestions directly (no AI call, no credit)
+router.post('/:id/versions/:versionId/optimize', optimizeVersion);
 
 export default router;
