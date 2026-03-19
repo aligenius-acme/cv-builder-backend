@@ -49,10 +49,10 @@ function cleanText(text: string): string {
     const trimmed = line.trim();
     if (!trimmed) return true; // keep blank lines for now (collapsed below)
 
-    // Page numbers: "1", "2 of 5", "Page 2", "Page 2 of 5", "- 3 -", "3 | 5"
+    // Page numbers: "1", "- 1 of 3 -", "-- 1 of 3 --", "2 of 5", "Page 2", "Page 2 of 5", "- 3 -", "3 | 5"
     if (/^-?\s*\d+\s*-?$/.test(trimmed)) return false;
     if (/^page\s+\d+(\s+of\s+\d+)?$/i.test(trimmed)) return false;
-    if (/^\d+\s+of\s+\d+$/.test(trimmed)) return false;
+    if (/^-*\s*\d+\s+of\s+\d+\s*-*$/.test(trimmed)) return false;
     if (/^\d+\s*[|\/]\s*\d+$/.test(trimmed)) return false;
 
     // Confidential / draft watermarks often appear as single short lines
@@ -322,16 +322,10 @@ function extractContactInfo(lines: string[]): ContactInfo {
   return contact;
 }
 
-// Helper function to format lines with bullets
+// Strip existing bullet characters and return plain lines joined
 function formatWithBullets(lines: string[]): string {
   return lines
-    .map(line => {
-      const cleanLine = line.replace(/^[•\-*▪◦›●○]\s*/, '').trim();
-      if (cleanLine.length > 0) {
-        return `• ${cleanLine}`;
-      }
-      return '';
-    })
+    .map(line => line.replace(/^[•\-*▪◦›●○]\s*/, '').trim())
     .filter(line => line.length > 0)
     .join('\n');
 }
@@ -551,7 +545,7 @@ function parseExperience(content: string[]): ExperienceEntry[] {
       const cleanLine = line.replace(/^[•\-*▪◦›●○]\s*/, '').trim();
       if (cleanLine.length > 5) {
         // Always add bullet point formatting
-        current.description.push(`• ${cleanLine}`);
+        current.description.push(cleanLine);
       }
     } else if (current && !current.company && line.length < 100 && line.length > 3 && !isBulletPoint) {
       // Could be company name or location line
@@ -581,7 +575,7 @@ function parseExperience(content: string[]): ExperienceEntry[] {
       const cleanLine = line.replace(/^[•\-*▪◦›●○]\s*/, '').trim();
       if (cleanLine.length > 10) {
         // Always add bullet point formatting
-        current.description.push(`• ${cleanLine}`);
+        current.description.push(cleanLine);
       }
     }
   }
@@ -764,11 +758,11 @@ function parseProjects(content: string[]): { name: string; description: string; 
         // Also add to description if there's more content
         const remainingText = cleanLine.replace(/https?:\/\/[^\s]+|github\.com\/[^\s]+|gitlab\.com\/[^\s]+/gi, '').trim();
         if (remainingText.length > 5) {
-          descriptionLines.push(`• ${remainingText}`);
+          descriptionLines.push(remainingText);
         }
       } else if (cleanLine.length > 3) {
         // Always add bullet point formatting
-        descriptionLines.push(`• ${cleanLine}`);
+        descriptionLines.push(cleanLine);
       }
     } else {
       // No current project yet, might be the first entry
