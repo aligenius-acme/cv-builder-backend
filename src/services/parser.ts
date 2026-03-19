@@ -37,13 +37,33 @@ async function parseDOCX(buffer: Buffer): Promise<string> {
   return cleanText(result.value);
 }
 
-// Clean and normalize text
+// Clean and normalize text, stripping common footer/header artifacts
 function cleanText(text: string): string {
-  return text
+  const lines = text
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
     .replace(/\t+/g, ' ')
+    .split('\n');
+
+  const filtered = lines.filter(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return true; // keep blank lines for now (collapsed below)
+
+    // Page numbers: "1", "2 of 5", "Page 2", "Page 2 of 5", "- 3 -", "3 | 5"
+    if (/^-?\s*\d+\s*-?$/.test(trimmed)) return false;
+    if (/^page\s+\d+(\s+of\s+\d+)?$/i.test(trimmed)) return false;
+    if (/^\d+\s+of\s+\d+$/.test(trimmed)) return false;
+    if (/^\d+\s*[|\/]\s*\d+$/.test(trimmed)) return false;
+
+    // Confidential / draft watermarks often appear as single short lines
+    if (/^(confidential|draft|curriculum vitae|resume|cv)$/i.test(trimmed)) return false;
+
+    return true;
+  });
+
+  return filtered
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
     .replace(/ +/g, ' ')
     .trim();
 }
