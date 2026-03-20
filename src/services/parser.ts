@@ -32,9 +32,43 @@ async function parsePDF(buffer: Buffer): Promise<string> {
 }
 
 // Parse DOCX file
+// Uses HTML conversion so that soft returns (<w:br/>) inside paragraphs
+// are preserved as newlines — extractRawText silently drops them, which
+// merges content like project titles, URLs, Role and Industry lines into
+// one unbreakable concatenated string.
 async function parseDOCX(buffer: Buffer): Promise<string> {
-  const result = await mammoth.extractRawText({ buffer });
-  return cleanText(result.value);
+  const htmlResult = await mammoth.convertToHtml({ buffer });
+  if (htmlResult.value) {
+    const text = htmlResult.value
+      // Soft returns → newline (must come before generic tag strip)
+      .replace(/<br\s*\/?>/gi, '\n')
+      // Block-level elements → newlines
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<\/h[1-6]>/gi, '\n\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(/<\/ul>/gi, '\n')
+      .replace(/<\/ol>/gi, '\n')
+      // Strip all remaining HTML tags
+      .replace(/<[^>]+>/g, '')
+      // HTML entities
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&ndash;/g, '–')
+      .replace(/&mdash;/g, '—')
+      .replace(/&hellip;/g, '...')
+      .replace(/&#x2019;/g, "'")
+      .replace(/&#x201C;/g, '"')
+      .replace(/&#x201D;/g, '"');
+    return cleanText(text);
+  }
+  // Fallback to raw text extraction
+  const rawResult = await mammoth.extractRawText({ buffer });
+  return cleanText(rawResult.value);
 }
 
 // Clean and normalize text, stripping common footer/header artifacts
@@ -102,24 +136,24 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
   // Patterns now handle: "SECTION:", "Section", "SECTION", "Section Name", etc.
   const sectionPatterns: { pattern: RegExp; section: string }[] = [
     // Summary
-    { pattern: /^(professional\s+)?summary:?$|^profile:?$|^about(\s+me)?:?$|^objective:?$|^career\s+(objective|summary):?$|^experience\s+summary:?$|^summary\s+of\s+(experience|qualifications):?$|^executive\s+summary:?$|^personal\s+statement:?$|^introduction:?$|^professional\s+profile:?$|^work\s+summary:?$|^overview:?$/i, section: 'summary' },
+    { pattern: /^(professional\s+)?summary:?$|^profile:?$|^about(\s+me)?:?$|^objective:?$|^career\s+(objective|summary):?$|^experience\s+summary:?$|^summary\s+of\s+(experience|qualifications):?$|^executive\s+summary:?$|^personal\s+statement:?$|^introduction:?$|^professional\s+profile:?$|^work\s+summary:?$|^overview:?$|^highlights?:?$|^key\s+highlights?:?$|^professional\s+overview:?$|^candidate\s+summary:?$|^strengths?:?$/i, section: 'summary' },
     // Experience
-    { pattern: /^work\s+experience:?$|^employment(\s+history)?:?$|^work\s+history:?$|^professional\s+experience:?$|^career\s+history:?$|^relevant\s+experience:?$|^job\s+history:?$|^experience:?$|^positions?\s+held:?$|^professional\s+background:?$|^technical\s+experience:?$|^industry\s+experience:?$/i, section: 'experience' },
+    { pattern: /^work\s+experience:?$|^employment(\s+history)?:?$|^work\s+history:?$|^professional\s+experience:?$|^career\s+history:?$|^relevant\s+experience:?$|^job\s+history:?$|^experience:?$|^positions?\s+held:?$|^professional\s+background:?$|^technical\s+experience:?$|^industry\s+experience:?$|^consulting\s+experience:?$|^research\s+experience:?$|^military\s+service:?$|^internship(s)?:?$|^work\s+placement(s)?:?$/i, section: 'experience' },
     // Education
-    { pattern: /^education(al)?(\s+background)?:?$|^academic(\s+background)?:?$|^qualifications:?$|^academic\s+credentials:?$|^schooling:?$|^degrees?:?$|^academic\s+history:?$|^educational\s+qualifications:?$/i, section: 'education' },
+    { pattern: /^education(al)?(\s+background)?:?$|^academic(\s+background)?:?$|^qualifications:?$|^academic\s+credentials:?$|^schooling:?$|^degrees?:?$|^academic\s+history:?$|^educational\s+qualifications:?$|^training\s+(&|and)\s+education:?$|^education\s+(&|and)\s+training:?$/i, section: 'education' },
     // Skills
-    { pattern: /^(technical\s+)?skills:?$|^core\s+competencies:?$|^competencies:?$|^expertise:?$|^technologies:?$|^areas?\s+of\s+expertise:?$|^key\s+skills:?$|^skills?\s+(summary|set):?$|^proficiencies:?$|^abilities:?$|^technical\s+proficiencies:?$|^technical\s+expertise:?$|^tools?\s+and\s+technologies:?$|^tech\s+stack:?$|^technology\s+stack:?$/i, section: 'skills' },
+    { pattern: /^(technical\s+)?skills:?$|^core\s+competencies:?$|^competencies:?$|^expertise:?$|^technologies:?$|^areas?\s+of\s+expertise:?$|^key\s+skills:?$|^skills?\s+(summary|set):?$|^proficiencies:?$|^abilities:?$|^technical\s+proficiencies:?$|^technical\s+expertise:?$|^tools?\s+and\s+technologies:?$|^tech\s+stack:?$|^technology\s+stack:?$|^skills\s+(&|and)\s+tools?:?$|^languages\s+(&|and)\s+technologies:?$|^professional\s+skills:?$|^relevant\s+skills:?$|^technical\s+background:?$|^technical\s+knowledge:?$/i, section: 'skills' },
     // Certifications
-    { pattern: /^certifications?:?$|^licenses?(\s+(&|and)\s+certifications?)?:?$|^professional\s+certifications?:?$|^credentials:?$|^professional\s+development:?$|^training:?$|^courses?:?$|^certificate(s)?:?$|^accreditations?:?$/i, section: 'certifications' },
+    { pattern: /^certifications?:?$|^licenses?(\s+(&|and)\s+certifications?)?:?$|^professional\s+certifications?:?$|^credentials:?$|^professional\s+development:?$|^training:?$|^courses?:?$|^certificate(s)?:?$|^accreditations?:?$|^continuing\s+education:?$|^professional\s+training:?$/i, section: 'certifications' },
     // Projects
-    { pattern: /^projects?:?$|^personal\s+projects?:?$|^key\s+projects?:?$|^notable\s+projects?:?$|^side\s+projects?:?$|^portfolio:?$|^selected\s+projects?:?$|^freelance\s+projects?:?$|^open\s+source:?$/i, section: 'projects' },
+    { pattern: /^projects?:?$|^personal\s+projects?:?$|^key\s+projects?:?$|^notable\s+projects?:?$|^side\s+projects?:?$|^portfolio:?$|^selected\s+projects?:?$|^freelance\s+projects?:?$|^open\s+source:?$|^client\s+projects?:?$/i, section: 'projects' },
     // Languages
-    { pattern: /^languages?:?$|^language\s+skills?:?$|^language\s+proficiency:?$|^foreign\s+languages?:?$|^spoken\s+languages?:?$/i, section: 'languages' },
+    { pattern: /^languages?:?$|^language\s+skills?:?$|^language\s+proficiency:?$|^foreign\s+languages?:?$|^spoken\s+languages?:?$|^natural\s+languages?:?$/i, section: 'languages' },
     // Awards
-    { pattern: /^awards?:?$|^honors?(\s+(&|and)\s+awards?)?:?$|^achievements?:?$|^recognition:?$|^accomplishments?:?$|^distinctions?:?$|^scholarships?:?$/i, section: 'awards' },
+    { pattern: /^awards?:?$|^honors?(\s+(&|and)\s+awards?)?:?$|^achievements?:?$|^recognition:?$|^accomplishments?:?$|^distinctions?:?$|^scholarships?:?$|^honors?\s+(&|and)\s+recognition:?$/i, section: 'awards' },
     // Extra sections
-    { pattern: /^publications?:?$|^research:?$|^papers?:?$|^conference\s+papers?:?$/i, section: 'projects' },
-    { pattern: /^volunteer(ing)?(\s+experience)?:?$|^community\s+(service|involvement):?$|^extracurricular:?$/i, section: 'experience' },
+    { pattern: /^publications?:?$|^research:?$|^papers?:?$|^conference\s+papers?:?$|^journal\s+articles?:?$/i, section: 'projects' },
+    { pattern: /^volunteer(ing)?(\s+experience)?:?$|^community\s+(service|involvement):?$|^extracurricular:?$|^leadership(\s+experience)?:?$/i, section: 'experience' },
     { pattern: /^interests?:?$|^hobbies?:?$|^activities?:?$/i, section: 'interests' },
     { pattern: /^references?:?$/i, section: 'references' },
   ];
@@ -130,14 +164,21 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Clean line for matching - remove trailing colons, dashes, etc.
-    const cleanLine = line.replace(/[:\-–—]+$/, '').trim();
+    // Clean line for matching:
+    // 1. Remove trailing colons, dashes, underscores
+    // 2. Strip leading emoji (e.g. "💼 Experience", "🎓 Education")
+    // 3. Strip leading numbering (e.g. "1. Experience", "II. Education", "A. Skills")
+    const cleanLine = line
+      .replace(/[:\-–—_]+$/, '')
+      .replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]+\s*/gu, '')
+      .replace(/^(?:\d+\.|[IVXivx]+\.|[A-Z]\.)\s+/, '')
+      .trim();
 
     // Check if line is a section header
     // Headers are usually: short, ALL CAPS, title case, or end with colon
     const isLikelyHeader = (
-      cleanLine.length < 60 &&
-      (cleanLine.length < 40 || cleanLine === cleanLine.toUpperCase() || line.endsWith(':'))
+      cleanLine.length < 65 &&
+      (cleanLine.length < 45 || cleanLine === cleanLine.toUpperCase() || line.endsWith(':'))
     );
 
     if (isLikelyHeader) {
@@ -167,7 +208,8 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
 
   // Collect unassigned lines (excluding contact info at the top)
   const unassignedLines: string[] = [];
-  const contactEndIndex = Math.min(10, lines.length);
+  // Skip contact header area — contact is typically within first 8 lines
+  const contactEndIndex = Math.min(8, lines.length);
 
   for (let i = contactEndIndex; i < lines.length; i++) {
     if (!usedLineIndices.has(i)) {
@@ -175,16 +217,26 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
     }
   }
 
-  // If we have unassigned content and no summary, use it as summary
+  // If we have unassigned content and no summary, try to use it as summary.
+  // Priority: lines that appear BEFORE the first detected section (intro paragraphs).
   if (!data.summary && unassignedLines.length > 0) {
-    // Filter out lines that look like job titles or dates
-    const summaryLines = unassignedLines.filter(line => {
-      const hasDate = /\b(19|20)\d{2}\b/.test(line) || /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i.test(line);
-      const isShortTitle = line.length < 50 && /\b(Engineer|Developer|Manager|Director)\b/i.test(line);
-      return !hasDate && !isShortTitle && line.length > 20;
+    const firstSectionStart = sections.length > 0 ? sections[0].startIndex : lines.length;
+
+    // First try: unassigned lines that appear before the first section (pre-section intro)
+    const preSection = lines
+      .slice(contactEndIndex, firstSectionStart)
+      .filter((_, idx) => !usedLineIndices.has(contactEndIndex + idx));
+
+    const summaryCandidate = preSection.length > 0 ? preSection : unassignedLines;
+
+    const summaryLines = summaryCandidate.filter(line => {
+      const hasDate = /\b(19|20)\d{2}\b/.test(line) || /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(line);
+      const isShortTitle = line.length < 50 && /\b(Engineer|Developer|Manager|Director|Lead)\b/i.test(line) && !/experience|years/i.test(line);
+      const isSectionHeader = line.length < 45 && /^[A-Z\s]+$/.test(line);
+      return !hasDate && !isShortTitle && !isSectionHeader && line.length > 20;
     });
 
-    if (summaryLines.length > 0 && summaryLines.length <= 10) {
+    if (summaryLines.length > 0 && summaryLines.length <= 15) {
       data.summary = formatWithBullets(summaryLines);
     }
   }
@@ -201,8 +253,10 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
     }
   }
 
-  // Fallback: If no experience found via sections, try to extract from full text
-  if (data.experience.length === 0) {
+  // Fallback: If no experience found via sections and no projects section was found,
+  // try to extract from full text. Skip when projects exist — in project-only resumes
+  // the full-text scan would pick up project metadata as fake experience entries.
+  if (data.experience.length === 0 && (data.projects?.length ?? 0) === 0) {
     data.experience = parseExperience(lines);
   }
 
@@ -241,7 +295,9 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
 // Extract certifications from full text as fallback
 function extractCertificationsFromText(lines: string[]): CertificationEntry[] {
   const certifications: CertificationEntry[] = [];
-  const certKeywords = /\b(certified|certification|certificate|license|licensed|credential|AWS|Azure|GCP|PMP|CISSP|CompTIA|Cisco|Oracle|Microsoft|Google|Salesforce|Scrum|Agile|CPA|CFA|Series\s+\d+)\b/i;
+  // Only match lines that contain actual certification words — avoid false positives
+  // from platform names (AWS, Azure, etc.) that appear in skill or experience descriptions.
+  const certKeywords = /\b(certified|certification|certificate|license|licensed|credential|PMP|PMI|CISSP|CompTIA|CPA|CFA|ITIL|PRINCE2|Six\s+Sigma|Scrum\s+Master|CSM|CISM|CISA|CKA|CKAD|CEH|OSCP|Series\s+\d+)\b/i;
 
   for (const line of lines) {
     if (certKeywords.test(line) && line.length < 150) {
@@ -294,37 +350,55 @@ function extractLanguagesFromText(text: string): string[] {
 // Extract contact information
 function extractContactInfo(lines: string[]): ContactInfo {
   const contact: ContactInfo = {};
-  // Search first 15 lines — some resume templates put more header content than expected
-  const headerText = lines.slice(0, 15).join(' ');
+  // Search first 20 lines — some resume templates put more header content than expected
+  const headerLines = lines.slice(0, 20);
+  const headerText = headerLines.join(' ');
 
-  // Name: first line that doesn't look like contact info or a job title subtitle
-  for (const line of lines.slice(0, 6)) {
-    const cleaned = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
+  // Name: first line that doesn't look like contact info or a job title subtitle.
+  // Handles optional honorific prefixes (Dr., Mr., Ms., Prof.) and separator-based titles.
+  for (const line of lines.slice(0, 8)) {
+    let cleaned = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
+    // Strip honorific prefix before testing
+    const honorificStripped = cleaned.replace(/^(Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Prof\.?|Eng\.?)\s+/i, '').trim();
+    const testLine = honorificStripped || cleaned;
     if (
-      cleaned.length > 1 &&
-      cleaned.length < 70 &&
-      !/@/.test(cleaned) &&
-      !/https?:\/\//i.test(cleaned) &&
-      !/\d{3}.*\d{3}/.test(cleaned) &&      // not a phone
-      !/^(engineer|developer|designer|manager|analyst|consultant|architect|director|lead|senior|junior|full.stack|front.end|back.end|software|product|data|devops)/i.test(cleaned)
+      testLine.length > 1 &&
+      testLine.length < 100 &&
+      !/@/.test(testLine) &&
+      !/https?:\/\//i.test(testLine) &&
+      !/\d{3}.*\d{3}/.test(testLine) &&   // not a phone
+      !/^(engineer|developer|designer|manager|analyst|consultant|architect|director|lead|senior|junior|full.stack|front.end|back.end|software|product|data|devops|specialist|coordinator)/i.test(testLine)
     ) {
-      contact.name = cleaned;
-      break;
+      // Strip title portion that follows a separator like "–", "|", "/" on the same line
+      const separatorMatch = testLine.match(/^([^|–—\/]+?)\s*[|–—\/]\s*.+$/);
+      let candidate = separatorMatch ? separatorMatch[1].trim() : testLine;
+      // Restore honorific if stripped
+      if (honorificStripped !== cleaned && candidate === honorificStripped) {
+        candidate = cleaned.replace(/^(Dr\.?|Mr\.?|Mrs\.?|Ms\.?|Prof\.?|Eng\.?)\s+/i, '').trim();
+      }
+      // Only accept if the result looks like a name (alphabetic, reasonable length)
+      if (candidate.length > 1 && candidate.length < 60 && /^[A-Za-z\s\-'.]+$/.test(candidate)) {
+        contact.name = candidate;
+        break;
+      }
     }
   }
 
-  // Email
+  // Email — search full header area
   const emailMatch = headerText.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
   if (emailMatch) contact.email = emailMatch[0];
 
-  // Phone — handles international (+XX), US, and common formats
+  // Phone — handles US, international (+XX), Pakistani (+92), UK (+44), and common formats
   const phoneMatch = headerText.match(
-    /(?:\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+\d{1,3}[-.\s]\d{1,4}[-.\s]\d{1,4}[-.\s]?\d{1,9}/
+    /(?:\+\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}[\s.-]?\d{3,4}(?!\d)/
   );
-  if (phoneMatch) contact.phone = phoneMatch[0].trim();
+  if (phoneMatch) {
+    const p = phoneMatch[0].trim();
+    // Must contain at least 7 digits to be a real phone number
+    if ((p.match(/\d/g) || []).length >= 7) contact.phone = p;
+  }
 
   // LinkedIn — handle URL variants and common OCR/typo issues
-  // Matches: linkedin.com/in/x, lnkd.in/x, linke...in.com/in/x (typos)
   const linkedinMatch = headerText.match(
     /(?:https?:\/\/)?(?:www\.)?lin(?:ke?d?(?:ei|ie)?|fied?)in\.com\/in\/([\w-]+)/i
   );
@@ -340,11 +414,23 @@ function extractContactInfo(lines: string[]): ContactInfo {
   );
   if (websiteMatch) contact.website = websiteMatch[0];
 
-  // Location — handle "City, ST", "City, ST ZIP", "City, Country"
+  // Location — handle "City, ST", "City, ST ZIP", "City, Country", "City, Country (Remote)"
+  // Require a known 2-letter US state OR a country/region name to avoid false positives.
+  const US_STATES = /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/;
+  const COUNTRY_NAMES = /\b(USA|U\.S\.A|UK|U\.K|England|Scotland|Wales|Canada|Australia|Germany|France|Italy|Spain|Netherlands|Sweden|Norway|Denmark|Finland|Poland|India|Pakistan|Bangladesh|UAE|Dubai|Singapore|Malaysia|Philippines|Nigeria|Kenya|South\s+Africa|Brazil|Mexico|Remote)\b/i;
   const locationMatch = headerText.match(
-    /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?),\s*(?:[A-Z]{2}(?:\s+\d{5})?|[A-Z][a-zA-Z]{2,})\b/
+    /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?),\s*([A-Z]{2}(?:\s+\d{5})?|[A-Z][a-zA-Z]{2,})\b/
   );
-  if (locationMatch) contact.location = locationMatch[0];
+  if (locationMatch) {
+    const stateOrCountry = locationMatch[2];
+    if (US_STATES.test(stateOrCountry) || COUNTRY_NAMES.test(stateOrCountry)) {
+      contact.location = locationMatch[0];
+    }
+  }
+  // Also check for "Remote" as a standalone location marker
+  if (!contact.location && /\bRemote\b/i.test(headerText)) {
+    contact.location = 'Remote';
+  }
 
   return contact;
 }
@@ -381,14 +467,7 @@ function processSection(
       data.certifications = parseCertifications(content);
       break;
     case 'projects':
-      // Projects might contain work experience entries - parse and also check for experience
-      const projects = parseProjects(content);
-      data.projects = projects;
-      // If projects look like work experience (have dates), also add to experience
-      const projectExperience = parseExperience(content);
-      if (projectExperience.length > 0 && data.experience.length === 0) {
-        data.experience = projectExperience;
-      }
+      data.projects = parseProjects(content);
       break;
     case 'languages':
       data.languages = parseLanguages(content);
@@ -420,11 +499,18 @@ function parseCertifications(content: string[]): CertificationEntry[] {
 
     const cert: CertificationEntry = { name: trimmed };
 
-    // Extract year if present
+    // Extract year if present — also strip surrounding parens/brackets after year removal
     const dateMatch = trimmed.match(/\b(19|20)\d{2}\b/);
     if (dateMatch) {
       cert.date = dateMatch[0];
-      cert.name = trimmed.replace(dateMatch[0], '').trim().replace(/\s{2,}/g, ' ');
+      cert.name = trimmed
+        .replace(dateMatch[0], '')
+        .replace(/\(\s*\)/g, '')   // remove empty "()" left after year extraction
+        .replace(/\[\s*\]/g, '')   // remove empty "[]" left after year extraction
+        .trim()
+        .replace(/\s{2,}/g, ' ')
+        .replace(/[-–—,|]\s*$/, '') // trailing separators
+        .trim();
     }
 
     // Extract issuer if separated by dash/comma/pipe
@@ -494,15 +580,21 @@ function parseExperience(content: string[]): ExperienceEntry[] {
   const experiences: ExperienceEntry[] = [];
   let current: Partial<ExperienceEntry> | null = null;
 
-  // Multiple date patterns to catch various formats
+  // Multiple date patterns to catch various formats including European (MM/YYYY, MM.YYYY)
   const datePatterns = [
+    // "Jan 2020 – Present", "January 2020 to December 2022"
     /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*'?\d{2,4}\s*[-–—to]+\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*'?\d{2,4}|Present|Current|Now|Ongoing)/i,
+    // "01/2020 – 12/2022", "01/20 – Present"
     /\d{1,2}\/\d{2,4}\s*[-–—to]+\s*(?:\d{1,2}\/\d{2,4}|Present|Current|Now)/i,
+    // "2020.01 – 2022.12" (European dot format)
+    /\d{4}\.\d{2}\s*[-–—]\s*(?:\d{4}\.\d{2}|Present|Current)/i,
+    // "2020 – 2023", "2020 - Present"
     /\d{4}\s*[-–—to]+\s*(?:\d{4}|Present|Current|Now|Ongoing)/i,
+    // Single year "2020" only when preceded by typical keywords — handled via context
   ];
 
   const jobTitlePatterns = [
-    /\b(Engineer|Developer|Manager|Director|Lead|Senior|Junior|Analyst|Designer|Architect|Consultant|Specialist|Coordinator|Administrator|Intern|Associate|Officer|Executive|VP|CTO|CEO|CFO|COO|Head)\b/i,
+    /\b(Engineer|Developer|Manager|Director|Lead|Senior|Junior|Analyst|Designer|Architect|Consultant|Specialist|Coordinator|Administrator|Intern|Associate|Officer|Executive|VP|CTO|CEO|CFO|COO|CIO|Head|Principal|Staff|Fellow|Founder|Co-founder|Contractor|Freelance|Researcher|Scientist|Technician|Programmer|Strategist|Advisor|Supervisor|President|Partner|Scrum\s+Master|Product\s+Owner)\b/i,
   ];
 
   const saveExperience = () => {
@@ -525,6 +617,9 @@ function parseExperience(content: string[]): ExperienceEntry[] {
       if (dateMatch) break;
     }
 
+    // Skip project/experience metadata labels — these are not job titles
+    if (/^(role|title|position|industry|responsibilities|tools?\s*(?:&|and)?\s*technologies?|tech\s+stack|client|company|duration|status|type)[\s:]/i.test(line)) continue;
+
     const hasJobTitle = jobTitlePatterns.some(p => p.test(line));
     const isBulletPoint = /^[•\-*▪◦›●○]\s*/.test(line);
     const startsWithActionVerb = /^(?:Led|Built|Developed|Created|Managed|Designed|Implemented|Achieved|Improved|Reduced|Increased|Delivered|Spearheaded|Established|Launched|Drove|Orchestrated|Streamlined|Optimized|Automated|Integrated|Collaborated|Mentored|Trained|Analyzed|Researched|Executed|Coordinated)\b/i.test(line);
@@ -532,30 +627,43 @@ function parseExperience(content: string[]): ExperienceEntry[] {
     if (dateMatch) {
       // Line with date - likely a new entry or contains date for current entry
       const dates = dateMatch[0].split(/[-–—]|to/i).map(d => d.trim());
-      const titlePart = line.replace(dateMatch[0], '').trim().replace(/^[|,\-–—]\s*/, '').trim();
+      const remainder = line.replace(dateMatch[0], '').trim().replace(/^[|,\-–—]\s*/, '').trim();
 
       if (current && current.title && !current.startDate) {
-        // Add date to current entry
+        // Add date to current entry — also pick up company from remainder if on same line
         current.startDate = dates[0];
         current.endDate = dates[1] || dates[0];
         current.current = /present|current|now|ongoing/i.test(dates[1] || '');
+        if (remainder && !current.company) current.company = remainder;
       } else {
         // Save previous entry and start new one
         saveExperience();
+        // "Title | Company | Date" all on one line — split remainder on pipe
+        let title = remainder;
+        let company = '';
+        if (/[|]/.test(remainder)) {
+          const rParts = remainder.split('|').map(p => p.trim()).filter(p => p.length > 0);
+          title = rParts[0];
+          company = rParts.slice(1).join(' ');
+        } else if (/\s+at\s+/i.test(remainder)) {
+          const rParts = remainder.split(/\s+at\s+/i);
+          title = rParts[0].trim();
+          company = rParts[1]?.trim() || '';
+        }
         current = {
-          title: titlePart || '',
-          company: '',
+          title,
+          company,
           startDate: dates[0],
           endDate: dates[1] || dates[0],
           current: /present|current|now|ongoing/i.test(dates[1] || ''),
           description: [],
         };
       }
-    } else if (hasJobTitle && !isBulletPoint && !startsWithActionVerb && line.length < 100) {
+    } else if (hasJobTitle && !isBulletPoint && !startsWithActionVerb && line.length < 120) {
       // Likely a job title line - save previous and start new
       saveExperience();
 
-      // Check if line contains company info (often separated by | or at or -)
+      // Check if line contains company info (often separated by | or "at" or "–")
       let title = line;
       let company = '';
       let location = '';
@@ -565,9 +673,23 @@ function parseExperience(content: string[]): ExperienceEntry[] {
         title = parts[0].trim();
         company = parts[1]?.trim() || '';
       } else if (/[|]/.test(line)) {
-        const parts = line.split('|');
-        title = parts[0].trim();
-        company = parts[1]?.trim() || '';
+        const parts = line.split('|').map(p => p.trim());
+        title = parts[0];
+        company = parts[1] || '';
+        if (parts[2]) location = parts[2];
+      } else if (/\s+[–—]\s+/.test(line) && !dateMatch) {
+        // "Software Engineer – Google" or "Google – Software Engineer"
+        const parts = line.split(/\s+[–—]\s+/);
+        if (parts.length === 2) {
+          // Heuristic: shorter part is likely the title
+          if (parts[0].length <= parts[1].length) {
+            title = parts[0].trim();
+            company = parts[1].trim();
+          } else {
+            company = parts[0].trim();
+            title = parts[1].trim();
+          }
+        }
       }
 
       current = {
@@ -628,38 +750,62 @@ function parseEducation(content: string[]): EducationEntry[] {
   const education: EducationEntry[] = [];
   let current: Partial<EducationEntry> | null = null;
 
-  for (const line of content) {
-    const degreePatterns = [
-      /\b(Bachelor|Master|Ph\.?D|Doctor|Associate|B\.?S\.?|B\.?A\.?|M\.?S\.?|M\.?A\.?|M\.?B\.?A\.?|B\.?Sc|M\.?Sc)\b/i,
-    ];
+  // Comprehensive degree patterns — covers US, UK, European, South Asian conventions
+  const DEGREE_RE = /\b(Bachelor(?:'s)?|Master(?:'s)?|Ph\.?D\.?|D\.?Phil\.?|Doctor(?:ate)?|Associate(?:'s)?|Juris\s+Doctor|J\.?D\.?|M\.?D\.?|M\.?B\.?B\.?S\.?|Pharm\.?D\.?|D\.?D\.?S\.?|D\.?V\.?M\.?|B\.?S\.?|B\.?A\.?|M\.?S\.?|M\.?A\.?|M\.?B\.?A\.?|B\.?Sc\.?|M\.?Sc\.?|B\.?Tech\.?|M\.?Tech\.?|B\.?E\.?|M\.?E\.?|B\.?Eng\.?|M\.?Eng\.?|LLB|LLM|HND|HNC|A\.?A\.?|A\.?S\.?|Diploma|Certificate\s+(?:in|of)|Foundation\s+Degree)\b/i;
 
-    const hasDegree = degreePatterns.some(p => p.test(line));
+  // Lines that look like institution names
+  const INSTITUTION_RE = /\b(university|college|institute|school|academy|polytechnic|faculty|conservatory)\b/i;
+
+  for (const line of content) {
+    const hasDegree = DEGREE_RE.test(line);
+    const hasInstitution = INSTITUTION_RE.test(line);
 
     if (hasDegree) {
       if (current && current.degree) {
         education.push(current as EducationEntry);
       }
-      current = {
-        degree: line,
-        institution: '',
-        achievements: [],
-      };
-    } else if (current) {
-      if (!current.institution && line.length < 60) {
-        current.institution = line;
-      } else if (/\d{4}/.test(line)) {
-        const yearMatch = line.match(/\d{4}/);
+      // Try to extract institution from same line (e.g. "B.S. Computer Science | MIT | 2020")
+      let degree = line;
+      let institution = '';
+      let graduationDate: string | undefined;
+
+      if (/[|–—]/.test(line)) {
+        const parts = line.split(/[|–—]/).map(p => p.trim());
+        degree = parts[0];
+        institution = parts[1] || '';
+        const yearPart = parts[2] || parts[1] || '';
+        const yearMatch = yearPart.match(/\b(19|20)\d{2}\b/);
+        if (yearMatch) graduationDate = yearMatch[0];
+      } else {
+        // Check if year is embedded in the line
+        const yearMatch = line.match(/\b(19|20)\d{2}\b/);
         if (yearMatch) {
-          current.graduationDate = yearMatch[0];
+          graduationDate = yearMatch[0];
+          degree = line.replace(yearMatch[0], '').trim().replace(/[\s,]+$/, '');
         }
-      } else if (/gpa|cum laude|magna|summa|honors/i.test(line)) {
+      }
+
+      current = { degree, institution, graduationDate, achievements: [] };
+    } else if (hasInstitution && !current) {
+      // Institution line before the degree line (some resumes list school first)
+      current = { degree: '', institution: line, achievements: [] };
+    } else if (hasInstitution && current && !current.institution) {
+      current.institution = line;
+    } else if (current) {
+      // Try to attach subsequent lines to the current entry
+      if (!current.institution && line.length < 80 && !/@/.test(line)) {
+        current.institution = line;
+      } else if (/\b(19|20)\d{2}\b/.test(line) && !current.graduationDate) {
+        const yearMatch = line.match(/\b(19|20)\d{2}\b/);
+        if (yearMatch) current.graduationDate = yearMatch[0];
+      } else if (/\b(gpa|cum laude|magna|summa|honors?|distinction|first.class|upper.second|lower.second)\b/i.test(line)) {
         current.achievements = current.achievements || [];
-        current.achievements.push(line);
+        current.achievements.push(line.trim());
       }
     }
   }
 
-  if (current && current.degree) {
+  if (current && (current.degree || current.institution)) {
     education.push(current as EducationEntry);
   }
 
@@ -667,7 +813,7 @@ function parseEducation(content: string[]): EducationEntry[] {
 }
 
 // Known subsection header patterns within a skills block
-const SKILL_SECTION_HEADER_RE = /^(web\s+technologies|back-?end\s+technologies|front-?end\s+technologies|microsoft\s+stack|frameworks?\s+(?:and\s+(?:libraries|tools))?|cloud\s+(?:technologies|services|platforms?)|tools?\s+(?:and\s+version\s+control)?|development\s+practices|technical\s+skills?|programming\s+languages?|languages?\s+(?:and\s+frameworks?)?|databases?\s*(?:and\s+data\s+management)?|data\s+(?:management|storage|tools?|engineering)|devops\s*(?:and\s+deployment)?|deployment\s*(?:and\s+infrastructure)?|other\s+skills?|soft\s+skills?|core\s+competencies|infrastructure|version\s+control|methodologies?|operating\s+systems?|ide\s+(?:and\s+tools?)?|testing\s+(?:and\s+qa)?|mobile\s+(?:development|technologies)?|security(?:\s+tools?)?|networking|apis?\s+(?:and\s+integrations?)?|server\s+management|systems?\s+administration|machine\s+learning|data\s+science|analytics|visualization|reporting|platforms?\s+and\s+tools?):?$/i;
+const SKILL_SECTION_HEADER_RE = /^(web\s+technologies|back-?end\s+technologies|front-?end\s+technologies|microsoft\s+stack|frameworks?\s+(?:and\s+(?:libraries|tools))?|cloud\s+(?:technologies|services|platforms?)|cloud\s*(?:&|and)\s*devops|tools?\s+(?:and\s+version\s+control)?|development\s+tools?|development\s+practices|technical\s+skills?|programming\s+languages?|languages?\s+(?:and\s+frameworks?)?|databases?\s*(?:and\s+data\s+management)?|data\s+(?:management|storage|tools?|engineering)|devops\s*(?:and\s+deployment)?|deployment\s*(?:and\s+infrastructure)?|other\s+skills?|soft\s+skills?|core\s+competencies|infrastructure|version\s+control|methodologies?|operating\s+systems?|ide\s+(?:and\s+tools?)?|testing\s+(?:and\s+qa)?|mobile\s+(?:development|technologies)?|security(?:\s+tools?)?|networking|apis?\s+(?:and\s+integrations?)?|server\s+management|systems?\s+administration|machine\s+learning|data\s+science|analytics|visualization|reporting|platforms?\s+and\s+tools?|styling\s*(?:&|and)\s*design|performance\s*(?:&|and)\s*optimization|performance\s+optimization):?$/i;
 
 // Detect generic subsection category headers (multi-word plain-text headings with no skill chars)
 function isSkillSubsectionHeader(line: string): boolean {
@@ -874,6 +1020,11 @@ function parseSkills(content: string[]): string[] {
   const filterWords = /^(and|or|including|such as|like|using|with|for|the|a|an|in|on|to|of|is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|could|should|may|might|must|shall|can|need|dare|ought|used|etc|e\.g\.|i\.e\.)$/i;
   const descriptivePhrases = /(for\s+\w+\s+development|for\s+developing|for\s+building|for\s+managing|for\s+deploying|including\s+|such\s+as\s+)/i;
 
+  // Intro phrases that precede actual skill lists in narrative-style resumes
+  // e.g. "Expert in Next.js, React.js" → strip "Expert in " → "Next.js, React.js"
+  // e.g. "Proficient in Redux, Zustand" → strip "Proficient in " → "Redux, Zustand"
+  const narrativeIntroRE = /^(?:expert\s+in|proficient\s+in|skilled\s+in|experienced\s+in|experienced\s+with|strong\s+expertise\s+in|strong\s+understanding\s+of|knowledge\s+of|advanced\s+knowledge\s+of|deep\s+knowledge\s+of|working\s+knowledge\s+of|familiar\s+with|hands-?on\s+experience\s+(?:in|with)|responsible\s+for(?:\s+building\s+and\s+maintaining)?|specialized\s+in|expertise\s+in)\s+/i;
+
   for (const line of content) {
     const cleanLine = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
     if (!cleanLine) continue;
@@ -881,6 +1032,33 @@ function parseSkills(content: string[]): string[] {
     // Skip known subsection category headers
     if (SKILL_SECTION_HEADER_RE.test(cleanLine)) continue;
     if (isSkillSubsectionHeader(cleanLine)) continue;
+
+    // Narrative-intro lines ("Expert in...", "Proficient in...") are descriptive sentences.
+    // Trying to comma-split them produces noisy tokens.  The extractSkillsFromText
+    // fallback running on the full resume text will pick up the actual tech names
+    // mentioned in them, so we safely skip them here.
+    if (narrativeIntroRE.test(cleanLine)) continue;
+
+    // Action-verb sentences (e.g. "Implemented dynamic imports...") and any line that
+    // reads like a description rather than a skill list — skip them.
+    const startsWithActionVerb = /^(?:Led|Built|Developed|Created|Managed|Designed|Implemented|Achieved|Improved|Reduced|Increased|Delivered|Spearheaded|Established|Launched|Drove|Orchestrated|Streamlined|Optimized|Automated|Integrated|Collaborated|Mentored|Trained|Analyzed|Researched|Executed|Coordinated|Enhanced|Architected|Migrated|Refactored|Deployed|Configured|Maintained|Monitored|Debugged|Leveraged|Utilized|Applied|Ensured|Supported|Provided|Enabled|Facilitated)\b/i.test(cleanLine);
+    if (startsWithActionVerb) continue;
+
+    // Lines that look like full English sentences (long, ends with period, no commas/semicolons)
+    // are narrative descriptions — skip so individual words don't pollute the skills list.
+    const hasNoDelimiters = !/[,;|•·]/.test(cleanLine);
+    const looksLikeSentence = hasNoDelimiters && cleanLine.length > 40 && (
+      cleanLine.endsWith('.') ||
+      /\s+(for|to|with|by|through|and)\s+\w+/i.test(cleanLine)
+    );
+    if (looksLikeSentence) continue;
+
+    // Lines with commas where the first segment itself is a multi-word descriptive
+    // phrase are still sentences, just ones that happen to have commas — e.g.
+    // "SEO optimization with structured metadata, sitemap automation, and schema markup."
+    // Heuristic: if the first comma-segment has > 3 space-separated words it's prose.
+    const firstCommaSegment = cleanLine.split(',')[0].trim();
+    if (/[,]/.test(cleanLine) && firstCommaSegment.split(/\s+/).length > 3) continue;
 
     const processedLine = cleanLine.replace(descriptivePhrases, ' ').trim();
 
@@ -943,17 +1121,24 @@ function parseSkills(content: string[]): string[] {
 }
 
 // Parse projects - handles both simple projects and work experience style entries
-function parseProjects(content: string[]): { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string }[] {
-  const projects: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string }[] = [];
-  let current: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string } | null = null;
+function parseProjects(content: string[]): { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string; role?: string }[] {
+  const projects: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string; role?: string }[] = [];
+  let current: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string; role?: string } | null = null;
   const descriptionLines: string[] = [];
 
   // Date patterns to detect project/job entries
   const datePattern = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}\s*[-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}|Present|Current)|\d{4}\s*[-–—]\s*(?:\d{4}|Present|Current)/i;
 
+  // Lines that are clearly project metadata — never treat as a new project header
+  const isMetadataLine = (line: string) =>
+    /^(role|industry|responsibilities|client|company|duration|status|team\s+size|type)[\s:]/i.test(line);
+
+  // Lines that signal the start of responsibility bullets — skip them as headers
+  const isResponsibilitiesHeader = (line: string) =>
+    /^responsibilities:?$/i.test(line.trim());
+
   const saveCurrentProject = () => {
     if (current) {
-      // Join description lines with newlines to preserve bullet points
       current.description = descriptionLines.join('\n').trim();
       if (current.name || current.description) {
         projects.push(current);
@@ -967,25 +1152,70 @@ function parseProjects(content: string[]): { name: string; description: string; 
     const isBulletPoint = /^[•\-*▪◦›]\s*/.test(line);
     const hasDate = datePattern.test(line);
     const hasLink = /github\.com|gitlab\.com|bitbucket\.org|https?:\/\//i.test(line);
+    const cleanLine = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
 
-    // Check if this looks like a new project/entry header
-    // Headers are typically: short, not bullet points, might have dates, or company names
-    const isLikelyHeader = !isBulletPoint && line.length < 100 && (
-      hasDate ||
-      /^[A-Z]/.test(line) && line.length < 80 ||
-      /\b(Project|Client|Company|Role|Position)\b/i.test(line)
-    );
+    // Skip "Responsibilities:" label lines — don't treat as new project header
+    if (isResponsibilitiesHeader(cleanLine)) continue;
 
-    if (isLikelyHeader && (hasDate || (line.length < 60 && !isBulletPoint))) {
-      // Save previous project and start new one
+    // Handle metadata lines (Role:, Industry:, etc.)
+    if (isMetadataLine(cleanLine) && current) {
+      const roleMatch = cleanLine.match(/^role[\s:]+(.+)/i);
+      if (roleMatch) {
+        current.role = roleMatch[1].replace(/[,;]\s*$/, '').trim();
+      }
+      // Industry and other metadata added to description for context
+      const industryMatch = cleanLine.match(/^industry[\s:]+(.+)/i);
+      if (industryMatch) {
+        descriptionLines.unshift(`Industry: ${industryMatch[1].trim()}`);
+      }
+      continue;
+    }
+
+    // Tech/tools metadata line
+    if (/^(tools?\s*(?:&|and)?\s*technologies?|tech\s+stack|tools?|built\s+with|stack)[\s:]/i.test(cleanLine)) {
+      if (current) {
+        const techStr = cleanLine.replace(/^(tools?\s*(?:&|and)?\s*technologies?|tech\s+stack|tools?|built\s+with|stack)[\s:]*/i, '');
+        current.technologies = techStr
+          .split(/[,;|]/)
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+      }
+      continue;
+    }
+
+    // URL line — attach as project link
+    if (hasLink && !isBulletPoint && cleanLine.length < 120 && current) {
+      const linkMatch = cleanLine.match(/https?:\/\/[^\s]+|github\.com\/[^\s]+|gitlab\.com\/[^\s]+/i);
+      if (linkMatch) {
+        if (!current.link) {
+          current.link = linkMatch[0].startsWith('http') ? linkMatch[0] : `https://${linkMatch[0]}`;
+        }
+        const remainingText = cleanLine.replace(/https?:\/\/[^\s]+|github\.com\/[^\s]+|gitlab\.com\/[^\s]+/gi, '').trim();
+        if (remainingText.length > 5) descriptionLines.push(remainingText);
+      }
+      continue;
+    }
+
+    // Determine if this line is a new project header
+    // Criteria: not a bullet, not metadata, not too long, and either has a date
+    // or is a short capitalised line (likely a project name)
+    const isLikelyHeader =
+      !isBulletPoint &&
+      !isMetadataLine(cleanLine) &&
+      cleanLine.length < 80 &&
+      cleanLine.length > 2 &&
+      /^[A-Z\d]/.test(cleanLine) &&
+      // Exclude lines that are clearly description content (action verbs, long sentences)
+      !/^(?:Led|Built|Developed|Created|Managed|Designed|Implemented|Achieved|Improved|Reduced|Increased|Delivered|Integrated|Collaborated|Established|Launched|Architected|Proficient|Expert|Skilled|Experienced|Known|Worked|Responsible|Strong|Specialized)\b/i.test(cleanLine);
+
+    if (isLikelyHeader && (hasDate || (cleanLine.length < 60 && !isBulletPoint && current !== null) || current === null)) {
+      // Don't start a new project for lines like "Role: ..." we already handled
       saveCurrentProject();
 
-      // Extract date if present
-      const dateMatch = line.match(datePattern);
+      const dateMatch = cleanLine.match(datePattern);
       const dates = dateMatch ? dateMatch[0] : undefined;
-      const nameWithoutDate = dates ? line.replace(dates, '').trim() : line;
+      const nameWithoutDate = dates ? cleanLine.replace(dates, '').trim() : cleanLine;
 
-      // Check if line contains company info (often after | or -)
       let name = nameWithoutDate;
       let company: string | undefined;
 
@@ -1001,36 +1231,14 @@ function parseProjects(content: string[]): { name: string; description: string; 
         dates,
         company,
       };
-    } else if (current) {
-      // This is content for the current project
-      const cleanLine = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
-
-      if (/technologies?:|tech stack:|tools?:|built with|stack:/i.test(cleanLine)) {
-        current.technologies = cleanLine
-          .replace(/technologies?:|tech stack:|tools?:|built with|stack:/i, '')
-          .split(/[,;|]/)
-          .map(s => s.trim())
-          .filter(s => s.length > 0);
-      } else if (hasLink) {
-        const linkMatch = cleanLine.match(/https?:\/\/[^\s]+|github\.com\/[^\s]+|gitlab\.com\/[^\s]+/i);
-        if (linkMatch) {
-          current.link = linkMatch[0].startsWith('http') ? linkMatch[0] : `https://${linkMatch[0]}`;
-        }
-        // Also add to description if there's more content
-        const remainingText = cleanLine.replace(/https?:\/\/[^\s]+|github\.com\/[^\s]+|gitlab\.com\/[^\s]+/gi, '').trim();
-        if (remainingText.length > 5) {
-          descriptionLines.push(remainingText);
-        }
-      } else if (cleanLine.length > 3) {
-        // Always add bullet point formatting
-        descriptionLines.push(cleanLine);
-      }
-    } else {
-      // No current project yet, might be the first entry
-      const cleanLine = line.replace(/^[•\-*▪◦›]\s*/, '').trim();
-      if (cleanLine.length > 3 && cleanLine.length < 80) {
-        current = { name: cleanLine, description: '' };
-      }
+    } else if (isBulletPoint && current) {
+      if (cleanLine.length > 5) descriptionLines.push(cleanLine);
+    } else if (current && cleanLine.length > 10) {
+      // Long descriptive line — add to description
+      descriptionLines.push(cleanLine);
+    } else if (!current && cleanLine.length > 3 && cleanLine.length < 80) {
+      // First line before any project detected
+      current = { name: cleanLine, description: '' };
     }
   }
 
