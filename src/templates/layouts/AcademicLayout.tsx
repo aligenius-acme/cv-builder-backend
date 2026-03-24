@@ -239,16 +239,21 @@ export const AcademicLayout: React.FC<LayoutProps> = ({ data, config }) => {
           </h2>
           {projects.map((project, index) => (
             <div key={index} style={{ marginBottom: '14px' }}>
-              <div style={{
-                fontSize: `${fontSize.body}px`,
-                color: textColor,
-                lineHeight: 1.7,
-              }}>
-                <strong>{project.name}.</strong> {Array.isArray(project.description) ? project.description.join('. ') : project.description}
-                {project.url && (
-                  <span style={{ color: primaryColor }}> [{project.url}]</span>
-                )}
+              <div style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7 }}>
+                <strong>{project.name}.</strong>
+                {project.url && <span style={{ color: primaryColor }}> [{project.url}]</span>}
               </div>
+              {Array.isArray(project.description) && project.description.length > 1 ? (
+                <ul style={{ margin: '4px 0 0 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  {project.description.map((d, di) => (
+                    <li key={di} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, marginBottom: '3px' }}>{d}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7 }}>
+                  {Array.isArray(project.description) ? (project.description[0] || '') : project.description}
+                </div>
+              )}
             </div>
           ))}
         </div>
