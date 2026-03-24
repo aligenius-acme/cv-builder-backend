@@ -255,9 +255,12 @@ export const TwoColumnSidebarLayout: React.FC<LayoutProps> = ({ data, config }) 
                   )}
                 </h3>
                 {Array.isArray(project.description) && project.description.length > 1 ? (
-                  <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  <ul style={{ margin: '4px 0', paddingLeft: '0', listStyle: 'none' }}>
                     {project.description.map((d, i) => (
-                      <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '2px' }}>{d}</li>
+                      <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '4px', paddingLeft: '14px', position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 0, color: primaryColor, fontWeight: 700 }}>•</span>
+                        {d}
+                      </li>
                     ))}
                   </ul>
                 ) : (

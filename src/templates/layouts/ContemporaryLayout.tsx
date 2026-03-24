@@ -170,11 +170,11 @@ export const ContemporaryLayout: React.FC<LayoutProps> = ({ data, config }) => {
                   {p.name}{p.url ? ` — ${p.url}` : ''}
                 </div>
                 {p.description && (Array.isArray(p.description) && p.description.length > 1 ? (
-                  <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  <div style={{ margin: '4px 0' }}>
                     {p.description.map((d, di) => (
-                      <li key={di} style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6, marginBottom: '2px' }}>{d}</li>
+                      <div key={di} style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.55, marginLeft: '14px', marginBottom: '3px' }}>• {d}</div>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
                   <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6 }}>{Array.isArray(p.description) ? (p.description[0] || '') : p.description}</div>
                 ))}

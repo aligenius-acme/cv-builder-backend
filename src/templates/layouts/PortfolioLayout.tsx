@@ -127,11 +127,11 @@ export const PortfolioLayout: React.FC<LayoutProps> = ({ data, config }) => {
                   {project.name}
                 </h3>
                 {Array.isArray(project.description) && project.description.length > 1 ? (
-                  <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  <div style={{ margin: '4px 0' }}>
                     {project.description.map((d, i) => (
-                      <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '2px' }}>{d}</li>
+                      <div key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '8px' }}>• {d}</div>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
                   <p style={{
                     fontSize: `${fontSize.body}px`,

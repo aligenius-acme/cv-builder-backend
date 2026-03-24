@@ -244,9 +244,9 @@ export const AcademicLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 {project.url && <span style={{ color: primaryColor }}> [{project.url}]</span>}
               </div>
               {Array.isArray(project.description) && project.description.length > 1 ? (
-                <ul style={{ margin: '4px 0 0 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                <ul style={{ margin: '4px 0 0 0', paddingLeft: '24px', listStyleType: 'disc' }}>
                   {project.description.map((d, di) => (
-                    <li key={di} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, marginBottom: '3px' }}>{d}</li>
+                    <li key={di} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, marginBottom: '6px' }}>{d}</li>
                   ))}
                 </ul>
               ) : (

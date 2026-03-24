@@ -244,9 +244,9 @@ export const ExecutiveLayout: React.FC<LayoutProps> = ({ data, config }) => {
               <div key={i} style={{ marginBottom: '12px' }}>
                 <div style={{ fontWeight: 700, fontSize: `${fontSize.subheader - 1}px`, fontFamily: "'Georgia', serif" }}>{p.name}</div>
                 {p.description && (Array.isArray(p.description) && p.description.length > 1 ? (
-                  <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  <ul style={{ margin: '4px 0', paddingLeft: '24px', listStyleType: 'square' }}>
                     {p.description.map((d, di) => (
-                      <li key={di} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, marginBottom: '2px', marginTop: '3px' }}>{d}</li>
+                      <li key={di} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.75, marginBottom: '5px', fontFamily: "'Georgia', serif" }}>{d}</li>
                     ))}
                   </ul>
                 ) : (

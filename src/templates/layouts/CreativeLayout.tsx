@@ -248,11 +248,11 @@ export const CreativeLayout: React.FC<LayoutProps> = ({ data, config }) => {
                     {project.url && <span style={{ fontSize: `${fontSize.body - 1}px`, fontWeight: 400, color: primaryColor, marginLeft: '8px' }}>{project.url}</span>}
                   </h3>
                   {Array.isArray(project.description) && project.description.length > 1 ? (
-                    <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                    <div style={{ margin: '4px 0' }}>
                       {project.description.map((d, i) => (
-                        <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '2px' }}>{d}</li>
+                        <div key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 5px 0', paddingLeft: '14px', borderLeft: `2px solid ${secondaryColor}60` }}>{d}</div>
                       ))}
-                    </ul>
+                    </div>
                   ) : (
                     <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 6px 0' }}>
                       {Array.isArray(project.description) ? (project.description[0] || '') : project.description}
