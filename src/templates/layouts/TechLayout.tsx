@@ -176,15 +176,23 @@ export const TechLayout: React.FC<LayoutProps> = ({ data, config }) => {
               }}>
                 {project.name}
               </h3>
-              <p style={{
-                fontSize: `${fontSize.body}px`,
-                color: textColor,
-                lineHeight: 1.6,
-                margin: '0 0 8px 0',
-                fontFamily: 'Helvetica, Arial, sans-serif',
-              }}>
-                {project.description}
-              </p>
+              {Array.isArray(project.description) && project.description.length > 1 ? (
+                <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  {project.description.map((d, i) => (
+                    <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '2px', fontFamily: 'Helvetica, Arial, sans-serif' }}>{d}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{
+                  fontSize: `${fontSize.body}px`,
+                  color: textColor,
+                  lineHeight: 1.6,
+                  margin: '0 0 8px 0',
+                  fontFamily: 'Helvetica, Arial, sans-serif',
+                }}>
+                  {Array.isArray(project.description) ? (project.description[0] || '') : project.description}
+                </p>
+              )}
               {project.technologies && (
                 <div style={{
                   fontSize: `${fontSize.body - 1}px`,

@@ -274,9 +274,17 @@ export const ModernMinimalLayout: React.FC<LayoutProps> = ({ data, config }) => 
               <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 500, margin: 0, marginBottom: '8px' }}>
                 {project.name}
               </h3>
-              <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, margin: '0 0 8px 0', fontWeight: 300 }}>
-                {project.description}
-              </p>
+              {Array.isArray(project.description) && project.description.length > 1 ? (
+                <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  {project.description.map((d, i) => (
+                    <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, marginBottom: '2px', fontWeight: 300 }}>{d}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.7, margin: '0 0 8px 0', fontWeight: 300 }}>
+                  {Array.isArray(project.description) ? (project.description[0] || '') : project.description}
+                </p>
+              )}
               {project.technologies && project.technologies.length > 0 && (
                 <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
                   {project.technologies.join(' • ')}

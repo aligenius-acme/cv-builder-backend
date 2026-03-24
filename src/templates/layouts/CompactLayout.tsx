@@ -234,9 +234,17 @@ export const CompactLayout: React.FC<LayoutProps> = ({ data, config }) => {
                   }}>
                     {project.name}
                   </h3>
-                  <p style={{ fontSize: `${compactFontSize.body}px`, color: textColor, lineHeight: 1.3, margin: '0 0 2px 0' }}>
-                    {project.description}
-                  </p>
+                  {Array.isArray(project.description) && project.description.length > 1 ? (
+                    <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                      {project.description.map((d, i) => (
+                        <li key={i} style={{ fontSize: `${compactFontSize.body}px`, color: textColor, lineHeight: 1.3, marginBottom: '2px' }}>{d}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p style={{ fontSize: `${compactFontSize.body}px`, color: textColor, lineHeight: 1.3, margin: '0 0 2px 0' }}>
+                      {Array.isArray(project.description) ? (project.description[0] || '') : project.description}
+                    </p>
+                  )}
                   {project.technologies && project.technologies.length > 0 && (
                     <div style={{ fontSize: `${compactFontSize.body - 1}px`, color: mutedColor }}>
                       {project.technologies.join(', ')}

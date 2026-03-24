@@ -330,11 +330,12 @@ async function generateLeftAlignedPDF(
             .text(proj.name);
 
           if (proj.description) {
+            const descText = Array.isArray(proj.description) ? proj.description.join('\n') : proj.description;
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
               .fillColor(mutedColor)
-              .text(proj.description);
+              .text(descText);
           }
           if (proj.technologies?.length) {
             doc
@@ -964,11 +965,12 @@ async function generateSidebarLeftPDF(
           mainY = doc.y + 2;
 
           if (proj.description) {
+            const descText = Array.isArray(proj.description) ? proj.description.join('\n') : proj.description;
             doc
               .font('Helvetica')
               .fontSize(fontSize.body - 0.5)
               .fillColor(mutedColor)
-              .text(proj.description, mainX, mainY, { width: contentWidth });
+              .text(descText, mainX, mainY, { width: contentWidth });
             mainY = doc.y + 3;
           }
           if (proj.technologies?.length) {
@@ -1123,11 +1125,12 @@ async function generateSidebarRightPDF(
           mainY = doc.y + 2;
 
           if (proj.description) {
+            const descText = Array.isArray(proj.description) ? proj.description.join('\n') : proj.description;
             doc
               .font('Helvetica')
               .fontSize(fontSize.body)
               .fillColor(mutedColor)
-              .text(proj.description, mainX, mainY, { width: contentWidth });
+              .text(descText, mainX, mainY, { width: contentWidth });
             mainY = doc.y + 3;
           }
           mainY += 8;
@@ -1421,9 +1424,10 @@ export async function generateDOCX(
         })
       );
       if (proj.description) {
+        const descText = Array.isArray(proj.description) ? proj.description.join('\n') : proj.description;
         children.push(
           new Paragraph({
-            children: [new TextRun({ text: proj.description, size: 22 })],
+            children: [new TextRun({ text: descText, size: 22 })],
             spacing: { after: 50 },
           })
         );

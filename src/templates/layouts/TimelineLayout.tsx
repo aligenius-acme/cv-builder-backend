@@ -307,9 +307,17 @@ export const TimelineLayout: React.FC<LayoutProps> = ({ data, config }) => {
               <h3 style={{ fontSize: `${fontSize.subheader}px`, color: textColor, fontWeight: 700, margin: 0, marginBottom: '4px' }}>
                 {project.name}
               </h3>
-              <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 6px 0' }}>
-                {project.description}
-              </p>
+              {Array.isArray(project.description) && project.description.length > 1 ? (
+                <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  {project.description.map((d, i) => (
+                    <li key={i} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginBottom: '2px' }}>{d}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, margin: '0 0 6px 0' }}>
+                  {Array.isArray(project.description) ? (project.description[0] || '') : project.description}
+                </p>
+              )}
               {project.technologies && project.technologies.length > 0 && (
                 <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor }}>
                   {project.technologies.join(' • ')}

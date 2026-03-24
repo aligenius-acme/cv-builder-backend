@@ -244,7 +244,7 @@ export const AcademicLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 color: textColor,
                 lineHeight: 1.7,
               }}>
-                <strong>{project.name}.</strong> {project.description}
+                <strong>{project.name}.</strong> {Array.isArray(project.description) ? project.description.join('. ') : project.description}
                 {project.url && (
                   <span style={{ color: primaryColor }}> [{project.url}]</span>
                 )}

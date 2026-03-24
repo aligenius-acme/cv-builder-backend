@@ -107,7 +107,7 @@ export interface EducationEntry {
 
 export interface ProjectEntry {
   name: string;
-  description: string;
+  description: string | string[];
   technologies?: string[];
   url?: string;
   link?: string;

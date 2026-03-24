@@ -1513,7 +1513,7 @@ export function generateResumeText(data: ParsedResumeData): string {
     lines.push('PROJECTS');
     for (const project of data.projects) {
       lines.push(project.name);
-      if (project.description) lines.push(project.description);
+      if (project.description) lines.push(Array.isArray(project.description) ? project.description.join(' ') : project.description);
       if (project.technologies && project.technologies.length > 0) {
         lines.push(`Technologies: ${project.technologies.join(', ')}`);
       }

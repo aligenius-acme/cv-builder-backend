@@ -1059,7 +1059,7 @@ function generateRawTextFromParsedData(data: ParsedResumeData): string {
     lines.push('PROJECTS');
     for (const proj of data.projects) {
       lines.push(proj.name);
-      if (proj.description) lines.push(proj.description);
+      if (proj.description) lines.push(Array.isArray(proj.description) ? proj.description.join(' ') : proj.description);
       if (proj.technologies) lines.push(proj.technologies.join(', '));
     }
   }

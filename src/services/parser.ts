@@ -148,7 +148,7 @@ export async function extractResumeData(rawText: string, userId?: string): Promi
 //  • all array fields are real JS arrays (never null / string)
 //  • experience[i].description is always string[]
 //  • skills is always a flat string[] (SkillCategory[] is flattened)
-//  • projects[i].description is always a string (array joined with \n)
+//  • projects[i].description is always string[] (bullet points)
 //  • awards / certifications are always AwardEntry[] / CertificationEntry[]
 export function sanitizeResumeData(data: ParsedResumeData): ParsedResumeData {
   // Ensure value is an array; wrap non-array non-null values in a single-item array
@@ -214,10 +214,11 @@ export function sanitizeResumeData(data: ParsedResumeData): ParsedResumeData {
   const projects = toArr<any>(data.projects)
     .map(p => ({
       name:         typeof p.name    === 'string' ? p.name    : '',
-      // AI may return description as string[] — join to a single string; display splits on \n
       description:  Array.isArray(p.description)
-                      ? (p.description as string[]).map(s => s.trim()).filter(Boolean).join('\n')
-                      : typeof p.description === 'string' ? p.description : '',
+                      ? (p.description as string[]).map((s: string) => s.trim()).filter(Boolean)
+                      : typeof p.description === 'string'
+                        ? p.description.split('\n').map((s: string) => s.trim()).filter(Boolean)
+                        : [],
       technologies: toArr<string>(p.technologies).filter(t => typeof t === 'string'),
       // Accept both url and link fields (legacy data uses link)
       url:          typeof p.url  === 'string' ? p.url  :
