@@ -143,7 +143,15 @@ export const ClassicLayout: React.FC<LayoutProps> = ({ data, config }) => {
           {projects.map((p, i) => (
             <div key={i} style={{ marginBottom: '12px' }}>
               <div style={{ fontWeight: 700, fontSize: `${fontSize.subheader - 1}px` }}>{p.name}</div>
-              {p.description && <div style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginLeft: '18px' }}>– {p.description}</div>}
+              {p.description && (Array.isArray(p.description) && p.description.length > 1 ? (
+                <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                  {p.description.map((d, di) => (
+                    <li key={di} style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginLeft: '0', marginBottom: '2px' }}>{d}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ fontSize: `${fontSize.body}px`, color: textColor, lineHeight: 1.6, marginLeft: '18px' }}>– {Array.isArray(p.description) ? (p.description[0] || '') : p.description}</div>
+              ))}
               {(p.technologies?.length ?? 0) > 0 && (
                 <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, fontStyle: 'italic', marginLeft: '18px' }}>
                   Technologies: {p.technologies!.join(', ')}

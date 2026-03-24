@@ -188,7 +188,15 @@ export const BoldModernLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 <div style={{ fontWeight: 800, fontSize: `${fontSize.subheader - 1}px`, color: textColor }}>
                   {p.name}{p.url ? <span style={{ fontWeight: 400, color: primaryColor, fontSize: `${fontSize.body - 1}px`, marginLeft: '8px' }}>{p.url}</span> : ''}
                 </div>
-                {p.description && <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6 }}>{p.description}</div>}
+                {p.description && (Array.isArray(p.description) && p.description.length > 1 ? (
+                  <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                    {p.description.map((d, di) => (
+                      <li key={di} style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6, marginBottom: '2px' }}>{d}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6 }}>{Array.isArray(p.description) ? (p.description[0] || '') : p.description}</div>
+                ))}
                 {(p.technologies?.length ?? 0) > 0 && (
                   <div style={{ fontSize: `${fontSize.body - 1}px`, color: primaryColor, fontWeight: 700, marginTop: '3px' }}>{p.technologies!.join(' · ')}</div>
                 )}

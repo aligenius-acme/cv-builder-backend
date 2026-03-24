@@ -169,7 +169,15 @@ export const BorderedPageLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 <div style={{ fontWeight: 700, fontSize: `${fontSize.subheader - 1}px`, color: textColor, textAlign: 'center' }}>
                   {p.name}{p.url ? ` — ${p.url}` : ''}
                 </div>
-                {p.description && <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6, textAlign: 'center', fontStyle: 'italic' }}>{p.description}</div>}
+                {p.description && (Array.isArray(p.description) && p.description.length > 1 ? (
+                  <ul style={{ margin: '4px 0', paddingLeft: '18px', listStyleType: 'disc' }}>
+                    {p.description.map((d, di) => (
+                      <li key={di} style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6, textAlign: 'center', fontStyle: 'italic', marginBottom: '2px' }}>{d}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div style={{ fontSize: `${fontSize.body}px`, color: mutedColor, lineHeight: 1.6, textAlign: 'center', fontStyle: 'italic' }}>{Array.isArray(p.description) ? (p.description[0] || '') : p.description}</div>
+                ))}
                 {(p.technologies?.length ?? 0) > 0 && (
                   <div style={{ fontSize: `${fontSize.body - 1}px`, color: mutedColor, textAlign: 'center' }}>Tech: {p.technologies!.join(', ')}</div>
                 )}
