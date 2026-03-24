@@ -8,6 +8,10 @@ node_modules
 
 # Generated files
 /generated/prisma
+
+# Desktop test output files (absolute paths on Windows)
+C:*
+
 /dist
 
 # User uploads (should not be in version control)
