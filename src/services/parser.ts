@@ -1223,9 +1223,9 @@ function parseSkills(content: string[]): string[] {
 }
 
 // Parse projects - handles both simple projects and work experience style entries
-function parseProjects(content: string[]): { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string; role?: string }[] {
-  const projects: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string; role?: string }[] = [];
-  let current: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; link?: string; role?: string } | null = null;
+function parseProjects(content: string[]): { name: string; description: string; technologies?: string[]; company?: string; dates?: string; url?: string; role?: string }[] {
+  const projects: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; url?: string; role?: string }[] = [];
+  let current: { name: string; description: string; technologies?: string[]; company?: string; dates?: string; url?: string; role?: string } | null = null;
   const descriptionLines: string[] = [];
 
   // Date patterns to detect project/job entries
@@ -1289,8 +1289,8 @@ function parseProjects(content: string[]): { name: string; description: string; 
     if (hasLink && !isBulletPoint && cleanLine.length < 120 && current) {
       const linkMatch = cleanLine.match(/https?:\/\/[^\s]+|github\.com\/[^\s]+|gitlab\.com\/[^\s]+/i);
       if (linkMatch) {
-        if (!current.link) {
-          current.link = linkMatch[0].startsWith('http') ? linkMatch[0] : `https://${linkMatch[0]}`;
+        if (!current.url) {
+          current.url = linkMatch[0].startsWith('http') ? linkMatch[0] : `https://${linkMatch[0]}`;
         }
         const remainingText = cleanLine.replace(/https?:\/\/[^\s]+|github\.com\/[^\s]+|gitlab\.com\/[^\s]+/gi, '').trim();
         if (remainingText.length > 5) descriptionLines.push(remainingText);
