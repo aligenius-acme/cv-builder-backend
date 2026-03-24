@@ -1154,11 +1154,21 @@ Return only valid JSON, no markdown.`;
     };
   }>(content);
 
-  // CRITICAL FIX: Preserve original contact information
-  // AI sometimes returns placeholder data like "John Doe" - override with actual user data
+  // Always replace contact with original resume data — never trust AI for this.
+  // Spread-based override is insufficient: if a key (e.g. email) is missing from
+  // resumeData.contact entirely, spreading won't add it, so AI placeholders like
+  // "exact email from resume" survive. Explicit mapping guarantees all fields are
+  // cleared to undefined when not present in the original, removing any placeholder.
   result.tailoredData.contact = {
-    ...result.tailoredData.contact,
-    ...resumeData.contact, // Override with original contact info
+    name:     resumeData.contact?.name,
+    email:    resumeData.contact?.email,
+    phone:    resumeData.contact?.phone,
+    location: resumeData.contact?.location,
+    linkedin: resumeData.contact?.linkedin,
+    github:   resumeData.contact?.github,
+    website:  resumeData.contact?.website,
+    // Preserve photo from AI result if original doesn't have one
+    photoUrl: resumeData.contact?.photoUrl ?? result.tailoredData.contact?.photoUrl,
   };
 
   // Generate tailored text from data

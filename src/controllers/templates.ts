@@ -219,9 +219,15 @@ export const previewTemplate = async (
 
       resumeData = version.tailoredData as unknown as ParsedResumeData;
 
-      // Add photo from resume if available
-      if (version.resume.photoUrl && !resumeData.contact.photoUrl) {
-        resumeData.contact.photoUrl = version.resume.photoUrl;
+      // Ensure contact object exists (AI may return null contact)
+      if (!resumeData.contact || typeof resumeData.contact !== 'object') {
+        resumeData.contact = {};
+      }
+      // Inject photo from the parent resume record (not stored in tailoredData)
+      const versionPhoto = version.resume.photoUrl || resumeData.photoUrl;
+      if (versionPhoto) {
+        resumeData.contact.photoUrl = versionPhoto;
+        resumeData.photoUrl = versionPhoto;
       }
     } else if (resumeId) {
       // Use user's original resume data
@@ -235,9 +241,15 @@ export const previewTemplate = async (
 
       resumeData = resume.parsedData as unknown as ParsedResumeData;
 
-      // Add photo from resume if available
-      if (resume.photoUrl && !resumeData.contact.photoUrl) {
-        resumeData.contact.photoUrl = resume.photoUrl;
+      // Ensure contact object exists
+      if (!resumeData.contact || typeof resumeData.contact !== 'object') {
+        resumeData.contact = {};
+      }
+      // Inject photo from the resume record
+      const resumePhoto = resume.photoUrl || resumeData.photoUrl;
+      if (resumePhoto) {
+        resumeData.contact.photoUrl = resumePhoto;
+        resumeData.photoUrl = resumePhoto;
       }
     } else {
       // Use sample data for preview

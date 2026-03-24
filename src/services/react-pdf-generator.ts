@@ -138,17 +138,29 @@ async function resolvePhotoUrl(photoUrl: string): Promise<string | undefined> {
     }
 
     return await new Promise<string | undefined>((resolve) => {
-      const lib = fetchUrl.startsWith('https') ? https : http;
-      (lib as typeof https).get(fetchUrl, (res) => {
-        if (res.statusCode !== 200) { res.resume(); return resolve(undefined); }
-        const chunks: Buffer[] = [];
-        res.on('data', (c: Buffer) => chunks.push(c));
-        res.on('end', () => {
-          const mime = (res.headers['content-type'] as string | undefined)?.split(';')[0] ?? 'image/jpeg';
-          resolve(`data:${mime};base64,${Buffer.concat(chunks).toString('base64')}`);
+      const fetchWithRedirects = (url: string, hops = 0) => {
+        if (hops > 4) return resolve(undefined);
+        const lib = url.startsWith('https') ? https : http;
+        const req = (lib as typeof https).get(url, { timeout: 8000 }, (res) => {
+          // Follow redirects (Cloudinary uses 301/302 for URL normalisation)
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            res.resume();
+            fetchWithRedirects(res.headers.location, hops + 1);
+            return;
+          }
+          if (res.statusCode !== 200) { res.resume(); return resolve(undefined); }
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => {
+            const mime = (res.headers['content-type'] as string | undefined)?.split(';')[0] ?? 'image/jpeg';
+            resolve(`data:${mime};base64,${Buffer.concat(chunks).toString('base64')}`);
+          });
+          res.on('error', () => resolve(undefined));
         });
-        res.on('error', () => resolve(undefined));
-      }).on('error', () => resolve(undefined));
+        req.on('timeout', () => { req.destroy(); resolve(undefined); });
+        req.on('error', () => resolve(undefined));
+      };
+      fetchWithRedirects(fetchUrl);
     });
   } catch {
     return undefined;
@@ -343,12 +355,27 @@ export async function generateResumeHTML(
     accentColor?: string;
   }
 ): Promise<string> {
-  // Resolve profile photo to base64 data URI so it embeds without auth
+  // Resolve profile photo to base64 data URI so it embeds without auth.
+  // Check both contact.photoUrl (primary) and top-level photoUrl (fallback)
+  // so templates that read either location both get the resolved image.
   let data = resumeData;
-  if (data.contact?.photoUrl) {
-    const dataUri = await resolvePhotoUrl(data.contact.photoUrl);
+  const rawPhotoUrl = data.contact?.photoUrl || data.photoUrl;
+  if (rawPhotoUrl) {
+    const dataUri = await resolvePhotoUrl(rawPhotoUrl);
     if (dataUri) {
-      data = { ...data, contact: { ...data.contact, photoUrl: dataUri } };
+      data = {
+        ...data,
+        photoUrl: dataUri,
+        contact: { ...data.contact, photoUrl: dataUri },
+      };
+    } else {
+      // resolvePhotoUrl failed but we still have the original URL — keep it
+      // so templates can attempt a direct fetch (works in some environments)
+      data = {
+        ...data,
+        photoUrl: rawPhotoUrl,
+        contact: { ...data.contact, photoUrl: rawPhotoUrl },
+      };
     }
   }
 
