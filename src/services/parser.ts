@@ -133,13 +133,162 @@ export async function extractResumeData(rawText: string, userId?: string): Promi
     console.log('[Parser] Rule-based result is sparse — invoking AI fallback...');
     try {
       const aiResult = await extractResumeDataWithAI(rawText, userId);
-      return mergeResumeData(ruleBasedResult, aiResult);
+      return sanitizeResumeData(mergeResumeData(ruleBasedResult, aiResult));
     } catch (aiError) {
       console.warn('[Parser] AI fallback failed, keeping rule-based result:', (aiError as Error).message);
     }
   }
 
-  return ruleBasedResult;
+  return sanitizeResumeData(ruleBasedResult);
+}
+
+// Normalises any ParsedResumeData to consistent, safe shapes regardless of source
+// (rule-based parser, AI response, or data already in the DB from older code).
+// Guarantees:
+//  • all array fields are real JS arrays (never null / string)
+//  • experience[i].description is always string[]
+//  • skills is always a flat string[] (SkillCategory[] is flattened)
+//  • projects[i].description is always a string (array joined with \n)
+//  • awards / certifications are always AwardEntry[] / CertificationEntry[]
+export function sanitizeResumeData(data: ParsedResumeData): ParsedResumeData {
+  // Ensure value is an array; wrap non-array non-null values in a single-item array
+  const toArr = <T>(val: unknown): T[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val as T[];
+    return [];
+  };
+
+  // Convert string | string[] → string[], splitting on newlines if the input is a string
+  const toDescArr = (val: unknown): string[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return (val as any[]).map(String).map(s => s.trim()).filter(Boolean);
+    if (typeof val === 'string') return val.split('\n').map(s => s.trim()).filter(Boolean);
+    return [];
+  };
+
+  // Flatten flat string[] or SkillCategory[] ({ category, items[] }) to string[]
+  const flattenSkills = (val: unknown): string[] => {
+    if (!Array.isArray(val)) return [];
+    return (val as any[]).flatMap(item => {
+      if (typeof item === 'string') return item.trim() ? [item] : [];
+      if (item && typeof item === 'object' && Array.isArray(item.items)) {
+        return (item.items as any[]).filter(s => typeof s === 'string' && s.trim());
+      }
+      return [];
+    });
+  };
+
+  const contact: ContactInfo = {
+    name:     typeof data.contact?.name     === 'string' ? data.contact.name     || undefined : undefined,
+    email:    typeof data.contact?.email    === 'string' ? data.contact.email    || undefined : undefined,
+    phone:    typeof data.contact?.phone    === 'string' ? data.contact.phone    || undefined : undefined,
+    location: typeof data.contact?.location === 'string' ? data.contact.location || undefined : undefined,
+    linkedin: typeof data.contact?.linkedin === 'string' ? data.contact.linkedin || undefined : undefined,
+    github:   typeof data.contact?.github   === 'string' ? data.contact.github   || undefined : undefined,
+    website:  typeof data.contact?.website  === 'string' ? data.contact.website  || undefined : undefined,
+  };
+
+  const experience: ExperienceEntry[] = toArr<any>(data.experience)
+    .map(exp => ({
+      title:       typeof exp.title    === 'string' ? exp.title    : undefined,
+      company:     typeof exp.company  === 'string' ? exp.company  : '',
+      location:    typeof exp.location === 'string' ? exp.location : undefined,
+      startDate:   typeof exp.startDate === 'string' ? exp.startDate : undefined,
+      endDate:     typeof exp.endDate   === 'string' ? exp.endDate   : undefined,
+      current:     typeof exp.current  === 'boolean' ? exp.current : false,
+      description: toDescArr(exp.description),
+    }))
+    .filter(e => e.title || e.company);
+
+  const education: EducationEntry[] = toArr<any>(data.education)
+    .map(edu => ({
+      degree:         typeof edu.degree         === 'string' ? edu.degree         : '',
+      institution:    typeof edu.institution    === 'string' ? edu.institution    : '',
+      location:       typeof edu.location       === 'string' ? edu.location       : undefined,
+      graduationDate: typeof edu.graduationDate === 'string' ? edu.graduationDate : undefined,
+      gpa:            typeof edu.gpa            === 'string' ? edu.gpa            : undefined,
+      achievements:   toArr<string>(edu.achievements).filter(a => typeof a === 'string'),
+    }))
+    .filter(e => e.degree || e.institution);
+
+  const projects = toArr<any>(data.projects)
+    .map(p => ({
+      name:         typeof p.name    === 'string' ? p.name    : '',
+      // AI may return description as string[] — join to a single string; display splits on \n
+      description:  Array.isArray(p.description)
+                      ? (p.description as string[]).map(s => s.trim()).filter(Boolean).join('\n')
+                      : typeof p.description === 'string' ? p.description : '',
+      technologies: toArr<string>(p.technologies).filter(t => typeof t === 'string'),
+      // Accept both url and link fields (legacy data uses link)
+      url:          typeof p.url  === 'string' ? p.url  :
+                    typeof p.link === 'string' ? p.link : undefined,
+      dates:        typeof p.dates === 'string' ? p.dates : undefined,
+      company:      typeof p.company === 'string' ? p.company : undefined,
+    }))
+    .filter(p => p.name || p.description);
+
+  const certifications: CertificationEntry[] = toArr<any>(data.certifications)
+    .map(c => {
+      if (typeof c === 'string') return { name: c };
+      if (c && typeof c === 'object') return {
+        name:   typeof c.name   === 'string' ? c.name   : '',
+        issuer: typeof c.issuer === 'string' ? c.issuer : undefined,
+        date:   typeof c.date   === 'string' ? c.date   : undefined,
+      };
+      return null;
+    })
+    .filter((c): c is CertificationEntry => !!c && !!(c as any).name);
+
+  const awards: AwardEntry[] = toArr<any>(data.awards)
+    .map(a => {
+      if (typeof a === 'string') return { name: a };
+      if (a && typeof a === 'object') return {
+        name:   typeof a.name   === 'string' ? a.name   : '',
+        issuer: typeof a.issuer === 'string' ? a.issuer : undefined,
+        date:   typeof a.date   === 'string' ? a.date   : undefined,
+      };
+      return null;
+    })
+    .filter((a): a is AwardEntry => !!a && !!(a as any).name);
+
+  const languages: string[] = toArr<any>(data.languages)
+    .filter(l => typeof l === 'string' && l.trim())
+    .map(l => l.trim());
+
+  // Normalise volunteerWork: accept string | VolunteerWorkEntry (both shapes)
+  const volunteerWork = toArr<any>(data.volunteerWork)
+    .map((v: any) => {
+      if (typeof v === 'string') return { role: v, organization: '' };
+      if (v && typeof v === 'object') return {
+        ...v,
+        description: toDescArr(v.description),
+      };
+      return null;
+    })
+    .filter(Boolean);
+
+  return {
+    contact,
+    summary:     typeof data.summary === 'string' ? data.summary : '',
+    experience,
+    education,
+    skills:      flattenSkills(data.skills),
+    certifications,
+    projects,
+    languages,
+    awards,
+    volunteerWork: volunteerWork.length > 0 ? (volunteerWork as any) : undefined,
+    // Preserve any extended academic/creative fields as-is
+    publications:             data.publications,
+    leadership:               data.leadership,
+    achievements:             data.achievements,
+    professionalAffiliations: data.professionalAffiliations,
+    grants:                   data.grants,
+    teaching:                 data.teaching,
+    service:                  data.service,
+    speaking:                 data.speaking,
+    photoUrl:                 data.photoUrl,
+  };
 }
 
 // Returns true when rule-based parsing clearly missed significant resume content.
