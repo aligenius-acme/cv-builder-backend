@@ -68,7 +68,7 @@ export const uploadResume = async (
     // Parse file asynchronously
     try {
       const rawText = await parseFile(file.buffer, file.originalname);
-      const parsedData = await extractResumeData(rawText);
+      const parsedData = await extractResumeData(rawText, userId);
 
       const updatedResume = await prisma.resume.update({
         where: { id: resume.id },

@@ -667,7 +667,7 @@ Return only valid JSON.`,
 // Operations that are analytical/scoring — need near-zero temperature for consistency
 const DETERMINISTIC_OPERATIONS = new Set([
   'ats_analysis', 'truth_guard', 'job_analysis', 'job_match_score', 'weakness_detector',
-  'resume_performance_score', 'answer_evaluation',
+  'resume_performance_score', 'answer_evaluation', 'resume_parse',
 ]);
 
 async function callAI(
@@ -878,6 +878,78 @@ function parseAIJSON<T>(content: string): T {
     // Give up — rethrow original error with context
     throw new Error(`Failed to parse AI JSON response (length ${cleaned.length}): ${cleaned.slice(0, 200)}…`);
   }
+}
+
+// AI-powered resume data extraction — used as fallback when rule-based parsing yields sparse results.
+// Handles complex layouts (multi-column PDFs, non-standard section names, plain-paragraph descriptions)
+// that defeat the rule-based parser.
+export async function extractResumeDataWithAI(
+  rawText: string,
+  userId: string
+): Promise<ParsedResumeData> {
+  // Truncate very long resumes to stay within token budget while preserving most content
+  const MAX_TEXT = 8000;
+  const text = rawText.length > MAX_TEXT
+    ? rawText.slice(0, MAX_TEXT) + '\n...[truncated for length]'
+    : rawText;
+
+  const prompt = `You are a precise resume parser. Extract ALL information from the resume text below into structured JSON.
+
+RULES:
+1. Extract EVERY piece of information — do not skip, summarize, or truncate any section
+2. Preserve exact dates, company names, job titles, and numeric metrics verbatim
+3. For experience descriptions, include ALL bullet points and achievement lines in full
+4. For skills, extract every technology, tool, framework, and competency mentioned anywhere in the text
+5. If a section is absent, use an empty array or empty string — never omit a field
+6. For languages, include proficiency if stated (e.g. "English - Native", "French - Intermediate")
+7. Only populate contact fields that are clearly present in the text; leave others as empty string
+8. GPA: populate only if explicitly stated (e.g. "GPA: 3.8", "CGPA 3.7/4.0")
+
+Return ONLY this JSON structure — no markdown, no explanation:
+{
+  "contact": {
+    "name": "",
+    "email": "",
+    "phone": "",
+    "location": "",
+    "linkedin": "",
+    "github": "",
+    "website": ""
+  },
+  "summary": "",
+  "experience": [
+    {
+      "title": "",
+      "company": "",
+      "location": "",
+      "startDate": "",
+      "endDate": "",
+      "current": false,
+      "description": []
+    }
+  ],
+  "education": [
+    {
+      "degree": "",
+      "institution": "",
+      "location": "",
+      "graduationDate": "",
+      "gpa": "",
+      "achievements": []
+    }
+  ],
+  "skills": [],
+  "certifications": [{ "name": "", "issuer": "", "date": "" }],
+  "projects": [{ "name": "", "description": "", "technologies": [], "url": "", "dates": "" }],
+  "languages": [],
+  "awards": [{ "name": "", "issuer": "", "date": "" }]
+}
+
+RESUME TEXT:
+${text}`;
+
+  const { content } = await callAI(prompt, userId, null, 'resume_parse', 4000);
+  return parseAIJSON<ParsedResumeData>(content);
 }
 
 // Analyze job description

@@ -3,6 +3,7 @@ import { PDFParse } from 'pdf-parse';
 import { prisma } from '../utils/prisma';
 import { ParsedResumeData, ExperienceEntry, EducationEntry, ContactInfo, CertificationEntry, AwardEntry } from '../types';
 import { FileProcessingError } from '../utils/errors';
+import { extractResumeDataWithAI } from './ai';
 
 // Parse file content based on type
 export async function parseFile(buffer: Buffer, fileName: string): Promise<string> {
@@ -36,10 +37,22 @@ async function parsePDF(buffer: Buffer): Promise<string> {
 // are preserved as newlines — extractRawText silently drops them, which
 // merges content like project titles, URLs, Role and Industry lines into
 // one unbreakable concatenated string.
+// Tables are converted row-by-row with cells separated by " | " so that
+// multi-column skill tables remain parseable.
 async function parseDOCX(buffer: Buffer): Promise<string> {
   const htmlResult = await mammoth.convertToHtml({ buffer });
   if (htmlResult.value) {
     const text = htmlResult.value
+      // Tables: convert each row to a line; cells separated by " | "
+      .replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (_match, rowContent) => {
+        const cells = rowContent
+          .replace(/<\/t[dh]>/gi, '\t')      // mark cell end with tab
+          .replace(/<[^>]+>/g, '')            // strip tags inside cell
+          .split('\t')
+          .map((c: string) => c.trim())
+          .filter((c: string) => c.length > 0);
+        return cells.join(' | ') + '\n';
+      })
       // Soft returns → newline (must come before generic tag strip)
       .replace(/<br\s*\/?>/gi, '\n')
       // Block-level elements → newlines
@@ -110,10 +123,77 @@ function cleanText(text: string): string {
     .trim();
 }
 
-// Extract structured data from raw resume text using rule-based parsing
-// This does a quick parse for display - full text is stored and used during customization
-export async function extractResumeData(rawText: string): Promise<ParsedResumeData> {
-  return extractResumeDataRuleBased(rawText);
+// Extract structured data from raw resume text.
+// Runs rule-based parsing first. If the result is sparse (missing key sections),
+// falls back to AI extraction which handles complex/non-standard layouts.
+export async function extractResumeData(rawText: string, userId?: string): Promise<ParsedResumeData> {
+  const ruleBasedResult = extractResumeDataRuleBased(rawText);
+
+  if (userId && isSparseResult(ruleBasedResult)) {
+    console.log('[Parser] Rule-based result is sparse — invoking AI fallback...');
+    try {
+      const aiResult = await extractResumeDataWithAI(rawText, userId);
+      return mergeResumeData(ruleBasedResult, aiResult);
+    } catch (aiError) {
+      console.warn('[Parser] AI fallback failed, keeping rule-based result:', (aiError as Error).message);
+    }
+  }
+
+  return ruleBasedResult;
+}
+
+// Returns true when rule-based parsing clearly missed significant resume content.
+// Triggers AI fallback to recover that content.
+function isSparseResult(data: ParsedResumeData): boolean {
+  const expCount = data.experience.length;
+  const hasDescriptions = data.experience.some(e => e.description && e.description.length > 0);
+  const skillCount = Array.isArray(data.skills) ? (data.skills as string[]).length : 0;
+  const eduCount = data.education.length;
+
+  // Nothing at all was extracted
+  if (expCount === 0 && eduCount === 0 && skillCount === 0) return true;
+  // Has experience entries but every description array is empty (bullet points missed)
+  if (expCount > 0 && !hasDescriptions) return true;
+  // Only 1 or fewer experience entries AND no education — likely missed section headers
+  if (expCount <= 1 && eduCount === 0 && skillCount < 5) return true;
+
+  return false;
+}
+
+// Merges rule-based and AI results. AI is primary (handles complex layouts);
+// rule-based regex wins for contact fields where it is more reliable (email, phone, URLs).
+function mergeResumeData(ruleBased: ParsedResumeData, ai: ParsedResumeData): ParsedResumeData {
+  const merged: ParsedResumeData = { ...ai };
+
+  // Contact: rule-based regex is reliable for structured fields; AI wins for name/location
+  merged.contact = {
+    name: ruleBased.contact.name || ai.contact?.name || '',
+    email: ruleBased.contact.email || ai.contact?.email || '',
+    phone: ruleBased.contact.phone || ai.contact?.phone || '',
+    location: ruleBased.contact.location || ai.contact?.location || '',
+    linkedin: ruleBased.contact.linkedin || ai.contact?.linkedin || '',
+    github: ruleBased.contact.github || ai.contact?.github || '',
+    website: ruleBased.contact.website || ai.contact?.website || '',
+  };
+
+  // Skills: union — keep all from AI, add any extras from rule-based keyword scan
+  const aiSkills = Array.isArray(ai.skills) ? (ai.skills as string[]) : [];
+  const ruleSkills = Array.isArray(ruleBased.skills) ? (ruleBased.skills as string[]) : [];
+  const aiSkillsLower = new Set(aiSkills.map(s => s.toLowerCase()));
+  const extraSkills = ruleSkills.filter(s => !aiSkillsLower.has(s.toLowerCase()));
+  merged.skills = [...aiSkills, ...extraSkills];
+
+  // If AI missed summary but rule-based found it, keep it
+  if (!merged.summary && ruleBased.summary) merged.summary = ruleBased.summary;
+
+  console.log('[Parser] Merged AI + rule-based result:', {
+    contact: !!merged.contact.name || !!merged.contact.email,
+    experience: merged.experience.length,
+    education: merged.education.length,
+    skills: (merged.skills as string[]).length,
+  });
+
+  return merged;
 }
 
 // Rule-based extraction
@@ -417,14 +497,25 @@ function extractContactInfo(lines: string[]): ContactInfo {
   // Location — handle "City, ST", "City, ST ZIP", "City, Country", "City, Country (Remote)"
   // Require a known 2-letter US state OR a country/region name to avoid false positives.
   const US_STATES = /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/;
-  const COUNTRY_NAMES = /\b(USA|U\.S\.A|UK|U\.K|England|Scotland|Wales|Canada|Australia|Germany|France|Italy|Spain|Netherlands|Sweden|Norway|Denmark|Finland|Poland|India|Pakistan|Bangladesh|UAE|Dubai|Singapore|Malaysia|Philippines|Nigeria|Kenya|South\s+Africa|Brazil|Mexico|Remote)\b/i;
+  const COUNTRY_NAMES = /\b(USA|U\.S\.A|UK|U\.K|England|Scotland|Wales|Ireland|Canada|Australia|New\s+Zealand|Germany|France|Italy|Spain|Netherlands|Belgium|Switzerland|Austria|Sweden|Norway|Denmark|Finland|Poland|Czech|Hungary|Romania|Bulgaria|Croatia|Serbia|Ukraine|Russia|Turkey|Portugal|Greece|Israel|Egypt|Morocco|Ghana|Nigeria|Kenya|Tanzania|South\s+Africa|Ethiopia|Uganda|Rwanda|India|Pakistan|Bangladesh|Sri\s+Lanka|Nepal|Afghanistan|Iran|Iraq|Saudi\s+Arabia|UAE|Qatar|Kuwait|Bahrain|Oman|Jordan|Lebanon|Singapore|Malaysia|Philippines|Indonesia|Thailand|Vietnam|Japan|South\s+Korea|China|Taiwan|Hong\s+Kong|Brazil|Mexico|Argentina|Colombia|Chile|Peru|Remote)\b/i;
   const locationMatch = headerText.match(
-    /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?),\s*([A-Z]{2}(?:\s+\d{5})?|[A-Z][a-zA-Z]{2,})\b/
+    /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?),\s*([A-Z]{2}(?:\s+\d{5})?|[A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z]+)?)\b/
   );
   if (locationMatch) {
     const stateOrCountry = locationMatch[2];
     if (US_STATES.test(stateOrCountry) || COUNTRY_NAMES.test(stateOrCountry)) {
       contact.location = locationMatch[0];
+    }
+  }
+  // Fallback: detect major international cities that commonly appear without a country suffix
+  if (!contact.location) {
+    const MAJOR_CITIES = /\b(Lahore|Karachi|Islamabad|Rawalpindi|Faisalabad|Peshawar|Multan|Quetta|Hyderabad|Mumbai|Delhi|New\s+Delhi|Bangalore|Bengaluru|Chennai|Kolkata|Pune|Ahmedabad|Nairobi|Lagos|Accra|Cairo|Casablanca|Johannesburg|Cape\s+Town|Dhaka|Colombo|Kathmandu|Kabul|Tehran|Baghdad|Riyadh|Jeddah|Doha|Abu\s+Dhabi|Dubai|Bangkok|Jakarta|Manila|Kuala\s+Lumpur|Hanoi|Ho\s+Chi\s+Minh|Taipei|Seoul|Tokyo|Beijing|Shanghai|Shenzhen|Istanbul|Warsaw|Prague|Budapest|Bucharest|Kyiv|Moscow|Vienna|Zurich|Amsterdam|Brussels|Lisbon|Athens|Toronto|Vancouver|Montreal|Sydney|Melbourne|Auckland|Mexico\s+City|Sao\s+Paulo|Buenos\s+Aires|Bogota|Lima|Santiago)\b/i;
+    const cityMatch = headerText.match(MAJOR_CITIES);
+    if (cityMatch) {
+      // Grab a following country/region if present on the same segment
+      const afterCity = headerText.slice(headerText.indexOf(cityMatch[0]) + cityMatch[0].length);
+      const countryFollow = afterCity.match(/^[\s,–-]+([A-Z][a-zA-Z\s]{2,25?})(?=\s*[\n|,]|$)/);
+      contact.location = cityMatch[0] + (countryFollow ? ', ' + countryFollow[1].trim() : '');
     }
   }
   // Also check for "Remote" as a standalone location marker
@@ -584,10 +675,16 @@ function parseExperience(content: string[]): ExperienceEntry[] {
   const datePatterns = [
     // "Jan 2020 – Present", "January 2020 to December 2022"
     /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*'?\d{2,4}\s*[-–—to]+\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*'?\d{2,4}|Present|Current|Now|Ongoing)/i,
+    // "March – November 2023" (month range, year only on end date)
+    /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*[-–—to]+\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*'?\d{2,4}/i,
     // "01/2020 – 12/2022", "01/20 – Present"
     /\d{1,2}\/\d{2,4}\s*[-–—to]+\s*(?:\d{1,2}\/\d{2,4}|Present|Current|Now)/i,
     // "2020.01 – 2022.12" (European dot format)
     /\d{4}\.\d{2}\s*[-–—]\s*(?:\d{4}\.\d{2}|Present|Current)/i,
+    // "Q1 2020 – Q3 2022"
+    /Q[1-4]\s+\d{4}\s*[-–—to]+\s*(?:Q[1-4]\s+\d{4}|Present|Current|Now)/i,
+    // "Summer 2021 – Fall 2022", "Spring 2023 – Present"
+    /(?:Spring|Summer|Fall|Autumn|Winter)\s+\d{4}\s*[-–—to]+\s*(?:(?:Spring|Summer|Fall|Autumn|Winter)\s+\d{4}|Present|Current|Now)/i,
     // "2020 – 2023", "2020 - Present"
     /\d{4}\s*[-–—to]+\s*(?:\d{4}|Present|Current|Now|Ongoing)/i,
     // Single year "2020" only when preceded by typical keywords — handled via context
@@ -622,7 +719,7 @@ function parseExperience(content: string[]): ExperienceEntry[] {
 
     const hasJobTitle = jobTitlePatterns.some(p => p.test(line));
     const isBulletPoint = /^[•\-*▪◦›●○]\s*/.test(line);
-    const startsWithActionVerb = /^(?:Led|Built|Developed|Created|Managed|Designed|Implemented|Achieved|Improved|Reduced|Increased|Delivered|Spearheaded|Established|Launched|Drove|Orchestrated|Streamlined|Optimized|Automated|Integrated|Collaborated|Mentored|Trained|Analyzed|Researched|Executed|Coordinated)\b/i.test(line);
+    const startsWithActionVerb = /^(?:Led|Built|Developed|Created|Managed|Designed|Implemented|Achieved|Improved|Reduced|Increased|Delivered|Spearheaded|Established|Launched|Drove|Orchestrated|Streamlined|Optimized|Automated|Integrated|Collaborated|Mentored|Trained|Analyzed|Researched|Executed|Coordinated|Architected|Engineered|Deployed|Maintained|Migrated|Refactored|Upgraded|Configured|Monitored|Debugged|Resolved|Troubleshot|Released|Shipped|Authored|Published|Presented|Negotiated|Facilitated|Partnered|Liaised|Administered|Supported|Hired|Recruited|Onboarded|Evaluated|Reviewed|Assessed|Planned|Scoped|Prioritized|Oversaw|Directed|Supervised|Guided|Coached|Scaled|Expanded|Grew|Generated|Produced|Secured|Raised|Designed|Prototyped|Tested|Validated|Documented|Standardized|Consolidated|Aligned|Defined|Introduced|Pioneered|Transformed|Revamped|Overhauled|Diagnosed|Investigated|Identified|Proposed|Recommended|Ensured|Enforced|Implemented|Reengineered|Redesigned|Rebranded|Replatformed|Containerized|Provisioned|Bootstrapped|Enabled|Empowered|Accelerated|Enhanced|Adapted|Localized|Internationalized|Integrated|Interfaced|Connected|Unified|Centralized|Decentralized|Abstracted|Encapsulated|Modularized|Refactored|Parameterized|Serialized|Indexed|Cached|Proxied|Sharded|Replicated|Synchronized|Orchestrated|Scheduled|Queued|Streamed|Processed|Parsed|Rendered|Compiled|Transpiled|Bundled|Minified)\b/i.test(line);
 
     if (dateMatch) {
       // Line with date - likely a new entry or contains date for current entry
@@ -798,7 +895,12 @@ function parseEducation(content: string[]): EducationEntry[] {
       } else if (/\b(19|20)\d{2}\b/.test(line) && !current.graduationDate) {
         const yearMatch = line.match(/\b(19|20)\d{2}\b/);
         if (yearMatch) current.graduationDate = yearMatch[0];
-      } else if (/\b(gpa|cum laude|magna|summa|honors?|distinction|first.class|upper.second|lower.second)\b/i.test(line)) {
+      } else if (/\b(gpa|cgpa|cum laude|magna|summa|honors?|distinction|first.class|upper.second|lower.second)\b/i.test(line)) {
+        // Extract GPA value into dedicated field if present
+        const gpaMatch = line.match(/\b(?:GPA|CGPA)\s*[:\-]?\s*(\d+\.?\d*(?:\s*\/\s*\d+\.?\d*)?)/i);
+        if (gpaMatch && !current.gpa) {
+          current.gpa = gpaMatch[1].trim();
+        }
         current.achievements = current.achievements || [];
         current.achievements.push(line.trim());
       }
