@@ -9,6 +9,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { v2 as cloudinary } from 'cloudinary';
 import { ParsedResumeData } from '../types';
+import { sanitizeResumeData } from './parser';
 import { getTemplateConfig, ExtendedTemplateConfig } from './templates';
 import { BaseTemplate } from '../templates/shared/components/BaseTemplate';
 import { getLayoutComponent, LayoutType } from '../templates/layouts';
@@ -355,10 +356,11 @@ export async function generateResumeHTML(
     accentColor?: string;
   }
 ): Promise<string> {
-  // Resolve profile photo to base64 data URI so it embeds without auth.
-  // Check both contact.photoUrl (primary) and top-level photoUrl (fallback)
-  // so templates that read either location both get the resolved image.
-  let data = resumeData;
+  // Normalise all data shapes (string→string[], SkillCategory[]→string[], etc.)
+  // so layout components always receive consistent types regardless of whether
+  // the data came from a fresh upload or older DB-stored records.
+  // Photo URLs are preserved through sanitize (they live on contact.photoUrl / photoUrl).
+  let data = sanitizeResumeData(resumeData);
   const rawPhotoUrl = data.contact?.photoUrl || data.photoUrl;
   if (rawPhotoUrl) {
     const dataUri = await resolvePhotoUrl(rawPhotoUrl);
