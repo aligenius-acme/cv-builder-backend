@@ -194,16 +194,7 @@ function renderReactToHTML(
 
     @page {
       size: A4;
-      margin-top: ${config.margins.top}px;
-      margin-bottom: ${config.margins.bottom}px;
-      margin-left: 0;
-      margin-right: 0;
-    }
-
-    /* Page 1 gets its top spacing from the layout's wrapper padding,
-       so @page margin-top is only needed from page 2 onwards */
-    @page :first {
-      margin-top: 0;
+      margin: 0;
     }
 
     body {
@@ -232,14 +223,6 @@ function renderReactToHTML(
     .avoid-break {
       page-break-inside: avoid;
       break-inside: avoid;
-    }
-
-    /* Ensure content fits on page */
-    @media print {
-      body {
-        width: 210mm;
-        height: 297mm;
-      }
     }
 
     /* Font smoothing */

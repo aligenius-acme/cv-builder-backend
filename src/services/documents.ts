@@ -1423,15 +1423,14 @@ export async function generateDOCX(
           spacing: { before: 100 },
         })
       );
-      if (proj.description) {
-        const descText = Array.isArray(proj.description) ? proj.description.join('\n') : proj.description;
-        children.push(
-          new Paragraph({
-            children: [new TextRun({ text: descText, size: 22 })],
-            spacing: { after: 50 },
-          })
-        );
-      }
+      const projDescItems: string[] = Array.isArray(proj.description) ? proj.description : (proj.description ? [proj.description] : []);
+      projDescItems.forEach((d: string) => children.push(
+        new Paragraph({
+          children: [new TextRun({ text: `• ${cleanBullet(d)}`, size: 22 })],
+          spacing: { after: 40 },
+          indent: { left: 200 },
+        })
+      ));
       if (proj.technologies?.length) {
         children.push(
           new Paragraph({
@@ -1920,9 +1919,9 @@ function makeOptionalSections(data: ParsedResumeData, ts: TitleStyle, bullet: st
         ],
         spacing: { before: 120, after: 40 },
       }));
-      if (p.description) out.push(new Paragraph({ text: p.description, size: 22, spacing: { after: 40 } } as any));
-      const bullets2 = p.highlights || [];
-      bullets2.forEach((hl: string) => out.push(new Paragraph({ text: `${b} ${cleanBullet(hl)}`, spacing: { after: 40 }, indent: { left: 200 } })));
+      const descItems: string[] = Array.isArray(p.description) ? p.description : (p.description ? [p.description] : []);
+      const bullets2 = [...descItems, ...(p.highlights || [])];
+      bullets2.forEach((hl: string) => out.push(new Paragraph({ children: [new TextRun({ text: `${b} ${cleanBullet(hl)}`, size: 22, font: palette.font })], spacing: { after: 40 }, indent: { left: 200 } })));
       if (p.technologies?.length) out.push(new Paragraph({
         children: [new TextRun({ text: 'Technologies: ', italics: true, font: palette.font }), new TextRun({ text: p.technologies.join(', '), font: palette.font })],
         spacing: { after: 40 },
@@ -3607,11 +3606,10 @@ async function generateFlatDocx(data: ParsedResumeData): Promise<Buffer> {
           spacing: { before: 150, after: 50 },
         })
       );
-      if (proj.description) {
-        sections.push(
-          new Paragraph({ text: proj.description, spacing: { after: 50 } })
-        );
-      }
+      const flatDescItems: string[] = Array.isArray(proj.description) ? proj.description : (proj.description ? [proj.description] : []);
+      flatDescItems.forEach((d: string) => sections.push(
+        new Paragraph({ text: `• ${cleanBullet(d)}`, spacing: { after: 40 } })
+      ));
       if (proj.technologies && proj.technologies.length > 0) {
         sections.push(
           new Paragraph({
