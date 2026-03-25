@@ -472,6 +472,12 @@ export async function generatePDFFromReact(
       timeout: 30000,
     });
 
+    // Strip min-height from all layout elements so that short resumes don't
+    // overflow to a blank second page due to sub-pixel rounding at the 297mm boundary.
+    await page.addStyleTag({
+      content: 'html, body, body > * { min-height: 0 !important; }',
+    });
+
     // 8. Generate PDF
     const pdfData = await page.pdf({
       format: 'A4',

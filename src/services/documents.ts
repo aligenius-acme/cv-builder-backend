@@ -6,6 +6,7 @@ import { readFileSync } from 'fs';
 import { ParsedResumeData, AnonymizationConfig, SkillCategory } from '../types';
 import { ExtendedTemplateConfig, getTemplateConfig, BASE_LAYOUTS, COLOR_PALETTES } from './templates';
 import { config as appConfig } from '../config';
+import { sanitizeResumeData } from './parser';
 
 // Bullet character map
 const BULLETS: Record<string, string> = {
@@ -3308,6 +3309,10 @@ export async function generateDOCXFromRegistry(
   }
 
   console.log(`Generating DOCX for template: ${templateId}`);
+
+  // Normalize raw DB data (same as PDF path) — ensures skills, descriptions,
+  // dates, and all fields match the expected ParsedResumeData shape.
+  data = sanitizeResumeData(data);
 
   // ── docxjs path ───────────────────────────────────────────────────────────
   try {
