@@ -214,11 +214,15 @@ export function sanitizeResumeData(data: ParsedResumeData): ParsedResumeData {
   const projects = toArr<any>(data.projects)
     .map(p => ({
       name:         typeof p.name    === 'string' ? p.name    : '',
-      description:  Array.isArray(p.description)
-                      ? (p.description as string[]).map((s: string) => s.trim()).filter(Boolean)
-                      : typeof p.description === 'string'
-                        ? p.description.split('\n').map((s: string) => s.trim()).filter(Boolean)
-                        : [],
+      description:  (() => {
+        const raw: string[] = Array.isArray(p.description)
+          ? (p.description as string[]).map((s: string) => s.trim()).filter(Boolean)
+          : typeof p.description === 'string'
+            ? p.description.split('\n').map((s: string) => s.trim()).filter(Boolean)
+            : [];
+        // Strip metadata lines that were accidentally stored as bullets (e.g. "Industry: XYZ")
+        return raw.filter((s: string) => !/^(industry|client|duration|status|team\s+size|type)[\s:]/i.test(s));
+      })(),
       technologies: toArr<string>(p.technologies).filter(t => typeof t === 'string'),
       // Accept both url and link fields (legacy data uses link)
       url:          typeof p.url  === 'string' ? p.url  :
@@ -1415,11 +1419,7 @@ function parseProjects(content: string[]): { name: string; description: string; 
       if (roleMatch) {
         current.role = roleMatch[1].replace(/[,;]\s*$/, '').trim();
       }
-      // Industry and other metadata added to description for context
-      const industryMatch = cleanLine.match(/^industry[\s:]+(.+)/i);
-      if (industryMatch) {
-        descriptionLines.unshift(`Industry: ${industryMatch[1].trim()}`);
-      }
+      // Industry and other metadata — skip as description bullets (metadata, not achievements)
       continue;
     }
 

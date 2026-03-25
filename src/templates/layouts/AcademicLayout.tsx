@@ -141,7 +141,7 @@ export const AcademicLayout: React.FC<LayoutProps> = ({ data, config }) => {
                 {edu.gpa && ` • GPA: ${edu.gpa}`}
               </div>
               {edu.achievements && edu.achievements.length > 0 && (
-                <ul style={{ margin: '8px 0 0 20px', listStyleType: 'circle' }}>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', listStyleType: 'circle' }}>
                   {edu.achievements.map((achievement, i) => (
                     <li key={i} style={{
                       fontSize: `${fontSize.body}px`,

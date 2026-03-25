@@ -711,7 +711,11 @@ const THUMBNAIL_DATA_NARROW: ParsedResumeData = {
   ],
   projects: [{
     name: 'OpenCLI — Developer Productivity Tool',
-    description: 'Open-source CLI toolkit with 2k+ GitHub stars, used by teams at top tech companies',
+    description: [
+      'Open-source CLI toolkit with 2k+ GitHub stars, adopted by teams at top tech companies',
+      'Reduced developer onboarding time by 40% through automated scaffolding and config management',
+      'Shipped 12 major releases with zero breaking changes via semantic versioning and CI/CD pipelines',
+    ],
     technologies: ['TypeScript', 'Node.js', 'GitHub Actions'],
   }],
   languages: ['English (Native)', 'Spanish (Professional)'],
@@ -777,12 +781,18 @@ const THUMBNAIL_DATA_WIDE: ParsedResumeData = {
   projects: [
     {
       name: 'OpenCLI — Dev Productivity Tool',
-      description: 'Open-source CLI with 2k+ GitHub stars',
+      description: [
+        'Open-source CLI toolkit with 2k+ GitHub stars',
+        'Automated scaffolding cut developer onboarding time by 40%',
+      ],
       technologies: ['TypeScript', 'Node.js'],
     },
     {
       name: 'Analytics Dashboard',
-      description: 'Real-time analytics platform, 50k+ MAU',
+      description: [
+        'Real-time analytics platform serving 50k+ monthly active users',
+        'Sub-100ms query response via Redis caching and indexed views',
+      ],
       technologies: ['React', 'Python', 'PostgreSQL'],
     },
   ],
@@ -836,7 +846,10 @@ const THUMBNAIL_DATA_SPACIOUS: ParsedResumeData = {
   ],
   projects: [{
     name: 'OpenCLI — Developer Productivity Tool',
-    description: 'Open-source CLI toolkit with 2,000+ GitHub stars, adopted by teams at leading tech companies',
+    description: [
+      'Open-source CLI toolkit with 2,000+ GitHub stars, adopted by teams at leading tech companies',
+      'Reduced developer onboarding time by 40% via automated scaffolding and config management',
+    ],
     technologies: ['TypeScript', 'Node.js', 'GitHub Actions'],
   }],
   languages: ['English (Native)', 'Spanish (Professional)'],
@@ -858,7 +871,7 @@ function chooseThumbnailData(layoutType: string | undefined): ParsedResumeData {
 //
 // THUMB_VERSION: bump this number whenever layout rendering code changes so that
 // stale disk-cached thumbnails are ignored and fresh ones are generated.
-const THUMB_VERSION = 7;
+const THUMB_VERSION = 8;
 
 const THUMB_CACHE_DIR = path.join(__dirname, '../../thumbnails');
 
@@ -1030,7 +1043,8 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
     };
 
     // Use calibrated sample data for this layout type (prevents overflow & empty thumbnails)
-    const sampleData = chooseThumbnailData(detectedLayoutType);
+    // Sanitize to normalise all field shapes (string→string[], SkillCategory[]→string[], etc.)
+    const sampleData = sanitizeResumeData(chooseThumbnailData(detectedLayoutType));
     templateComponent = React.createElement(LayoutComponent, { data: sampleData, config });
 
     const html = renderReactToHTML(templateComponent, config);

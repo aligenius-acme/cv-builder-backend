@@ -461,13 +461,21 @@ export function getSampleResumeData(): ParsedResumeData {
     projects: [
       {
         name: 'Open Source Analytics Platform',
-        description: 'Built a comprehensive open-source analytics platform with real-time data processing, custom dashboards, and alerting. Featured on Product Hunt and gained 1,200+ GitHub stars.',
+        description: [
+          'Built a comprehensive analytics platform with real-time data processing, custom dashboards, and alerting',
+          'Featured on Product Hunt and gained 1,200+ GitHub stars within 3 months of launch',
+          'Optimized query performance by 60% through indexing strategies and caching layers',
+        ],
         technologies: ['React', 'Node.js', 'PostgreSQL', 'Docker', 'Redis'],
         url: 'github.com/analytics-platform',
       },
       {
         name: 'Machine Learning Model Deployment Tool',
-        description: 'Created a CLI tool for streamlining ML model deployment to cloud platforms, reducing deployment time by 70%.',
+        description: [
+          'Created a CLI tool for streamlining ML model deployment to cloud platforms',
+          'Reduced deployment time by 70% through automated containerization and CI/CD pipelines',
+          'Supports AWS SageMaker, Google Vertex AI, and Azure ML with a unified interface',
+        ],
         technologies: ['Python', 'TensorFlow', 'AWS SageMaker', 'Docker'],
       },
     ],
