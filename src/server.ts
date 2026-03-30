@@ -55,5 +55,11 @@ if (process.env.VERCEL !== '1') {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
+  // Prevent Redis/Bull connection errors from crashing the process.
+  // Queue operations will fail gracefully rather than taking the app down.
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection (non-fatal):', reason);
+  });
+
   main();
 }
