@@ -30,6 +30,10 @@ debug-*.html
 debug-*.pdf
 nul
 
+# Ad-hoc test/utility scripts
+test-*.ts
+generate-*.ts
+
 # Test output
 /test-output
 /coverage
