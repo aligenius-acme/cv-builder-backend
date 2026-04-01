@@ -68,8 +68,8 @@ async function initBrowser(): Promise<Browser> {
   browser.on('disconnected', () => {
     console.log('Browser disconnected — will reconnect on next request');
     browserInstance = null;
-    activeThumbnailCount = 0;
-    const waiting = thumbnailWaitQueue.splice(0);
+    activePageCount = 0;
+    const waiting = [...pdfWaitQueue.splice(0), ...thumbnailWaitQueue.splice(0)];
     waiting.forEach(resolve => resolve());
   });
 
@@ -453,7 +453,9 @@ export async function generatePDFFromReact(
     // Generate the full HTML using the shared pipeline
     const html = await generateResumeHTML(templateId, resumeData, customColors);
 
-    // 5. Get browser instance
+    // 5. Get browser instance — acquire a page slot first so concurrent
+    //    thumbnail warmup can't exhaust Chrome's memory alongside this PDF.
+    await acquirePageSlot('pdf');
     const browser = await getBrowser();
 
     // 6. Create new page
@@ -516,7 +518,7 @@ export async function generatePDFFromReact(
     console.error(`PDF generation failed after ${duration}ms:`, error);
     throw new Error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
   } finally {
-    // 9. Cleanup: Close the page but keep browser instance
+    // 9. Cleanup: Close the page, release concurrency slot, keep browser instance
     if (page) {
       try {
         await page.close();
@@ -524,6 +526,7 @@ export async function generatePDFFromReact(
         console.error('Error closing page:', closeError);
       }
     }
+    releasePageSlot();
   }
 }
 
@@ -898,27 +901,43 @@ const thumbnailCache = new Map<string, Buffer>();
 /** Pending thumbnail promises — deduplicates concurrent requests for the same template */
 const thumbnailPending = new Map<string, Promise<Buffer>>();
 
-/** Concurrency limiter — cap simultaneous Puppeteer pages to avoid resource exhaustion */
-const MAX_CONCURRENT_THUMBNAILS = 4;
-let activeThumbnailCount = 0;
-const thumbnailWaitQueue: Array<() => void> = [];
+/**
+ * Unified concurrency limiter for ALL Puppeteer page operations (PDFs + thumbnails).
+ * Keeping concurrent pages low prevents Chrome from OOMing in constrained environments.
+ * PDFs use a priority queue so they jump ahead of thumbnail requests.
+ */
+const MAX_CONCURRENT_PAGES = 2;
+let activePageCount = 0;
+const pdfWaitQueue: Array<() => void> = [];     // high-priority
+const thumbnailWaitQueue: Array<() => void> = []; // low-priority
 
-function acquireThumbnailSlot(): Promise<void> {
-  if (activeThumbnailCount < MAX_CONCURRENT_THUMBNAILS) {
-    activeThumbnailCount++;
+function acquirePageSlot(priority: 'pdf' | 'thumbnail' = 'thumbnail'): Promise<void> {
+  if (activePageCount < MAX_CONCURRENT_PAGES) {
+    activePageCount++;
     return Promise.resolve();
   }
-  return new Promise<void>(resolve => thumbnailWaitQueue.push(resolve));
+  return new Promise<void>(resolve => {
+    if (priority === 'pdf') {
+      pdfWaitQueue.push(resolve); // PDFs jump ahead of thumbnails
+    } else {
+      thumbnailWaitQueue.push(resolve);
+    }
+  });
 }
 
-function releaseThumbnailSlot(): void {
-  const next = thumbnailWaitQueue.shift();
+function releasePageSlot(): void {
+  // Drain PDF queue first, then thumbnails
+  const next = pdfWaitQueue.shift() ?? thumbnailWaitQueue.shift();
   if (next) {
-    next(); // hand slot directly to the next waiter
+    next();
   } else {
-    activeThumbnailCount--;
+    activePageCount--;
   }
 }
+
+// Keep old names as aliases so thumbnail code below compiles without changes
+const acquireThumbnailSlot = () => acquirePageSlot('thumbnail');
+const releaseThumbnailSlot = releasePageSlot;
 
 async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
   await acquireThumbnailSlot();
