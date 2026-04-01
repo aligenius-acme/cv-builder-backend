@@ -53,11 +53,19 @@ async function initBrowser(): Promise<Browser> {
     }
   }
 
-  // Strip Lambda-targeted GL flags from @sparticuz/chromium — they load
-  // memory-heavy swiftshader/WebGL on system Chromium and cause OOM crashes.
-  // Replace with --disable-gpu which is correct for headless container use.
+  // Strip flags from @sparticuz/chromium that are incompatible with Puppeteer 23
+  // or that load heavy software rasterizers causing OOM on constrained containers.
+  // --single-process: crashes Puppeteer 23 (Target.setDiscoverTargets protocol error)
+  // --use-gl= / --use-angle=: loads swiftshader/WebGL rasterizers (~100MB+)
+  // --enable-webgl / --ignore-gpu-*: unnecessary GL surface setup
   const baseArgs = chromium.args.filter(
-    a => !a.startsWith('--use-gl=') && a !== '--enable-webgl' && a !== '--ignore-gpu-blacklist'
+    a =>
+      a !== '--single-process' &&
+      !a.startsWith('--use-gl=') &&
+      !a.startsWith('--use-angle=') &&
+      a !== '--enable-webgl' &&
+      a !== '--ignore-gpu-blacklist' &&
+      a !== '--ignore-gpu-blocklist'
   );
 
   console.log('Launching browser...');
@@ -68,9 +76,6 @@ async function initBrowser(): Promise<Browser> {
       ...baseArgs,
       '--disable-gpu',
       '--disable-software-rasterizer',
-      '--single-process', // avoids forking renderer child processes (fixes cgroup PID limits)
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process,VizDisplayCompositor',
     ],
     timeout: 30000,
   });
