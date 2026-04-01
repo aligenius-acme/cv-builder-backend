@@ -1,5 +1,5 @@
 import express from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
@@ -53,15 +53,18 @@ app.use(helmet({
 }));
 
 // CORS configuration - only allow specific origins
-const allowedOrigins = config.allowedOrigins || [config.frontendUrl];
 const isDev = process.env.NODE_ENV !== 'production';
+// Always include FRONTEND_URL so it works even if ALLOWED_ORIGINS is misconfigured
+const allowedOrigins = Array.from(new Set([
+  ...(config.allowedOrigins || []),
+  config.frontendUrl,
+].filter(Boolean)));
+console.log(`[CORS] allowed origins (${allowedOrigins.length}):`, allowedOrigins);
 
-app.use(cors({
+const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      return callback(null, true);
-    }
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
 
     // In development allow specific localhost ports only
     if (isDev && /^http:\/\/localhost:(3000|3001|3002)$/.test(origin)) {
@@ -71,14 +74,19 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn(`[CORS] blocked origin: ${origin}`);
       callback(null, false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  maxAge: 86400, // Cache preflight requests for 24 hours
-}));
+  maxAge: 86400,
+};
+
+// Explicit preflight handler — must come before routes and rate limiter
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // Request logging
 if (config.nodeEnv !== 'test') {
