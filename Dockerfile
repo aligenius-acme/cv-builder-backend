@@ -26,28 +26,19 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-# Runtime libraries for Chromium/Chrome (needed if a system Chrome is ever
-# mounted or installed separately; also satisfies font rendering deps)
+# Install system Chromium (apt-managed, guaranteed compatible with this container's
+# glibc/kernel) and fonts for PDF rendering.
+# Using system Chromium avoids @sparticuz/chromium binary incompatibilities
+# that occur when the Lambda-targeted binary runs on non-Lambda container runtimes.
 RUN apt-get update && apt-get install -y \
+  chromium \
   fonts-liberation \
   fonts-noto-color-emoji \
-  libnspr4 \
-  libnss3 \
-  libatk1.0-0 \
-  libatk-bridge2.0-0 \
-  libcups2 \
-  libdrm2 \
-  libxkbcommon0 \
-  libxcomposite1 \
-  libxdamage1 \
-  libxfixes3 \
-  libxrandr2 \
-  libgbm1 \
-  libasound2 \
-  libpango-1.0-0 \
-  libcairo2 \
   --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
+
+# Tell Puppeteer to use the system-installed Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Create non-root user
 RUN groupadd --system --gid 1001 nodejs \
