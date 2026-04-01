@@ -77,7 +77,7 @@ async function initBrowser(): Promise<Browser> {
       '--disable-gpu',
       '--disable-software-rasterizer',
     ],
-    timeout: 30000,
+    timeout: 60000,
   });
 
   browser.on('disconnected', () => {
@@ -484,8 +484,11 @@ export async function generatePDFFromReact(
     });
 
     // 7. Set HTML content
+    // Use 'domcontentloaded' — all assets (fonts, photo) are inline data URIs,
+    // so there are no external network requests to wait for. 'networkidle0' would
+    // hang for the full timeout on any stray network activity.
     await page.setContent(html, {
-      waitUntil: 'networkidle0',
+      waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
 
