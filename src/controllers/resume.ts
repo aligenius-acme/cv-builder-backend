@@ -706,18 +706,21 @@ export const downloadVersion = async (
       buffer = await generateDOCXFromRegistry(resumeData, templateId);
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       fileName = `resume-v${version.versionNumber}-${sanitizeFilename(version.companyName || 'tailored')}.docx`;
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+      res.setHeader('Content-Length', buffer.length.toString());
+      res.end(buffer, 'binary');
     } else {
-      // Use React-based PDF generator for modular template system
+      // Flush CORS headers before Puppeteer to prevent proxy-timeout CORS failures
+      fileName = `resume-v${version.versionNumber}-${sanitizeFilename(version.companyName || 'tailored')}.pdf`;
+      res.status(200);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+      res.flushHeaders();
       const { generatePDFFromReact } = await import('../services/react-pdf-generator');
       buffer = await generatePDFFromReact(templateId, resumeData);
-      contentType = 'application/pdf';
-      fileName = `resume-v${version.versionNumber}-${sanitizeFilename(version.companyName || 'tailored')}.pdf`;
+      res.end(buffer, 'binary');
     }
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-    res.setHeader('Content-Length', buffer.length.toString());
-    res.end(buffer, 'binary');
   } catch (error) {
     next(error);
   }
@@ -1140,18 +1143,21 @@ export const downloadResume = async (
       buffer = await generateDOCXFromRegistry(resumeData, templateId);
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       fileName = `${sanitizeFilename(resume.title || 'resume')}.docx`;
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+      res.setHeader('Content-Length', buffer.length.toString());
+      res.end(buffer, 'binary');
     } else {
-      // Use React-based PDF generator for modular template system
+      // Flush CORS headers before Puppeteer to prevent proxy-timeout CORS failures
+      fileName = `${sanitizeFilename(resume.title || 'resume')}.pdf`;
+      res.status(200);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+      res.flushHeaders();
       const { generatePDFFromReact } = await import('../services/react-pdf-generator');
       buffer = await generatePDFFromReact(templateId, resumeData);
-      contentType = 'application/pdf';
-      fileName = `${sanitizeFilename(resume.title || 'resume')}.pdf`;
+      res.end(buffer, 'binary');
     }
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-    res.setHeader('Content-Length', buffer.length.toString());
-    res.end(buffer, 'binary');
   } catch (error) {
     next(error);
   }
@@ -1191,12 +1197,16 @@ export const previewResume = async (
       resumeData.contact.photoUrl = resume.photoUrl;
     }
 
+    // Flush CORS headers before Puppeteer to prevent proxy-timeout CORS failures
+    res.status(200);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.flushHeaders();
+
     // Generate preview using React components (modular system)
     console.log(`🎯 Generating preview for template: ${templateId}`);
     const { generatePDFFromReact } = await import('../services/react-pdf-generator');
     const buffer = await generatePDFFromReact(templateId, resumeData);
 
-    res.setHeader('Content-Type', 'application/pdf');
     res.send(buffer);
   } catch (error) {
     next(error);

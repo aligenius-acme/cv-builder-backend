@@ -256,12 +256,18 @@ export const previewTemplate = async (
       resumeData = getSampleResumeData();
     }
 
+    // Flush CORS + status headers to the socket before Puppeteer starts.
+    // Without this, a proxy timeout (Koyeb ~30 s) sends its own 504 without
+    // the CORS headers Express queued, causing "No Access-Control-Allow-Origin".
+    res.status(200);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.flushHeaders();
+
     // Generate PDF preview using React components (modular system)
     const { generatePDFFromReact } = await import('../services/react-pdf-generator');
     const pdfBuffer = await generatePDFFromReact(templateId, resumeData);
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.send(pdfBuffer);
   } catch (error) {
     next(error);
