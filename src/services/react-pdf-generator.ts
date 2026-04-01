@@ -68,6 +68,7 @@ async function initBrowser(): Promise<Browser> {
       ...baseArgs,
       '--disable-gpu',
       '--disable-software-rasterizer',
+      '--single-process', // avoids forking renderer child processes (fixes cgroup PID limits)
       '--disable-web-security',
       '--disable-features=IsolateOrigins,site-per-process,VizDisplayCompositor',
     ],
