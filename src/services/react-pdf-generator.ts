@@ -53,14 +53,23 @@ async function initBrowser(): Promise<Browser> {
     }
   }
 
+  // Strip Lambda-targeted GL flags from @sparticuz/chromium — they load
+  // memory-heavy swiftshader/WebGL on system Chromium and cause OOM crashes.
+  // Replace with --disable-gpu which is correct for headless container use.
+  const baseArgs = chromium.args.filter(
+    a => !a.startsWith('--use-gl=') && a !== '--enable-webgl' && a !== '--ignore-gpu-blacklist'
+  );
+
   console.log('Launching browser...');
   const browser = await puppeteer.launch({
     headless: true,
     executablePath: cachedExecutablePath,
     args: [
-      ...chromium.args,
+      ...baseArgs,
+      '--disable-gpu',
+      '--disable-software-rasterizer',
       '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process',
+      '--disable-features=IsolateOrigins,site-per-process,VizDisplayCompositor',
     ],
     timeout: 30000,
   });
@@ -465,7 +474,7 @@ export async function generatePDFFromReact(
     await page.setViewport({
       width: 794, // A4 width in pixels at 96 DPI
       height: 1123, // A4 height in pixels at 96 DPI
-      deviceScaleFactor: 2, // Higher DPI for better quality
+      deviceScaleFactor: 1.5, // Reduced from 2 to lower memory usage
     });
 
     // 7. Set HTML content
@@ -1073,7 +1082,7 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
     // Use a taller viewport for initial render so we can measure natural content height.
     // 'domcontentloaded' is significantly faster than 'networkidle0' — safe here because
     // all assets (fonts, photo) are inline data URIs so there are no external requests.
-    await page.setViewport({ width: A4_W, height: 1400, deviceScaleFactor: 2 });
+    await page.setViewport({ width: A4_W, height: 1400, deviceScaleFactor: 1.5 });
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
     // Strip the A4 min-height from the root layout element so the body collapses
@@ -1119,7 +1128,7 @@ async function _doGenerateThumbnail(templateId: string): Promise<Buffer> {
     const captureHeight = Math.min(contentHeight, MAX_H);
 
     // Resize viewport to exact capture dimensions and hide any remaining overflow.
-    await page.setViewport({ width: A4_W, height: captureHeight, deviceScaleFactor: 2 });
+    await page.setViewport({ width: A4_W, height: captureHeight, deviceScaleFactor: 1.5 });
     await page.addStyleTag({
       content: 'html, body { overflow: hidden !important; }',
     });
