@@ -54,10 +54,12 @@ app.use(helmet({
 
 // CORS configuration - only allow specific origins
 const isDev = process.env.NODE_ENV !== 'production';
-// Always include FRONTEND_URL so it works even if ALLOWED_ORIGINS is misconfigured
+// Always include FRONTEND_URL so it works even if ALLOWED_ORIGINS is misconfigured.
+// FRONTEND_URL may contain multiple comma-separated origins (e.g. www + non-www).
+const frontendUrls = config.frontendUrl.split(',').map(s => s.trim()).filter(Boolean);
 const allowedOrigins = Array.from(new Set([
   ...(config.allowedOrigins || []),
-  config.frontendUrl,
+  ...frontendUrls,
 ].filter(Boolean)));
 console.log(`[CORS] allowed origins (${allowedOrigins.length}):`, allowedOrigins);
 
