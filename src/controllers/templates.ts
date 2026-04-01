@@ -264,11 +264,16 @@ export const previewTemplate = async (
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.flushHeaders();
 
-    // Generate PDF preview using React components (modular system)
-    const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-    const pdfBuffer = await generatePDFFromReact(templateId, resumeData);
-
-    res.send(pdfBuffer);
+    // Generate PDF — after flushHeaders, errors must end the response gracefully
+    // (calling next(error) would try to set headers again and kill the QUIC stream)
+    try {
+      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+      const pdfBuffer = await generatePDFFromReact(templateId, resumeData);
+      res.end(pdfBuffer);
+    } catch (pdfError) {
+      console.error('PDF generation failed after headers flushed:', pdfError);
+      res.end();
+    }
   } catch (error) {
     next(error);
   }

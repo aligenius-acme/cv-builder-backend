@@ -717,9 +717,15 @@ export const downloadVersion = async (
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
       res.flushHeaders();
-      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-      buffer = await generatePDFFromReact(templateId, resumeData);
-      res.end(buffer, 'binary');
+      try {
+        const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+        buffer = await generatePDFFromReact(templateId, resumeData);
+        res.end(buffer, 'binary');
+      } catch (pdfError) {
+        console.error('PDF generation failed after headers flushed:', pdfError);
+        res.end();
+      }
+      return;
     }
   } catch (error) {
     next(error);
@@ -1154,9 +1160,15 @@ export const downloadResume = async (
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
       res.flushHeaders();
-      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-      buffer = await generatePDFFromReact(templateId, resumeData);
-      res.end(buffer, 'binary');
+      try {
+        const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+        buffer = await generatePDFFromReact(templateId, resumeData);
+        res.end(buffer, 'binary');
+      } catch (pdfError) {
+        console.error('PDF generation failed after headers flushed:', pdfError);
+        res.end();
+      }
+      return;
     }
   } catch (error) {
     next(error);
@@ -1202,12 +1214,15 @@ export const previewResume = async (
     res.setHeader('Content-Type', 'application/pdf');
     res.flushHeaders();
 
-    // Generate preview using React components (modular system)
-    console.log(`🎯 Generating preview for template: ${templateId}`);
-    const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-    const buffer = await generatePDFFromReact(templateId, resumeData);
-
-    res.send(buffer);
+    try {
+      console.log(`🎯 Generating preview for template: ${templateId}`);
+      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
+      const buffer = await generatePDFFromReact(templateId, resumeData);
+      res.end(buffer);
+    } catch (pdfError) {
+      console.error('PDF generation failed after headers flushed:', pdfError);
+      res.end();
+    }
   } catch (error) {
     next(error);
   }
