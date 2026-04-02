@@ -375,6 +375,58 @@ export const regenerateThumbnails = async (_req: Request, res: Response): Promis
   res.status(202).json({ message: 'Thumbnail regeneration started' });
 };
 
+/**
+ * Render a template as HTML — used by the frontend for live preview (iframe srcdoc)
+ * and client-side PDF generation via browser print. No Puppeteer involved.
+ * Accepts optional resumeId/versionId to use real user data; falls back to sample data.
+ */
+export const renderTemplate = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { templateId } = req.params;
+    const { resumeId, versionId } = req.query;
+    const userId = req.user!.id;
+
+    const template = await TemplateRegistry.getTemplateById(templateId);
+    if (!template) throw new ValidationError(`Invalid template: ${templateId}`);
+
+    let resumeData: ParsedResumeData;
+
+    if (versionId && resumeId) {
+      const version = await prisma.resumeVersion.findFirst({
+        where: { id: versionId as string, resumeId: resumeId as string, userId },
+        include: { resume: true },
+      });
+      if (!version) throw new NotFoundError('Version not found');
+      resumeData = version.tailoredData as unknown as ParsedResumeData;
+      if (!resumeData.contact || typeof resumeData.contact !== 'object') resumeData.contact = {};
+      const photo = version.resume.photoUrl || resumeData.photoUrl;
+      if (photo) { resumeData.contact.photoUrl = photo; resumeData.photoUrl = photo; }
+    } else if (resumeId) {
+      const resume = await prisma.resume.findFirst({ where: { id: resumeId as string, userId } });
+      if (!resume) throw new NotFoundError('Resume not found');
+      resumeData = resume.parsedData as unknown as ParsedResumeData;
+      if (!resumeData.contact || typeof resumeData.contact !== 'object') resumeData.contact = {};
+      const photo = resume.photoUrl || resumeData.photoUrl;
+      if (photo) { resumeData.contact.photoUrl = photo; resumeData.photoUrl = photo; }
+    } else {
+      resumeData = getSampleResumeData();
+    }
+
+    const { generateResumeHTML } = await import('../services/react-pdf-generator');
+    const html = await generateResumeHTML(templateId, resumeData);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'private, no-cache');
+    res.send(html);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Sample data for template preview
 export function getSampleResumeData(): ParsedResumeData {
   return {

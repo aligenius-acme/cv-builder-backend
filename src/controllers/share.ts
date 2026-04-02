@@ -222,6 +222,37 @@ export const viewSharedResume = async (
   }
 };
 
+// Render a shared resume as HTML (public endpoint — used for client-side PDF print)
+export const renderSharedResume = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { token } = req.params;
+    const { template = 'london-navy' } = req.query;
+
+    const version = await prisma.resumeVersion.findUnique({
+      where: { shareToken: token },
+    });
+
+    if (!version || !version.isPublic) {
+      throw new NotFoundError('Shared resume not found or link has expired');
+    }
+
+    const tailoredData = version.tailoredData as unknown as ParsedResumeData;
+
+    const { generateResumeHTML } = await import('../services/react-pdf-generator');
+    const html = await generateResumeHTML(template as string, tailoredData);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.send(html);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Download a shared resume (public endpoint)
 export const downloadSharedResume = async (
   req: Request,

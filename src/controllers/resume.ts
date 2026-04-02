@@ -1361,3 +1361,91 @@ export const optimizeVersion = async (
     next(error);
   }
 };
+
+/**
+ * Render resume as HTML — used by the frontend for live preview (iframe srcdoc)
+ * and client-side PDF generation via browser print.
+ * No Puppeteer involved; returns the same HTML that Puppeteer used to consume.
+ */
+export const renderResume = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const { template = 'london-navy' } = req.query;
+
+    const resume = await prisma.resume.findFirst({ where: { id, userId } });
+    if (!resume) throw new NotFoundError('Resume not found');
+
+    const templateId = template as string;
+    const templateMetadata = await getTemplateById(templateId);
+    if (!templateMetadata) throw new ValidationError(`Invalid template: ${templateId}`);
+
+    const resumeData = resume.parsedData as unknown as ParsedResumeData;
+    if (resume.photoUrl && !resumeData.contact?.photoUrl) {
+      resumeData.contact = { ...resumeData.contact, photoUrl: resume.photoUrl };
+    }
+
+    const { generateResumeHTML } = await import('../services/react-pdf-generator');
+    const html = await generateResumeHTML(templateId, resumeData);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'private, no-cache');
+    res.send(html);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Render a tailored resume version as HTML — used for live preview and client-side PDF.
+ * Supports optional anonymisation (masks name/contact details).
+ */
+export const renderVersion = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id, versionId } = req.params;
+    const { template = 'professional', anonymize = 'false' } = req.query;
+
+    const version = await prisma.resumeVersion.findFirst({
+      where: { id: versionId, resumeId: id, userId },
+      include: { resume: true },
+    });
+    if (!version) throw new NotFoundError('Version not found');
+
+    const templateId = template as string;
+    const dbTemplate = await getTemplateById(templateId);
+    if (!dbTemplate) throw new ValidationError(`Invalid template: ${templateId}`);
+
+    let resumeData = version.tailoredData as unknown as ParsedResumeData;
+    if (version.resume.photoUrl && !resumeData.contact?.photoUrl) {
+      resumeData.contact = { ...resumeData.contact, photoUrl: version.resume.photoUrl };
+    }
+
+    if (anonymize === 'true') {
+      resumeData = anonymizeResumeData(resumeData, {
+        maskName: true,
+        maskEmail: true,
+        maskPhone: true,
+        maskLocation: true,
+        maskCompanyNames: false,
+      });
+    }
+
+    const { generateResumeHTML } = await import('../services/react-pdf-generator');
+    const html = await generateResumeHTML(templateId, resumeData);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'private, no-cache');
+    res.send(html);
+  } catch (error) {
+    next(error);
+  }
+};

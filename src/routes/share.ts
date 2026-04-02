@@ -5,6 +5,7 @@ import {
   getSharingStatus,
   viewSharedResume,
   downloadSharedResume,
+  renderSharedResume,
 } from '../controllers/share';
 
 const router = Router();
@@ -12,6 +13,7 @@ const router = Router();
 // Public routes (no auth required)
 router.get('/:token', viewSharedResume);
 router.get('/:token/download', downloadSharedResume);
+router.get('/:token/render', renderSharedResume);
 
 // Protected routes (auth required)
 router.post('/:resumeId/versions/:versionId/share', authenticate, toggleSharing);

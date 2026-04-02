@@ -21,6 +21,8 @@ import {
   previewResume,
   updateVersionContent,
   optimizeVersion,
+  renderResume,
+  renderVersion,
 } from '../controllers/resume';
 import { uploadLimiter, aiLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validate';
@@ -68,6 +70,7 @@ router.post('/create', createBlankResume);
 router.put('/:id/content', updateResumeContent);
 router.get('/:id/download', downloadResume);
 router.get('/:id/preview', previewResume);
+router.get('/:id/render', renderResume);
 
 // Resume customization (AI-powered, rate limited, credit checked)
 router.post('/:id/customize', aiLimiter, checkAICredits, customizeResume);
@@ -79,6 +82,7 @@ router.post('/scrape-job', aiLimiter, checkAICredits, scrapeJobUrl);
 router.get('/:id/versions/:versionId', getVersion);
 router.get('/:id/compare', compareVersions);
 router.get('/:id/versions/:versionId/download', downloadVersion);
+router.get('/:id/versions/:versionId/render', renderVersion);
 router.delete('/:id/versions/:versionId', deleteVersion);
 
 // Edit tailored version content (no AI credits)

@@ -10,28 +10,16 @@ import {
   previewTemplate,
   getThumbnail,
   regenerateThumbnails,
+  renderTemplate,
 } from '../controllers/templates';
 
 const router = Router();
-
-// Kick off thumbnail pre-generation in the background as soon as the server starts
-// serving template requests. Thumbnails are cached in-memory, so the first request
-// triggers generation and every subsequent request is served instantly from cache.
-let warmupStarted = false;
-function maybeWarmup() {
-  if (warmupStarted) return;
-  warmupStarted = true;
-  // fire-and-forget — don't await, don't block the response
-  import('../services/react-pdf-generator')
-    .then(({ warmupThumbnails }) => warmupThumbnails())
-    .catch(err => console.error('Thumbnail warmup failed:', err));
-}
 
 // Public routes (no authentication required for browsing templates)
 // Get all available templates with optional filtering
 // Query params: category, designStyle, atsCompatibility, pageLength, experienceLevel,
 //               industryTags[], targetRoles[], isPremium, isFeatured, search, limit, offset
-router.get('/', (req, res, next) => { maybeWarmup(); next(); }, getTemplates);
+router.get('/', getTemplates);
 
 // Get available filter options (categories, styles, industries, etc.)
 router.get('/filters', getFilterOptions);
@@ -53,6 +41,9 @@ router.get('/stats', authenticate, getTemplateStats);
 
 // Preview a template with sample or user data
 router.get('/:templateId/preview', authenticate, previewTemplate);
+
+// Render a template as HTML (for live iframe preview and client-side PDF print)
+router.get('/:templateId/render', authenticate, renderTemplate);
 
 // Get template thumbnail — Puppeteer screenshot matching exact PDF output
 router.get('/:templateId/thumbnail', getThumbnail);

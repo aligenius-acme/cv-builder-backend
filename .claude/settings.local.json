@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls C:ProjectsCV Builderbackend/*.ts)",
+      "WebFetch(domain:upstash.com)"
+    ]
+  }
+}
