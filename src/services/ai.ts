@@ -888,7 +888,7 @@ export async function extractResumeDataWithAI(
   userId: string
 ): Promise<ParsedResumeData> {
   // Truncate very long resumes to stay within token budget while preserving most content
-  const MAX_TEXT = 8000;
+  const MAX_TEXT = 14000;
   const text = rawText.length > MAX_TEXT
     ? rawText.slice(0, MAX_TEXT) + '\n...[truncated for length]'
     : rawText;
@@ -904,6 +904,8 @@ RULES:
 6. For languages, include proficiency if stated (e.g. "English - Native", "French - Intermediate")
 7. Only populate contact fields that are clearly present in the text; leave others as empty string
 8. GPA: populate only if explicitly stated (e.g. "GPA: 3.8", "CGPA 3.7/4.0")
+9. Extract volunteer/community work into volunteerWork, NOT into experience
+10. For projects, description must be an array of strings (one bullet per item), not a single string
 
 Return ONLY this JSON structure — no markdown, no explanation:
 {
@@ -940,15 +942,26 @@ Return ONLY this JSON structure — no markdown, no explanation:
   ],
   "skills": [],
   "certifications": [{ "name": "", "issuer": "", "date": "" }],
-  "projects": [{ "name": "", "description": "", "technologies": [], "url": "", "dates": "" }],
+  "projects": [{ "name": "", "description": [], "technologies": [], "url": "", "dates": "" }],
   "languages": [],
-  "awards": [{ "name": "", "issuer": "", "date": "" }]
+  "awards": [{ "name": "", "issuer": "", "date": "" }],
+  "volunteerWork": [
+    {
+      "role": "",
+      "organization": "",
+      "location": "",
+      "startDate": "",
+      "endDate": "",
+      "current": false,
+      "description": []
+    }
+  ]
 }
 
 RESUME TEXT:
 ${text}`;
 
-  const { content } = await callAI(prompt, userId, null, 'resume_parse', 4000);
+  const { content } = await callAI(prompt, userId, null, 'resume_parse', 6000);
   return parseAIJSON<ParsedResumeData>(content);
 }
 
@@ -1170,6 +1183,39 @@ Return only valid JSON, no markdown.`;
     // Preserve photo from AI result if original doesn't have one
     photoUrl: resumeData.contact?.photoUrl ?? result.tailoredData.contact?.photoUrl,
   };
+
+  // Safety fallbacks — restore any section the AI dropped from original resume data.
+  // The AI is prompted to preserve ALL sections but may truncate JSON or omit sections
+  // when the resume is long. These guards ensure no data is silently lost.
+  if (!result.tailoredData.skills?.length && resumeData.skills?.length)
+    result.tailoredData.skills = resumeData.skills;
+  if (!result.tailoredData.certifications?.length && resumeData.certifications?.length)
+    result.tailoredData.certifications = resumeData.certifications;
+  if (!result.tailoredData.projects?.length && resumeData.projects?.length)
+    result.tailoredData.projects = resumeData.projects;
+  if (!result.tailoredData.languages?.length && resumeData.languages?.length)
+    result.tailoredData.languages = resumeData.languages;
+  if (!result.tailoredData.awards?.length && resumeData.awards?.length)
+    result.tailoredData.awards = resumeData.awards;
+  if (!result.tailoredData.volunteerWork?.length && resumeData.volunteerWork?.length)
+    result.tailoredData.volunteerWork = resumeData.volunteerWork;
+  // Extended academic / creative fields — pass through unchanged
+  if (!result.tailoredData.publications && resumeData.publications)
+    result.tailoredData.publications = resumeData.publications;
+  if (!result.tailoredData.leadership && resumeData.leadership)
+    result.tailoredData.leadership = resumeData.leadership;
+  if (!result.tailoredData.achievements && resumeData.achievements)
+    result.tailoredData.achievements = resumeData.achievements;
+  if (!result.tailoredData.professionalAffiliations && resumeData.professionalAffiliations)
+    result.tailoredData.professionalAffiliations = resumeData.professionalAffiliations;
+  if (!result.tailoredData.grants && resumeData.grants)
+    result.tailoredData.grants = resumeData.grants;
+  if (!result.tailoredData.teaching && resumeData.teaching)
+    result.tailoredData.teaching = resumeData.teaching;
+  if (!result.tailoredData.service && resumeData.service)
+    result.tailoredData.service = resumeData.service;
+  if (!result.tailoredData.speaking && resumeData.speaking)
+    result.tailoredData.speaking = resumeData.speaking;
 
   // Generate tailored text from data
   const tailoredText = generateResumeText(result.tailoredData);
@@ -1426,10 +1472,16 @@ RULES — apply these changes and NOTHING ELSE:
   const { content } = await callAI(prompt, userId, organizationId, 'ats_optimize', 4096);
   const result = parseAIJSON<ParsedResumeData>(content);
 
-  // Safety fallbacks — if AI drops any critical section, restore from original
-  if (!result.experience || result.experience.length === 0) result.experience = tailoredData.experience;
-  if (!result.education || result.education.length === 0) result.education = tailoredData.education;
-  if (!result.contact) result.contact = tailoredData.contact;
+  // Safety fallbacks — if AI drops any section, restore from original
+  if (!result.experience?.length) result.experience = tailoredData.experience;
+  if (!result.education?.length)  result.education  = tailoredData.education;
+  if (!result.contact)            result.contact    = tailoredData.contact;
+  if (!result.skills?.length)          result.skills          = tailoredData.skills;
+  if (!result.certifications?.length)  result.certifications  = tailoredData.certifications;
+  if (!result.projects?.length)        result.projects        = tailoredData.projects;
+  if (!result.languages?.length)       result.languages       = tailoredData.languages;
+  if (!result.awards?.length)          result.awards          = tailoredData.awards;
+  if (!result.volunteerWork?.length)   result.volunteerWork   = tailoredData.volunteerWork;
 
   return result;
 }

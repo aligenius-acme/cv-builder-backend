@@ -340,11 +340,28 @@ function mergeResumeData(ruleBased: ParsedResumeData, ai: ParsedResumeData): Par
   // If AI missed summary but rule-based found it, keep it
   if (!merged.summary && ruleBased.summary) merged.summary = ruleBased.summary;
 
+  // Fallback: if AI returned an empty array for any section, use rule-based results
+  if (!merged.certifications?.length && ruleBased.certifications?.length)
+    merged.certifications = ruleBased.certifications;
+  if (!merged.projects?.length && ruleBased.projects?.length)
+    merged.projects = ruleBased.projects;
+  if (!merged.languages?.length && ruleBased.languages?.length)
+    merged.languages = ruleBased.languages;
+  if (!merged.awards?.length && ruleBased.awards?.length)
+    merged.awards = ruleBased.awards;
+  if (!merged.volunteerWork?.length && ruleBased.volunteerWork?.length)
+    merged.volunteerWork = ruleBased.volunteerWork;
+
   console.log('[Parser] Merged AI + rule-based result:', {
     contact: !!merged.contact.name || !!merged.contact.email,
     experience: merged.experience.length,
     education: merged.education.length,
     skills: (merged.skills as string[]).length,
+    certifications: merged.certifications?.length || 0,
+    projects: merged.projects?.length || 0,
+    languages: merged.languages?.length || 0,
+    awards: merged.awards?.length || 0,
+    volunteerWork: merged.volunteerWork?.length || 0,
   });
 
   return merged;
@@ -363,6 +380,7 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
     projects: [],
     languages: [],
     awards: [],
+    volunteerWork: [],
     contact: extractContactInfo(lines),
   };
 
@@ -387,7 +405,7 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
     { pattern: /^awards?:?$|^honors?(\s+(&|and)\s+awards?)?:?$|^achievements?:?$|^recognition:?$|^accomplishments?:?$|^distinctions?:?$|^scholarships?:?$|^honors?\s+(&|and)\s+recognition:?$/i, section: 'awards' },
     // Extra sections
     { pattern: /^publications?:?$|^research:?$|^papers?:?$|^conference\s+papers?:?$|^journal\s+articles?:?$/i, section: 'projects' },
-    { pattern: /^volunteer(ing)?(\s+experience)?:?$|^community\s+(service|involvement):?$|^extracurricular:?$|^leadership(\s+experience)?:?$/i, section: 'experience' },
+    { pattern: /^volunteer(ing)?(\s+experience)?:?$|^community\s+(service|involvement):?$|^extracurricular(\s+activities)?:?$|^leadership(\s+experience)?:?$|^civic\s+(engagement|involvement):?$|^social\s+(work|impact):?$/i, section: 'volunteerWork' },
     { pattern: /^interests?:?$|^hobbies?:?$|^activities?:?$/i, section: 'interests' },
     { pattern: /^references?:?$/i, section: 'references' },
   ];
@@ -521,6 +539,7 @@ function extractResumeDataRuleBased(rawText: string): ParsedResumeData {
     projectsCount: data.projects?.length || 0,
     languagesCount: data.languages?.length || 0,
     awardsCount: data.awards?.length || 0,
+    volunteerWorkCount: data.volunteerWork?.length || 0,
   });
 
   return data;
@@ -720,6 +739,20 @@ function processSection(
     case 'awards':
       data.awards = parseAwards(content);
       break;
+    case 'volunteerWork': {
+      // Parse with experience logic then remap title→role, company→organization
+      const expEntries = parseExperience(content);
+      data.volunteerWork = expEntries.map((e: any) => ({
+        role:         e.title     || e.role     || '',
+        organization: e.company   || e.organization || '',
+        location:     e.location,
+        startDate:    e.startDate,
+        endDate:      e.endDate,
+        current:      e.current   || false,
+        description:  e.description || [],
+      }));
+      break;
+    }
   }
 }
 
