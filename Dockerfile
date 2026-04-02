@@ -6,8 +6,6 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-
 COPY package*.json ./
 COPY prisma ./prisma/
 
@@ -24,30 +22,6 @@ FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-
-# Minimal runtime libs required by @sparticuz/chromium (Lambda-optimised binary).
-# Do NOT install the full system `chromium` package — it's 3x heavier and causes OOM.
-RUN apt-get update && apt-get install -y \
-  fonts-liberation \
-  fonts-noto-color-emoji \
-  libnspr4 \
-  libnss3 \
-  libatk1.0-0 \
-  libatk-bridge2.0-0 \
-  libcups2 \
-  libdrm2 \
-  libxkbcommon0 \
-  libxcomposite1 \
-  libxdamage1 \
-  libxfixes3 \
-  libxrandr2 \
-  libgbm1 \
-  libasound2 \
-  libpango-1.0-0 \
-  libcairo2 \
-  --no-install-recommends \
-  && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd --system --gid 1001 nodejs \

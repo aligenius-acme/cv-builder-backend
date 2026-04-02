@@ -6,7 +6,6 @@ import { generateTemplateHTML } from '../services/template-html-generator';
 import { prisma } from '../utils/prisma';
 import { NotFoundError, ValidationError } from '../utils/errors';
 import * as TemplateRegistry from '../services/template-registry';
-import { v2 as cloudinary } from 'cloudinary';
 
 // Get all available templates
 export const getTemplates = async (
@@ -188,127 +187,21 @@ export const getTemplateStats = async (
 };
 
 // Preview template with sample data or user's resume data
+// Legacy PDF preview — replaced by GET /:templateId/render which returns HTML.
 export const previewTemplate = async (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
 ): Promise<void> => {
-  try {
-    const { templateId } = req.params;
-    const { resumeId, versionId } = req.query;
-    const userId = req.user!.id;
-
-    // Validate template exists in database registry
-    const template = await TemplateRegistry.getTemplateById(templateId);
-    if (!template) {
-      throw new ValidationError(`Invalid template: ${templateId}`);
-    }
-
-    let resumeData: ParsedResumeData;
-
-    if (versionId && resumeId) {
-      // Use user's actual version data
-      const version = await prisma.resumeVersion.findFirst({
-        where: { id: versionId as string, resumeId: resumeId as string, userId },
-        include: { resume: true },
-      });
-
-      if (!version) {
-        throw new NotFoundError('Version not found');
-      }
-
-      resumeData = version.tailoredData as unknown as ParsedResumeData;
-
-      // Ensure contact object exists (AI may return null contact)
-      if (!resumeData.contact || typeof resumeData.contact !== 'object') {
-        resumeData.contact = {};
-      }
-      // Inject photo from the parent resume record (not stored in tailoredData)
-      const versionPhoto = version.resume.photoUrl || resumeData.photoUrl;
-      if (versionPhoto) {
-        resumeData.contact.photoUrl = versionPhoto;
-        resumeData.photoUrl = versionPhoto;
-      }
-    } else if (resumeId) {
-      // Use user's original resume data
-      const resume = await prisma.resume.findFirst({
-        where: { id: resumeId as string, userId },
-      });
-
-      if (!resume) {
-        throw new NotFoundError('Resume not found');
-      }
-
-      resumeData = resume.parsedData as unknown as ParsedResumeData;
-
-      // Ensure contact object exists
-      if (!resumeData.contact || typeof resumeData.contact !== 'object') {
-        resumeData.contact = {};
-      }
-      // Inject photo from the resume record
-      const resumePhoto = resume.photoUrl || resumeData.photoUrl;
-      if (resumePhoto) {
-        resumeData.contact.photoUrl = resumePhoto;
-        resumeData.photoUrl = resumePhoto;
-      }
-    } else {
-      // Use sample data for preview
-      resumeData = getSampleResumeData();
-    }
-
-    // Flush CORS + status headers to the socket before Puppeteer starts.
-    // Without this, a proxy timeout (Koyeb ~30 s) sends its own 504 without
-    // the CORS headers Express queued, causing "No Access-Control-Allow-Origin".
-    res.status(200);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.flushHeaders();
-
-    // Generate PDF — after flushHeaders, errors must end the response gracefully
-    // (calling next(error) would try to set headers again and kill the QUIC stream)
-    try {
-      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-      const pdfBuffer = await generatePDFFromReact(templateId, resumeData);
-      res.end(pdfBuffer);
-    } catch (pdfError) {
-      console.error('PDF generation failed after headers flushed:', pdfError);
-      res.end();
-    }
-  } catch (error) {
-    next(error);
-  }
+  const { templateId } = req.params;
+  const qs = new URLSearchParams(req.query as Record<string, string>).toString();
+  res.redirect(301, `/api/templates/${templateId}/render${qs ? '?' + qs : ''}`);
 };
 
 /**
-/**
- * Upload a thumbnail buffer to Cloudinary and persist the URL to the DB.
- * Fire-and-forget safe — errors are logged but not re-thrown.
- */
-async function persistThumbnailToCloudinary(templateId: string, buffer: Buffer): Promise<string | null> {
-  try {
-    const url = await new Promise<string>((resolve, reject) => {
-      cloudinary.uploader
-        .upload_stream(
-          { folder: 'cv-builder/thumbnails', public_id: templateId, format: 'jpg', overwrite: true, resource_type: 'image' },
-          (err, result) => (err || !result ? reject(err ?? new Error('No result')) : resolve(result.secure_url))
-        )
-        .end(buffer);
-    });
-    await prisma.resumeTemplate.update({ where: { id: templateId }, data: { previewImageUrl: url } });
-    console.log(`Thumbnail cached to Cloudinary: ${templateId}`);
-    return url;
-  } catch (err) {
-    console.error(`Failed to persist thumbnail to Cloudinary for ${templateId}:`, err);
-    return null;
-  }
-}
-
-/**
  * GET /:templateId/thumbnail
- * Serve a template thumbnail.
- * - If a Cloudinary URL is stored → redirect (fast path, no Puppeteer).
- * - Otherwise → generate with Puppeteer, upload to Cloudinary, then serve.
- *   On next request the Cloudinary URL is used directly.
+ * Serve a template thumbnail image.
+ * - Fast path: redirect to Cloudinary URL if one is stored in the DB.
+ * - Fallback: return an SVG placeholder (Puppeteer-based generation removed).
  */
 export const getThumbnail = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -316,7 +209,7 @@ export const getThumbnail = async (req: Request, res: Response): Promise<void> =
 
     const template = await prisma.resumeTemplate.findUnique({
       where: { id: templateId },
-      select: { previewImageUrl: true },
+      select: { previewImageUrl: true, name: true },
     });
 
     if (!template) {
@@ -324,55 +217,44 @@ export const getThumbnail = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Fast path: already have a Cloudinary (or other external) URL
+    // Fast path: redirect to stored Cloudinary URL
     if (template.previewImageUrl && !template.previewImageUrl.startsWith('/api/')) {
       res.redirect(template.previewImageUrl);
       return;
     }
 
-    // Slow path: generate with Puppeteer
-    const { generateTemplateThumbnail, clearThumbnailCache } = await import('../services/react-pdf-generator');
+    // Fallback: serve an SVG placeholder with the template name
+    const name = (template.name || templateId).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] ?? c));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="210" height="297" viewBox="0 0 210 297">
+  <rect width="210" height="297" fill="#f8fafc"/>
+  <rect x="16" y="16" width="178" height="40" rx="4" fill="#1e3a8a"/>
+  <rect x="16" y="72" width="120" height="8" rx="2" fill="#cbd5e1"/>
+  <rect x="16" y="88" width="90" height="6" rx="2" fill="#e2e8f0"/>
+  <rect x="16" y="112" width="178" height="1" fill="#e2e8f0"/>
+  <rect x="16" y="124" width="60" height="6" rx="2" fill="#1e3a8a" opacity="0.6"/>
+  <rect x="16" y="138" width="178" height="5" rx="2" fill="#e2e8f0"/>
+  <rect x="16" y="150" width="150" height="5" rx="2" fill="#e2e8f0"/>
+  <rect x="16" y="162" width="165" height="5" rx="2" fill="#e2e8f0"/>
+  <rect x="16" y="186" width="60" height="6" rx="2" fill="#1e3a8a" opacity="0.6"/>
+  <rect x="16" y="200" width="178" height="5" rx="2" fill="#e2e8f0"/>
+  <rect x="16" y="212" width="140" height="5" rx="2" fill="#e2e8f0"/>
+  <text x="105" y="42" font-family="sans-serif" font-size="11" fill="white" text-anchor="middle" dominant-baseline="middle">${name}</text>
+</svg>`;
 
-    const TIMEOUT_MS = 60_000;
-    const thumbnailBuffer = await Promise.race([
-      generateTemplateThumbnail(templateId),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => {
-          clearThumbnailCache(templateId);
-          reject(new Error(`Thumbnail generation timed out after ${TIMEOUT_MS}ms`));
-        }, TIMEOUT_MS)
-      ),
-    ]);
-
-    // Upload to Cloudinary in the background so the next request uses the fast path
-    persistThumbnailToCloudinary(templateId, thumbnailBuffer).catch(() => {});
-
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
-    const etag = `"${templateId}-${thumbnailBuffer.length}"`;
-    res.setHeader('ETag', etag);
-    if (req.headers['if-none-match'] === etag) {
-      res.status(304).end();
-      return;
-    }
-    res.send(thumbnailBuffer);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(svg);
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error(`Thumbnail error for ${req.params.templateId}: ${msg}`);
     res.status(500).end();
   }
 };
 
 /**
- * POST /thumbnails/regenerate
- * Force-clear the in-memory thumbnail cache and re-warm all thumbnails.
- * Fire-and-forget: returns 202 immediately; generation runs in background.
+ * POST /thumbnails/regenerate — stub (Puppeteer removed).
+ * Thumbnails are now served from Cloudinary or as SVG placeholders.
  */
 export const regenerateThumbnails = async (_req: Request, res: Response): Promise<void> => {
-  const { clearThumbnailCache, warmupThumbnails } = await import('../services/react-pdf-generator');
-  clearThumbnailCache();
-  warmupThumbnails().catch(err => console.error('Thumbnail regeneration failed:', err));
-  res.status(202).json({ message: 'Thumbnail regeneration started' });
+  res.status(200).json({ message: 'Thumbnail regeneration is not available (Puppeteer removed). Upload thumbnails to Cloudinary directly.' });
 };
 
 /**

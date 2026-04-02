@@ -126,20 +126,6 @@ export const healthCheck = async (req: Request, res: Response) => {
       console.error('Database health check failed:', error);
     }
 
-    // Check Puppeteer/Chromium availability
-    let chromiumHealthy = false;
-    let chromiumError = '';
-    let chromiumPath = '';
-    try {
-      const chromium = await import('@sparticuz/chromium');
-      chromiumPath = process.env.PUPPETEER_EXECUTABLE_PATH || await chromium.default.executablePath().catch(() => 'unknown');
-      const { existsSync } = await import('fs');
-      chromiumHealthy = !!chromiumPath && existsSync(chromiumPath);
-      if (!chromiumHealthy) chromiumError = `Binary not found at: ${chromiumPath}`;
-    } catch (err: any) {
-      chromiumError = err.message;
-    }
-
     const allHealthy = redisHealthy && dbHealthy;
 
     res.status(allHealthy ? 200 : 503).json({
@@ -148,8 +134,6 @@ export const healthCheck = async (req: Request, res: Response) => {
       services: {
         redis: redisHealthy ? 'up' : 'down',
         database: dbHealthy ? 'up' : 'down',
-        chromium: chromiumHealthy ? 'up' : `down: ${chromiumError}`,
-        chromiumPath,
       },
     });
   } catch (error: any) {

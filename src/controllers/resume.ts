@@ -711,20 +711,8 @@ export const downloadVersion = async (
       res.setHeader('Content-Length', buffer.length.toString());
       res.end(buffer, 'binary');
     } else {
-      // Flush CORS headers before Puppeteer to prevent proxy-timeout CORS failures
-      fileName = `resume-v${version.versionNumber}-${sanitizeFilename(version.companyName || 'tailored')}.pdf`;
-      res.status(200);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-      res.flushHeaders();
-      try {
-        const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-        buffer = await generatePDFFromReact(templateId, resumeData);
-        res.end(buffer, 'binary');
-      } catch (pdfError) {
-        console.error('PDF generation failed after headers flushed:', pdfError);
-        res.end();
-      }
+      // PDF generation is handled client-side via the /render endpoint + browser print.
+      res.status(400).json({ error: 'PDF download is not supported server-side. Use GET /render to obtain HTML and print client-side.' });
       return;
     }
   } catch (error) {
@@ -1154,20 +1142,7 @@ export const downloadResume = async (
       res.setHeader('Content-Length', buffer.length.toString());
       res.end(buffer, 'binary');
     } else {
-      // Flush CORS headers before Puppeteer to prevent proxy-timeout CORS failures
-      fileName = `${sanitizeFilename(resume.title || 'resume')}.pdf`;
-      res.status(200);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '\\"')}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-      res.flushHeaders();
-      try {
-        const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-        buffer = await generatePDFFromReact(templateId, resumeData);
-        res.end(buffer, 'binary');
-      } catch (pdfError) {
-        console.error('PDF generation failed after headers flushed:', pdfError);
-        res.end();
-      }
+      res.status(400).json({ error: 'PDF download is not supported server-side. Use GET /render to obtain HTML and print client-side.' });
       return;
     }
   } catch (error) {
@@ -1175,57 +1150,16 @@ export const downloadResume = async (
   }
 };
 
-// Preview resume as HTML (for live preview)
+// Legacy PDF preview — replaced by GET /:id/render which returns HTML.
+// Kept as a redirect so any bookmarked or cached API calls still work.
 export const previewResume = async (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
 ): Promise<void> => {
-  try {
-    const userId = req.user!.id;
-    const { id } = req.params;
-    const { template = 'corporate-standard' } = req.query;
-
-    const resume = await prisma.resume.findFirst({
-      where: { id, userId },
-    });
-
-    if (!resume) {
-      throw new NotFoundError('Resume not found');
-    }
-
-    // Validate and get template from database
-    const templateId = template as string;
-    const templateMetadata = await getTemplateById(templateId);
-
-    if (!templateMetadata) {
-      throw new ValidationError(`Invalid template: ${templateId}`);
-    }
-
-    const resumeData = resume.parsedData as unknown as ParsedResumeData;
-
-    // Add photo from resume if available
-    if (resume.photoUrl && !resumeData.contact.photoUrl) {
-      resumeData.contact.photoUrl = resume.photoUrl;
-    }
-
-    // Flush CORS headers before Puppeteer to prevent proxy-timeout CORS failures
-    res.status(200);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.flushHeaders();
-
-    try {
-      console.log(`🎯 Generating preview for template: ${templateId}`);
-      const { generatePDFFromReact } = await import('../services/react-pdf-generator');
-      const buffer = await generatePDFFromReact(templateId, resumeData);
-      res.end(buffer);
-    } catch (pdfError) {
-      console.error('PDF generation failed after headers flushed:', pdfError);
-      res.end();
-    }
-  } catch (error) {
-    next(error);
-  }
+  const { id } = req.params;
+  const { template } = req.query;
+  const qs = template ? `?template=${template}` : '';
+  res.redirect(301, `/api/resumes/${id}/render${qs}`);
 };
 
 // Update tailored content of a resume version (no AI credits — user edit)
