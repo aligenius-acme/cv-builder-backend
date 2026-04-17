@@ -8,7 +8,7 @@ import { parseFile, extractResumeData, logParsingError } from '../services/parse
 import { fullCustomizationPipeline, analyzeATS, generateResumeText } from '../services/ai';
 import { deductAICredit } from '../middleware/credits';
 import { getAffiliateCourses } from '../config/affiliateLinks';
-import { generatePDF, generateDOCX, generatePDFFromRegistry, generateDOCXFromRegistry, anonymizeResumeData } from '../services/documents';
+import { generatePDF, generateDOCX, generateDOCXFromRegistry, anonymizeResumeData } from '../services/documents';
 import { getTemplate, isValidTemplate } from '../services/templates';
 import { getTemplateById, getTemplateConfigFromDB } from '../services/template-registry';
 import { scrapeJobPosting, formatJobDescription, ScrapedJobData } from '../services/jobScraper';

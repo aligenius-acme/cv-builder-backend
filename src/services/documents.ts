@@ -1537,65 +1537,13 @@ export async function generateDOCXEnhanced(
 // ============================================================================
 
 /**
- * Generate PDF using template from registry
- * Loads template dynamically and uses React template if available
+ * Generate PDF using template from registry (not implemented)
  */
 export async function generatePDFFromRegistry(
   data: ParsedResumeData,
   templateId: string
 ): Promise<Buffer> {
-  // Use HTML-to-PDF approach (same as preview) for consistency
-  const { generateTemplateHTML } = await import('./template-html-generator');
-  const { incrementTemplateUsage } = await import('./template-registry');
-  const puppeteer = await import('puppeteer');
-
-  // Increment usage count
-  await incrementTemplateUsage(templateId);
-
-  // Generate HTML using the same method as preview
-  const html = await generateTemplateHTML(templateId, data);
-
-  // Convert HTML to PDF using Puppeteer
-  console.log(`Starting PDF generation for template: ${templateId}`);
-  const browser = await puppeteer.launch({
-    headless: true,
-    ...(process.env.PUPPETEER_EXECUTABLE_PATH
-      ? { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH }
-      : {}),
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-
-  try {
-    const page = await browser.newPage();
-
-    // Set viewport for A4 size
-    await page.setViewport({
-      width: 794, // A4 width in pixels at 96 DPI
-      height: 1123, // A4 height in pixels at 96 DPI
-      deviceScaleFactor: 2,
-    });
-
-    // Set HTML content
-    await page.setContent(html, {
-      waitUntil: 'networkidle0',
-      timeout: 30000,
-    });
-
-    // Generate PDF
-    const pdfData = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: 0, right: 0, bottom: 0, left: 0 },
-      preferCSSPageSize: true,
-    });
-
-    // Ensure it's a proper Buffer (Puppeteer returns Uint8Array)
-    const pdfBuffer = Buffer.from(pdfData);
-    console.log(`PDF generated successfully, size: ${pdfBuffer.length} bytes`);
-    return pdfBuffer;
-  } finally {
-    await browser.close();
-  }
+  throw new Error('generatePDFFromRegistry is not implemented');
 }
 
 // ============================================================================

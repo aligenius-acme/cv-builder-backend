@@ -5,7 +5,6 @@
 
 import { ParsedResumeData } from '../types';
 import { getTemplateById } from './template-registry';
-import puppeteer from 'puppeteer';
 
 interface Palette {
   primary: string;
@@ -1348,43 +1347,3 @@ export async function generateTemplateHTML(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PDF GENERATION
-// ─────────────────────────────────────────────────────────────────────────────
-export async function generateTemplatePDF(
-  templateId: string,
-  data: ParsedResumeData
-): Promise<Buffer> {
-  console.log(`📄 Generating PDF for template: ${templateId}`);
-
-  const html = await generateTemplateHTML(templateId, data);
-  console.log(`  HTML generated, length: ${html.length} chars`);
-
-  const browser = await puppeteer.launch({
-    headless: true,
-    ...(process.env.PUPPETEER_EXECUTABLE_PATH
-      ? { executablePath: process.env.PUPPETEER_EXECUTABLE_PATH }
-      : {}),
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
-
-    const buffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: 0, right: 0, bottom: 0, left: 0 },
-      preferCSSPageSize: true,
-    });
-
-    console.log(`  PDF generated successfully, size: ${buffer.length} bytes`);
-    return Buffer.from(buffer);
-  } catch (error) {
-    console.error(`  PDF generation error:`, error);
-    throw error;
-  } finally {
-    await browser.close();
-  }
-}
